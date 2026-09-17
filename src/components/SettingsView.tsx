@@ -17,7 +17,7 @@ import { toast } from "sonner";
 
 export default function SettingsView({ initialTab = "general" }: { initialTab?: "general" | "roles" | "devices" | "account" }) {
   const { user, logout } = useAuth();
-  const { canManageSettings, role } = useAccessControl();
+  const { canManageSettings, canManageRoles, role } = useAccessControl();
   const utils = trpc.useUtils();
 
   const [activeTab, setActiveTab] = useState<"general" | "roles" | "devices" | "account">(initialTab);
@@ -84,16 +84,18 @@ export default function SettingsView({ initialTab = "general" }: { initialTab?: 
             >
               <Store className="size-3.5" /> Shop Profile
             </button>
-            <button
-              onClick={() => setActiveTab("roles")}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === "roles"
-                  ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <ShieldCheck className="size-3.5" /> Roles & Access
-            </button>
+            {canManageRoles && (
+              <button
+                onClick={() => setActiveTab("roles")}
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "roles"
+                    ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <ShieldCheck className="size-3.5" /> Roles & Access
+              </button>
+            )}
             <button
               onClick={() => setActiveTab("devices")}
               className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
@@ -119,7 +121,7 @@ export default function SettingsView({ initialTab = "general" }: { initialTab?: 
       </div>
 
       {/* Render selected tab content */}
-      {activeTab === "roles" && <RolesAndAccessView />}
+      {activeTab === "roles" && canManageRoles && <RolesAndAccessView />}
 
       {activeTab === "general" && (
         <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
@@ -175,21 +177,23 @@ export default function SettingsView({ initialTab = "general" }: { initialTab?: 
           </div>
 
           {/* Quick Access Overview */}
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
-            <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2 border-b border-slate-100 pb-3">
-              <ShieldCheck className="size-4 text-[#0F4C5C]" /> Roles & Access Overview
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Role permissions are active. Go to the <strong>Roles & Access</strong> tab to configure staff restrictions, toggle permissions, or test roles.
-            </p>
+          {canManageRoles && (
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2 border-b border-slate-100 pb-3">
+                <ShieldCheck className="size-4 text-[#0F4C5C]" /> Roles & Access Overview
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Role permissions are active. Go to the <strong>Roles & Access</strong> tab to configure staff restrictions, toggle permissions, or test roles.
+              </p>
 
-            <button
-              onClick={() => setActiveTab("roles")}
-              className="w-full py-2.5 bg-slate-50 border border-slate-200 text-[#0F4C5C] text-xs font-bold rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2 active:scale-95"
-            >
-              <ShieldCheck className="size-4" /> Open Roles & Access Control
-            </button>
-          </div>
+              <button
+                onClick={() => setActiveTab("roles")}
+                className="w-full py-2.5 bg-slate-50 border border-slate-200 text-[#0F4C5C] text-xs font-bold rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2 active:scale-95"
+              >
+                <ShieldCheck className="size-4" /> Open Roles & Access Control
+              </button>
+            </div>
+          )}
         </div>
       )}
 

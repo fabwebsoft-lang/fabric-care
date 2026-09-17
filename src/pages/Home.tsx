@@ -135,7 +135,7 @@ export default function Home() {
   // startLogin() during render (no href={startLogin()}) — it mints a one-time
   // nonce cookie and must run only at the moment of navigation.
   let { user, loading, error, isAuthenticated, logout } = useAuth();
-  const { role: activeRole, canViewReports, setRole, isSimulating } = useAccessControl();
+  const { role: activeRole, canViewReports, canManageRoles, setRole, isSimulating } = useAccessControl();
 
   const hasApprovedAccess = isAuthenticated && user?.role !== "pending";
 
@@ -308,9 +308,11 @@ export default function Home() {
             <div className="my-8 h-px bg-white/[.09]" />
             <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-[#F7F3EE]">Manage</p>
             <nav className="space-y-1.5">
-              <button onClick={() => navigate("Roles")} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium transition-all ${activeSection === "Roles" ? "bg-[#0F4C5C] text-white" : "text-[#F7F3EE] hover:bg-white/[.10] hover:text-white"}`}>
-                <ShieldCheck className="size-[17px] text-[#F7F3EE] group-hover:text-[#F7F3EE]" strokeWidth={1.9} /> Roles & Access
-              </button>
+              {canManageRoles && (
+                <button onClick={() => navigate("Roles")} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium transition-all ${activeSection === "Roles" ? "bg-[#0F4C5C] text-white" : "text-[#F7F3EE] hover:bg-white/[.10] hover:text-white"}`}>
+                  <ShieldCheck className="size-[17px] text-[#F7F3EE] group-hover:text-[#F7F3EE]" strokeWidth={1.9} /> Roles & Access
+                </button>
+              )}
               <button onClick={() => navigate("Settings")} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium transition-all ${activeSection === "Settings" ? "bg-[#0F4C5C] text-white" : "text-[#F7F3EE] hover:bg-white/[.10] hover:text-white"}`}>
                 <Settings className="size-[17px] text-[#F7F3EE] group-hover:text-[#F7F3EE]" strokeWidth={1.9} /> Settings
               </button>
@@ -345,18 +347,25 @@ export default function Home() {
                 <ChevronDown className="size-3.5 text-[#0F4C5C]" />
               </div>
 
-              {/* Role badge with simulator click */}
-              <button
-                onClick={() => navigate("Roles")}
-                className="hidden items-center gap-1.5 rounded-xl border border-[#F7F3EE] bg-white px-3 py-2 sm:flex hover:border-[#0F4C5C]/30 transition"
-                title="Click to view permissions and switch role in simulator"
-              >
-                <ShieldCheck className="size-3.5 text-[#0F4C5C]" />
-                <span className="text-[11px] font-bold text-[#0F4C5C] capitalize">{activeRole}</span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#0F4C5C]/10 text-[#0F4C5C] font-bold uppercase">
-                  Role
-                </span>
-              </button>
+              {/* Role badge — clickable (opens the role simulator) for admins only */}
+              {canManageRoles ? (
+                <button
+                  onClick={() => navigate("Roles")}
+                  className="hidden items-center gap-1.5 rounded-xl border border-[#F7F3EE] bg-white px-3 py-2 sm:flex hover:border-[#0F4C5C]/30 transition"
+                  title="Click to view permissions and switch role in simulator"
+                >
+                  <ShieldCheck className="size-3.5 text-[#0F4C5C]" />
+                  <span className="text-[11px] font-bold text-[#0F4C5C] capitalize">{activeRole}</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#0F4C5C]/10 text-[#0F4C5C] font-bold uppercase">
+                    Role
+                  </span>
+                </button>
+              ) : (
+                <div className="hidden items-center gap-1.5 rounded-xl border border-[#F7F3EE] bg-white px-3 py-2 sm:flex">
+                  <ShieldCheck className="size-3.5 text-[#0F4C5C]" />
+                  <span className="text-[11px] font-bold text-[#0F4C5C] capitalize">{activeRole}</span>
+                </div>
+              )}
 
               <button onClick={() => { setShowNotifications((value) => !value); setShowProfileMenu(false); }} className="relative grid size-11 place-items-center rounded-xl border border-[#F7F3EE] bg-white text-[#0F4C5C] transition hover:border-[#F7F3EE] hover:text-[#0F4C5C]" aria-label="Notifications">
                 <Bell className="size-[17px]" strokeWidth={1.8} />
@@ -372,6 +381,7 @@ export default function Home() {
                 <ProfileMenu
                   user={user}
                   activeRole={activeRole}
+                  canManageRoles={canManageRoles}
                   onSettings={() => navigate("Settings")}
                   onRoles={() => navigate("Roles")}
                   onLogout={async () => {
@@ -416,9 +426,11 @@ export default function Home() {
             <div className="mb-8 rounded-2xl border border-white/[.08] bg-white/[.045] p-4"><p className="text-[12px] font-semibold text-white">Use the bottom bar to navigate</p><p className="mt-1.5 text-[10px] leading-4 text-[#F7F3EE]">Overview, orders, process, customers, and costs are always one tap away.</p></div>
             <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-[#F7F3EE]">Manage</p>
             <nav className="space-y-1.5">
-              <button onClick={() => { setShowMobileNav(false); navigate("Roles"); }} className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium text-[#F7F3EE] hover:bg-white/[.10] hover:text-white">
-                <ShieldCheck className="size-[17px] text-[#F7F3EE]" strokeWidth={1.9} /> Roles & Access
-              </button>
+              {canManageRoles && (
+                <button onClick={() => { setShowMobileNav(false); navigate("Roles"); }} className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium text-[#F7F3EE] hover:bg-white/[.10] hover:text-white">
+                  <ShieldCheck className="size-[17px] text-[#F7F3EE]" strokeWidth={1.9} /> Roles & Access
+                </button>
+              )}
               <button onClick={() => navigate("Settings")} className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium text-[#F7F3EE] hover:bg-white/[.10] hover:text-white"><Settings className="size-[17px] text-[#F7F3EE]" strokeWidth={1.9} /> Settings</button>
               <button onClick={() => { setShowMobileNav(false); setShowHelp(true); }} className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium text-[#F7F3EE] hover:bg-white/[.10] hover:text-white"><HelpCircle className="size-[17px] text-[#F7F3EE]" strokeWidth={1.9} /> Help center</button>
             </nav>
@@ -550,12 +562,14 @@ function NotificationPanel({ orders, notificationsEnabled, onMarkRead }: { order
 function ProfileMenu({
   user,
   activeRole,
+  canManageRoles,
   onSettings,
   onRoles,
   onLogout,
 }: {
   user: { name?: string | null; email?: string | null; role?: string | null } | null;
   activeRole: string;
+  canManageRoles: boolean;
   onSettings: () => void;
   onRoles: () => void;
   onLogout: () => void | Promise<void>;
@@ -575,12 +589,14 @@ function ProfileMenu({
         </div>
       </div>
       <div className="space-y-1">
-        <button
-          onClick={onRoles}
-          className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[11px] font-semibold text-[#0F4C5C] transition hover:bg-[#F7F3EE]"
-        >
-          <ShieldCheck className="size-4" /> Roles & access control
-        </button>
+        {canManageRoles && (
+          <button
+            onClick={onRoles}
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[11px] font-semibold text-[#0F4C5C] transition hover:bg-[#F7F3EE]"
+          >
+            <ShieldCheck className="size-4" /> Roles & access control
+          </button>
+        )}
         <button
           onClick={onSettings}
           className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[11px] font-semibold text-[#0F4C5C] transition hover:bg-[#F7F3EE]"

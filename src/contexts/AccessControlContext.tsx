@@ -94,22 +94,45 @@ const AccessControlContext = createContext<AccessControlContextType | undefined>
 
 const STORAGE_KEY = "fabriccare_active_role";
 
+function isSimulatableRole(value: unknown): value is UserRole {
+  return value === "admin" || value === "manager" || value === "staff";
+}
+
 export function AccessControlProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  
-  // Default to stored role, or user's auth role, or "admin"
-  const [role, setRoleState] = useState<UserRole>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === "admin" || saved === "manager" || saved === "staff") {
-      return saved;
-    }
-    if (user?.role === "admin") return "admin";
-    return "admin"; // Default admin for development/owner
-  });
+
+  // Safe default until the real account role is known — never assume admin.
+  const [role, setRoleState] = useState<UserRole>("staff");
 
   const [isSimulating, setIsSimulating] = useState(() => {
     return localStorage.getItem(STORAGE_KEY) !== null;
   });
+
+  // Re-sync whenever the authenticated account's real role changes (e.g. on
+  // login, or once an admin approval lands). A stored simulator preference
+  // only ever applies to a real admin account — the simulator UI is admin-
+  // only, so any override found on a non-admin account is stale (e.g. left
+  // over from before this restriction existed) and gets cleared here rather
+  // than silently granting a stale admin-looking view with no way to reset it.
+  useEffect(() => {
+    const realRole = isSimulatableRole(user?.role) ? user.role : null;
+    const saved = localStorage.getItem(STORAGE_KEY);
+
+    if (realRole !== "admin") {
+      if (saved !== null) {
+        localStorage.removeItem(STORAGE_KEY);
+        setIsSimulating(false);
+      }
+      setRoleState(realRole ?? "staff");
+      return;
+    }
+
+    if (isSimulatableRole(saved)) {
+      setRoleState(saved);
+    } else {
+      setRoleState(realRole);
+    }
+  }, [user?.role]);
 
   const setRole = (newRole: UserRole) => {
     setRoleState(newRole);
@@ -120,7 +143,7 @@ export function AccessControlProvider({ children }: { children: React.ReactNode 
   const resetToAuthRole = () => {
     localStorage.removeItem(STORAGE_KEY);
     setIsSimulating(false);
-    setRoleState((user?.role as UserRole) || "admin");
+    setRoleState(isSimulatableRole(user?.role) ? user.role : "staff");
   };
 
   const permissions = ROLE_DEFINITIONS[role].permissions;

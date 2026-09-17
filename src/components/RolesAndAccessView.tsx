@@ -21,10 +21,10 @@ import {
 import { toast } from "sonner";
 
 export default function RolesAndAccessView() {
-  const { role: activeRole, setRole, isSimulating, resetToAuthRole } = useAccessControl();
+  const { role: activeRole, canManageRoles, setRole, isSimulating, resetToAuthRole } = useAccessControl();
   const utils = trpc.useUtils();
 
-  const { data: workers = [], isLoading } = trpc.workers.list.useQuery();
+  const { data: workers = [], isLoading } = trpc.workers.list.useQuery(undefined, { enabled: canManageRoles });
   const [showAddWorker, setShowAddWorker] = useState(false);
   const [newWorkerName, setNewWorkerName] = useState("");
   const [newWorkerPhone, setNewWorkerPhone] = useState("");
@@ -150,6 +150,26 @@ export default function RolesAndAccessView() {
       tag: "Admin Only",
     },
   ];
+
+  if (!canManageRoles) {
+    return (
+      <div className="max-w-2xl mx-auto my-6 sm:my-12 bg-white rounded-3xl p-5 sm:p-8 border border-slate-200 shadow-xs text-center space-y-4">
+        <div className="size-14 sm:size-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+          <Lock className="size-7 sm:size-8" />
+        </div>
+        <div>
+          <span className="px-3 py-1 bg-amber-100 text-amber-800 text-[11px] font-bold rounded-full uppercase">
+            Access Restricted · {activeRole.toUpperCase()} Role
+          </span>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-800 mt-2.5">Roles & Access is Admin Only</h2>
+          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed max-w-md mx-auto">
+            Managing team roles, approving new sign-ups, and configuring staff PINs is restricted to the shop
+            Admin. Contact your admin if you need a role change or a new team member approved.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-5xl">
