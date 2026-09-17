@@ -1,19 +1,23 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, requirePermission } from "../trpc.js";
-import { Worker, WORKER_ROLES } from "../../models/Worker.js";
+import { Worker } from "../../models/Worker.js";
 import { hashSecret, compareSecret, signRoleToken } from "../../lib/auth.js";
 import type { RoleName } from "../../lib/permissions.js";
 
-const roleSchema = z.enum(WORKER_ROLES);
+// Admins assign real roles only — "pending" is set automatically by
+// auth.signup and cleared here the moment an admin approves the account.
+const roleSchema = z.enum(["admin", "manager", "staff"]);
 const simulatableRoles: readonly string[] = ["admin", "manager", "staff"] satisfies RoleName[];
 
 export const workersRouter = router({
-  list: protectedProcedure.query(async () => {
+  // Admin-only: this list includes pending signups and email addresses.
+  list: requirePermission("canManageRoles").query(async () => {
     const workers = await Worker.find().sort({ createdAt: 1 });
     return workers.map((w) => ({
       id: w._id.toString(),
       name: w.name,
+      email: w.email ?? null,
       role: w.role,
       active: w.active ? 1 : 0,
       hasPin: Boolean(w.pinHash),
@@ -28,6 +32,9 @@ export const workersRouter = router({
       return { id: worker._id.toString(), name: worker.name, role: worker.role };
     }),
 
+  // Also how an admin approves a pending signup: assigning any real role
+  // moves them out of "pending" and grants them that role's permissions
+  // immediately (the role is looked up fresh per-request, not cached).
   updateRole: requirePermission("canManageRoles")
     .input(z.object({ workerId: z.string(), role: roleSchema }))
     .mutation(async ({ input }) => {

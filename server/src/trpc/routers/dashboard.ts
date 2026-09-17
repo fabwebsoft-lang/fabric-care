@@ -1,8 +1,8 @@
-import { router, protectedProcedure } from "../trpc.js";
+import { router, approvedProcedure } from "../trpc.js";
 import { Order } from "../../models/Order.js";
 
 export const dashboardRouter = router({
-  stats: protectedProcedure.query(async () => {
+  stats: approvedProcedure.query(async () => {
     const orders = await Order.find();
     const todaysRevenue = orders.reduce((s, o) => s + o.totalAmount, 0);
     const collectedToday = orders.reduce((s, o) => s + o.amountPaid, 0);

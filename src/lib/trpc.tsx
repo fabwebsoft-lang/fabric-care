@@ -83,7 +83,8 @@ export type Shop = {
 export type Worker = {
   id: string;
   name: string;
-  role: "admin" | "manager" | "staff" | "owner" | "worker";
+  email: string | null;
+  role: "pending" | "admin" | "manager" | "staff";
   active: number;
   hasPin: boolean;
   createdAt: string;
@@ -257,8 +258,32 @@ export const trpc = {
           },
           staleTime: Infinity,
           retry: false,
+          // Poll while awaiting admin approval so the "Contact Admin" screen
+          // unlocks on its own once a role is assigned, no refresh needed.
+          refetchInterval: (query: any) => (query.state.data?.role === "pending" ? 5000 : false),
           ...options,
         }),
+    },
+    signup: {
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: { name: string; email: string; password: string }) => {
+            try {
+              const res = await client.auth.signup.mutate(input);
+              setSessionToken(res.token);
+              return res.user;
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.setQueryData(["auth.me"], data);
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
     },
     login: {
       useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {

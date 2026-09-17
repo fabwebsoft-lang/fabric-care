@@ -1,20 +1,25 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Lock, Mail, LogIn } from "lucide-react";
+import { Lock, Mail, User, UserPlus } from "lucide-react";
 
-export default function LoginScreen({ onSwitchToSignup }: { onSwitchToSignup: () => void }) {
+export default function SignupScreen({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const loginMutation = trpc.auth.login.useMutation({
-    onError: (err) => toast.error("Could not sign in", { description: err.message }),
+  const signupMutation = trpc.auth.signup.useMutation({
+    onError: (err) => toast.error("Could not create account", { description: err.message }),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) return;
-    loginMutation.mutate({ email: email.trim(), password });
+    if (!name.trim() || !email.trim() || !password) return;
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    signupMutation.mutate({ name: name.trim(), email: email.trim(), password });
   };
 
   return (
@@ -25,12 +30,28 @@ export default function LoginScreen({ onSwitchToSignup }: { onSwitchToSignup: ()
             <img src="/fabric-care-logo.png" alt="Fabric Care logo" className="size-7 object-contain" />
           </div>
           <div>
-            <h1 className="font-display text-lg font-bold text-[#0F4C5C]">Fabric Care</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Sign in to manage your shop</p>
+            <h1 className="font-display text-lg font-bold text-[#0F4C5C]">Create an account</h1>
+            <p className="text-xs text-slate-500 mt-0.5">An admin will need to approve access before you can use the app</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+              <input
+                type="text"
+                required
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+                className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
             <div className="relative">
@@ -38,7 +59,6 @@ export default function LoginScreen({ onSwitchToSignup }: { onSwitchToSignup: ()
               <input
                 type="email"
                 required
-                autoFocus
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
@@ -54,9 +74,10 @@ export default function LoginScreen({ onSwitchToSignup }: { onSwitchToSignup: ()
               <input
                 type="password"
                 required
+                minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="At least 6 characters"
                 className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
               />
             </div>
@@ -64,19 +85,19 @@ export default function LoginScreen({ onSwitchToSignup }: { onSwitchToSignup: ()
 
           <button
             type="submit"
-            disabled={loginMutation.isPending}
+            disabled={signupMutation.isPending}
             className="w-full py-2.5 bg-[#0F4C5C] text-white text-xs font-bold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center justify-center gap-2 active:scale-95 disabled:opacity-60"
           >
-            <LogIn className="size-4" />
-            {loginMutation.isPending ? "Signing in…" : "Sign In"}
+            <UserPlus className="size-4" />
+            {signupMutation.isPending ? "Creating account…" : "Create Account"}
           </button>
         </form>
 
         <button
-          onClick={onSwitchToSignup}
+          onClick={onSwitchToLogin}
           className="w-full text-center text-xs font-semibold text-[#0F4C5C] hover:underline"
         >
-          Don't have an account? Sign up
+          Already have an account? Sign in
         </button>
       </div>
     </div>

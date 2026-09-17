@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, protectedProcedure, requirePermission } from "../trpc.js";
+import { router, approvedProcedure, requirePermission } from "../trpc.js";
 import { Shop } from "../../models/Shop.js";
 
 async function getOrCreateShop() {
@@ -25,7 +25,7 @@ function toApiShop(shop: Awaited<ReturnType<typeof getOrCreateShop>>) {
 }
 
 export const shopsRouter = router({
-  list: protectedProcedure.query(async () => {
+  list: approvedProcedure.query(async () => {
     const shop = await getOrCreateShop();
     return [toApiShop(shop)];
   }),

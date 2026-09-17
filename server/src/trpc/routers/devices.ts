@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc.js";
+import { router, approvedProcedure } from "../trpc.js";
 import { Device } from "../../models/Device.js";
 
 export const devicesRouter = router({
-  list: protectedProcedure.query(async () => {
+  list: approvedProcedure.query(async () => {
     const devices = await Device.find().sort({ createdAt: 1 });
     return devices.map((d) => ({
       id: d._id.toString(),
@@ -14,7 +14,7 @@ export const devicesRouter = router({
     }));
   }),
 
-  register: protectedProcedure
+  register: approvedProcedure
     .input(z.object({ deviceLabel: z.string().min(1), userAgent: z.string().optional() }))
     .mutation(async ({ input }) => {
       const device = await Device.create({ deviceLabel: input.deviceLabel, userAgent: input.userAgent ?? null });

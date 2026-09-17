@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { router, requirePermission, protectedProcedure } from "../trpc.js";
+import { router, requirePermission, approvedProcedure } from "../trpc.js";
 import { Expense } from "../../models/Expense.js";
 
 export const expensesRouter = router({
-  list: protectedProcedure.query(async () => {
+  list: approvedProcedure.query(async () => {
     const expenses = await Expense.find().sort({ expenseDate: -1 });
     return expenses.map((e) => ({
       id: e._id.toString(),

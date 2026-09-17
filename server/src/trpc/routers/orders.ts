@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure, requirePermission } from "../trpc.js";
+import { router, approvedProcedure, requirePermission } from "../trpc.js";
 import { Order } from "../../models/Order.js";
 import { Customer } from "../../models/Customer.js";
 
@@ -39,7 +39,7 @@ async function nextOrderId(shopCode: string) {
 }
 
 export const ordersRouter = router({
-  list: protectedProcedure.query(async () => {
+  list: approvedProcedure.query(async () => {
     const orders = await Order.find().sort({ createdAt: -1 });
     return orders.map(toApiOrder);
   }),

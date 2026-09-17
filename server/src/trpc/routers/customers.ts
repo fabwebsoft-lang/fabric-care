@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc.js";
+import { router, approvedProcedure } from "../trpc.js";
 import { Customer } from "../../models/Customer.js";
 import { Order } from "../../models/Order.js";
 
@@ -8,7 +8,7 @@ export const customersRouter = router({
   // orderCount / totalSpent / pendingBalance are derived from Orders here
   // rather than stored on the Customer document, so they can never drift
   // out of sync the way denormalized fields would.
-  list: protectedProcedure.query(async () => {
+  list: approvedProcedure.query(async () => {
     const customers = await Customer.find().sort({ createdAt: -1 });
     const stats = await Order.aggregate([
       {
@@ -43,7 +43,7 @@ export const customersRouter = router({
     });
   }),
 
-  create: protectedProcedure
+  create: approvedProcedure
     .input(
       z.object({
         name: z.string().min(1),
@@ -65,7 +65,7 @@ export const customersRouter = router({
       return { id: customer._id.toString(), name: customer.name, phone: customer.phone };
     }),
 
-  update: protectedProcedure
+  update: approvedProcedure
     .input(
       z.object({
         id: z.string(),

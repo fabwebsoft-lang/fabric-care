@@ -1,7 +1,6 @@
 import "dotenv/config";
 import mongoose from "mongoose";
 import { connectDB } from "./db.js";
-import { User } from "./models/User.js";
 import { Shop } from "./models/Shop.js";
 import { Worker } from "./models/Worker.js";
 import { hashSecret } from "./lib/auth.js";
@@ -18,12 +17,12 @@ async function main() {
   }
 
   const passwordHash = await hashSecret(adminPassword);
-  await User.findOneAndUpdate(
+  await Worker.findOneAndUpdate(
     { email: adminEmail.toLowerCase() },
-    { name: adminName, email: adminEmail.toLowerCase(), passwordHash, role: "admin" },
+    { name: adminName, email: adminEmail.toLowerCase(), passwordHash, role: "admin", active: true },
     { upsert: true }
   );
-  console.log(`Admin user ready: ${adminEmail}`);
+  console.log(`Admin account ready: ${adminEmail}`);
 
   const shopCode = process.env.SEED_SHOP_CODE || "FC01";
   await Shop.findOneAndUpdate(
@@ -38,12 +37,6 @@ async function main() {
     { upsert: true }
   );
   console.log(`Shop ready: ${shopCode}`);
-
-  const ownerWorkerExists = await Worker.exists({ role: "admin" });
-  if (!ownerWorkerExists) {
-    await Worker.create({ name: adminName, role: "admin", active: true });
-    console.log("Seeded an admin worker profile for the Roles & Access simulator");
-  }
 
   await mongoose.disconnect();
 }

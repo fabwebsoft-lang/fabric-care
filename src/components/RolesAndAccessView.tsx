@@ -396,12 +396,61 @@ export default function RolesAndAccessView() {
         ) : (
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
             {workers.map((w: any) => {
-              const currentRoleKey: UserRole =
-                w.role === "owner" || w.role === "admin"
-                  ? "admin"
-                  : w.role === "manager"
-                  ? "manager"
-                  : "staff";
+              const currentRoleKey: UserRole = w.role === "admin" ? "admin" : w.role === "manager" ? "manager" : "staff";
+              const isPending = w.role === "pending";
+
+              if (isPending) {
+                return (
+                  <div
+                    key={w.id}
+                    className="border border-amber-200 p-3.5 sm:p-4 rounded-xl flex flex-col justify-between text-xs bg-amber-50/60 space-y-3"
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <div>
+                        <p className="font-bold text-slate-800 text-sm">{w.name}</p>
+                        <p className="text-slate-500 text-[11px]">{w.email}</p>
+                      </div>
+                      <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap">
+                        Pending Approval
+                      </span>
+                    </div>
+
+                    <div className="pt-2 border-t border-amber-200/70 space-y-1.5">
+                      <p className="text-[10px] font-semibold text-slate-600">Approve as:</p>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => updateWorkerRoleMutation.mutate({ workerId: w.id, role: "admin" })}
+                          className="flex-1 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-purple-700 hover:bg-purple-50 transition text-[11px]"
+                        >
+                          👑 Admin
+                        </button>
+                        <button
+                          onClick={() => updateWorkerRoleMutation.mutate({ workerId: w.id, role: "manager" })}
+                          className="flex-1 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-blue-700 hover:bg-blue-50 transition text-[11px]"
+                        >
+                          👔 Manager
+                        </button>
+                        <button
+                          onClick={() => updateWorkerRoleMutation.mutate({ workerId: w.id, role: "staff" })}
+                          className="flex-1 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-emerald-700 hover:bg-emerald-50 transition text-[11px]"
+                        >
+                          👷 Staff
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Reject and remove ${w.name}'s signup request?`)) {
+                            deleteWorkerMutation.mutate({ workerId: w.id });
+                          }
+                        }}
+                        className="w-full py-1.5 text-slate-500 hover:text-rose-600 transition text-[10px] font-semibold"
+                      >
+                        Reject request
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
 
               return (
                 <div
@@ -411,7 +460,7 @@ export default function RolesAndAccessView() {
                   <div className="flex justify-between items-start gap-2">
                     <div>
                       <p className="font-bold text-slate-800 text-sm">{w.name}</p>
-                      <p className="text-slate-500 text-[11px]">{w.phone || "No phone registered"}</p>
+                      <p className="text-slate-500 text-[11px]">{w.email || "PIN-only · no login"}</p>
                     </div>
 
                     <select

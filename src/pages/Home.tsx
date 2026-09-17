@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import LoginScreen from "@/components/LoginScreen";
+import AuthScreen from "@/components/AuthScreen";
+import ContactAdminScreen from "@/components/ContactAdminScreen";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -136,8 +137,10 @@ export default function Home() {
   let { user, loading, error, isAuthenticated, logout } = useAuth();
   const { role: activeRole, canViewReports, setRole, isSimulating } = useAccessControl();
 
+  const hasApprovedAccess = isAuthenticated && user?.role !== "pending";
+
   const [activeSection, setActiveSection] = useState<Section>("Overview");
-  const { data: apiOrders } = trpc.orders.list.useQuery(undefined, { enabled: isAuthenticated });
+  const { data: apiOrders } = trpc.orders.list.useQuery(undefined, { enabled: hasApprovedAccess });
   const createOrderMutation = trpc.orders.create.useMutation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [overviewMetrics, setOverviewMetrics] = useState<OverviewMetrics>({ todaysRevenue: 0, collectedToday: 0, pendingDues: 0, inProcessCount: 0, readyCount: 0, ordersReceived: 0, itemsInProcess: 0, processCounts: { Received: 0, Processing: 0, Ready: 0 } });
@@ -149,7 +152,7 @@ export default function Home() {
   const [showHelp, setShowHelp] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All status");
-  const { data: apiShop } = trpc.shops.list.useQuery(undefined, { enabled: isAuthenticated });
+  const { data: apiShop } = trpc.shops.list.useQuery(undefined, { enabled: hasApprovedAccess });
   const shop = apiShop?.[0];
   const [settingsForm, setSettingsForm] = useState<ShopSettings>({ name: "Indiranagar shop", address: "Indiranagar, Bengaluru", customerNotifications: true, pricingTier: "Normal + Premium" });
   const utils = trpc.useUtils();
@@ -265,7 +268,11 @@ export default function Home() {
   }
 
   if (!isAuthenticated) {
-    return <LoginScreen />;
+    return <AuthScreen />;
+  }
+
+  if (user?.role === "pending") {
+    return <ContactAdminScreen name={user?.name} />;
   }
 
   return (
