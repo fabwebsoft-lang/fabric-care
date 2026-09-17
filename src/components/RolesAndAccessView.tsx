@@ -30,7 +30,7 @@ export default function RolesAndAccessView() {
   const [newWorkerPhone, setNewWorkerPhone] = useState("");
   const [newWorkerRole, setNewWorkerRole] = useState<UserRole>("staff");
 
-  const [pinWorkerId, setPinWorkerId] = useState<number | null>(null);
+  const [pinWorkerId, setPinWorkerId] = useState<string | null>(null);
   const [pinInput, setPinInput] = useState("");
 
   const createWorkerMutation = trpc.workers.create.useMutation({

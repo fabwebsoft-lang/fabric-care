@@ -26,7 +26,7 @@ export default function NewBillModal({ onClose, onSuccess }: { onClose: () => vo
   const { data: customersData } = trpc.customers.list.useQuery();
 
   const [customerMode, setCustomerMode] = useState<"existing" | "new">("new");
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [customerSearch, setCustomerSearch] = useState("");
 
   const [customerName, setCustomerName] = useState("");

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import LoginScreen from "@/components/LoginScreen";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -136,7 +137,7 @@ export default function Home() {
   const { role: activeRole, canViewReports, setRole, isSimulating } = useAccessControl();
 
   const [activeSection, setActiveSection] = useState<Section>("Overview");
-  const { data: apiOrders } = trpc.orders.list.useQuery();
+  const { data: apiOrders } = trpc.orders.list.useQuery(undefined, { enabled: isAuthenticated });
   const createOrderMutation = trpc.orders.create.useMutation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [overviewMetrics, setOverviewMetrics] = useState<OverviewMetrics>({ todaysRevenue: 0, collectedToday: 0, pendingDues: 0, inProcessCount: 0, readyCount: 0, ordersReceived: 0, itemsInProcess: 0, processCounts: { Received: 0, Processing: 0, Ready: 0 } });
@@ -148,7 +149,7 @@ export default function Home() {
   const [showHelp, setShowHelp] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All status");
-  const { data: apiShop } = trpc.shops.list.useQuery();
+  const { data: apiShop } = trpc.shops.list.useQuery(undefined, { enabled: isAuthenticated });
   const shop = apiShop?.[0];
   const [settingsForm, setSettingsForm] = useState<ShopSettings>({ name: "Indiranagar shop", address: "Indiranagar, Bengaluru", customerNotifications: true, pricingTier: "Normal + Premium" });
   const utils = trpc.useUtils();
@@ -255,6 +256,18 @@ export default function Home() {
     });
   };
 
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#F7F3EE]">
+        <div className="size-8 animate-spin rounded-full border-3 border-[#0F4C5C] border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
+
   return (
     <div className="min-h-screen bg-[#F7F3EE] text-[#0F4C5C] selection:bg-[#F7F3EE] selection:text-[#0F4C5C]">
       <div className="flex min-h-screen">
@@ -343,7 +356,7 @@ export default function Home() {
                 {!notificationsRead && <span className="absolute right-2 top-2 size-1.5 rounded-full bg-[#0F4C5C] ring-2 ring-white" />}
               </button>
               <button onClick={() => { setShowProfileMenu((value) => !value); setShowNotifications(false); }} className="flex min-h-11 items-center gap-2 rounded-xl border border-[#F7F3EE] bg-white px-2 py-1.5 text-left transition hover:border-[#F7F3EE]">
-                <div className="grid size-7 place-items-center rounded-lg bg-[#F7F3EE] text-[10px] font-bold text-[#0F4C5C]">{(user?.name ?? "Ashfaq").split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</div>
+                <div className="grid size-7 place-items-center rounded-lg bg-[#F7F3EE] text-[10px] font-bold text-[#0F4C5C]">{(user?.name ?? "Ashfaq").split(" ").map((part: string) => part[0]).join("").slice(0, 2).toUpperCase()}</div>
                 <span className="hidden text-[11px] font-semibold text-[#0F4C5C] sm:block">{user?.name ?? "Ashfaq"}</span>
                 <ChevronDown className="hidden size-3.5 text-[#0F4C5C] sm:block" />
               </button>
@@ -544,7 +557,7 @@ function ProfileMenu({
     <div className="absolute right-0 top-[52px] z-30 w-[270px] max-w-[calc(100vw-32px)] rounded-2xl border border-[#F7F3EE] bg-white p-4 shadow-[0_16px_45px_rgba(17,17,17,.12)]">
       <div className="mb-4 flex items-center gap-3 rounded-xl bg-[#F7F3EE] p-3">
         <div className="grid size-10 place-items-center rounded-xl bg-white text-[11px] font-bold text-[#0F4C5C]">
-          {(user?.name ?? "Ashfaq").split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}
+          {(user?.name ?? "Ashfaq").split(" ").map((part: string) => part[0]).join("").slice(0, 2).toUpperCase()}
         </div>
         <div className="min-w-0">
           <p className="truncate text-[12px] font-bold text-[#0F4C5C]">{user?.name ?? "Ashfaq"}</p>

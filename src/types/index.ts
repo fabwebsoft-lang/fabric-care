@@ -34,7 +34,7 @@ export interface Order {
 }
 
 export interface Customer {
-  id: number;
+  id: string;
   name: string;
   phone: string;
   customerType: CustomerType;
@@ -50,7 +50,7 @@ export interface Customer {
 }
 
 export interface Expense {
-  id: number;
+  id: string;
   title: string;
   category: string;
   amount: string;
@@ -73,16 +73,16 @@ export interface Shop {
 }
 
 export interface Worker {
-  id: number;
+  id: string;
   name: string;
   role: UserRole;
-  pinHash?: string | null;
   active: number;
+  hasPin: boolean;
   createdAt: string;
 }
 
 export interface Device {
-  id: number;
+  id: string;
   deviceLabel: string;
   userAgent: string | null;
   lastActiveAt: string;

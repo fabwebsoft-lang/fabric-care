@@ -10,22 +10,24 @@ async function getOrCreateShop() {
   return shop;
 }
 
+function toApiShop(shop: Awaited<ReturnType<typeof getOrCreateShop>>) {
+  return {
+    id: shop._id.toString(),
+    name: shop.name,
+    address: shop.address,
+    customerNotifications: shop.customerNotifications ? 1 : 0,
+    pricingTier: shop.pricingTier,
+    shopCode: shop.shopCode,
+    lastBackupAt: shop.lastBackupAt ? shop.lastBackupAt.toISOString() : null,
+    createdAt: shop.createdAt!.toISOString(),
+    updatedAt: shop.updatedAt!.toISOString(),
+  };
+}
+
 export const shopsRouter = router({
   list: protectedProcedure.query(async () => {
     const shop = await getOrCreateShop();
-    return [
-      {
-        id: shop._id.toString(),
-        name: shop.name,
-        address: shop.address,
-        customerNotifications: shop.customerNotifications ? 1 : 0,
-        pricingTier: shop.pricingTier,
-        shopCode: shop.shopCode,
-        lastBackupAt: shop.lastBackupAt ? shop.lastBackupAt.toISOString() : null,
-        createdAt: shop.createdAt!.toISOString(),
-        updatedAt: shop.updatedAt!.toISOString(),
-      },
-    ];
+    return [toApiShop(shop)];
   }),
 
   updateSettings: requirePermission("canManageSettings")
@@ -44,7 +46,7 @@ export const shopsRouter = router({
       if (input.customerNotifications !== undefined) shop.customerNotifications = input.customerNotifications;
       if (input.pricingTier) shop.pricingTier = input.pricingTier;
       await shop.save();
-      return { id: shop._id.toString() };
+      return toApiShop(shop);
     }),
 
   recordBackup: requirePermission("canManageSettings").mutation(async () => {
