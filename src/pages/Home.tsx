@@ -60,8 +60,9 @@ const SettingsViewComponent = lazy(() => import("@/components/SettingsView"));
 const RolesAndAccessView = lazy(() => import("@/components/RolesAndAccessView"));
 const DashboardView = lazy(() => import("@/components/DashboardView"));
 const ExpensesView = lazy(() => import("@/components/ExpensesView"));
+const ProductsView = lazy(() => import("@/components/ProductsView"));
 
-type Section = "Overview" | "Orders" | "Active process" | "Customers" | "Expenses" | "Statements" | "Roles" | "Settings";
+type Section = "Overview" | "Orders" | "Active process" | "Products" | "Customers" | "Expenses" | "Statements" | "Roles" | "Settings";
 
 type Order = {
   id: string;
@@ -112,6 +113,7 @@ const navItems: { label: Section; icon: typeof LayoutDashboard }[] = [
   { label: "Overview", icon: LayoutDashboard },
   { label: "Orders", icon: ClipboardList },
   { label: "Active process", icon: WashingMachine },
+  { label: "Products", icon: Shirt },
   { label: "Customers", icon: UsersRound },
   { label: "Expenses", icon: WalletCards },
   { label: "Statements", icon: BarChart3 },
@@ -237,6 +239,7 @@ export default function Home() {
     Overview: "Your daily command center for revenue, collections, dues, and orders.",
     Orders: "Capture, review, and follow every customer order from intake to pickup.",
     "Active process": "Track Processing and Ready orders so the next step is always clear.",
+    Products: "Manage catalog items, service categories, pricing rates, and active New Order availability.",
     Customers: "See customer history, billed totals, and pending dues in one view.",
     Expenses: "Track shop spending, recurring costs, and net balance with confidence.",
     Statements: "Financial reports, daily collections vs expenses, and net profit analysis.",
@@ -634,6 +637,7 @@ function SectionView({ section, onNewOrder, onNavigate }: { section: Section; on
     <Suspense fallback={<ViewFallback />}>
       {section === "Active process" && <ActiveProcessView onNewOrder={onNewOrder} />}
       {section === "Orders" && <BillsView onNewOrder={onNewOrder} />}
+      {section === "Products" && <ProductsView onNewOrder={onNewOrder} />}
       {section === "Customers" && <CustomersView />}
       {section === "Statements" && <StatementsView />}
       {section === "Roles" && <RolesAndAccessView />}
