@@ -98,3 +98,16 @@ export interface User {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface Product {
+  id: string;
+  name: string;
+  category: "Men's Wear" | "Women's Wear" | "Kids Wear" | "Household" | "Other" | string;
+  serviceType: "Wash & Fold" | "Wash & Iron" | "Dry Clean" | "Iron Only" | "Steam Iron" | "Other" | string;
+  price: number;
+  status: "Active" | "Inactive";
+  isArchived?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+

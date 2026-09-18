@@ -15,6 +15,7 @@ export type NavSection =
   | "Overview"
   | "Orders"
   | "Active process"
+  | "Products"
   | "Customers"
   | "Expenses"
   | "Statements"

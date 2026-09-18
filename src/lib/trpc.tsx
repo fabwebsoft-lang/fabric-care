@@ -98,6 +98,19 @@ export type Device = {
   createdAt: string;
 };
 
+export type Product = {
+  id: string;
+  name: string;
+  category: "Men's Wear" | "Women's Wear" | "Kids Wear" | "Household" | "Other" | string;
+  serviceType: "Wash & Fold" | "Wash & Iron" | "Dry Clean" | "Iron Only" | "Steam Iron" | "Other" | string;
+  price: number;
+  status: "Active" | "Inactive";
+  isArchived?: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+
 // ---------------------------------------------------------------------------
 // Vanilla tRPC HTTP client. The frontend and backend are separate packages
 // (no shared workspace), so this is intentionally untyped rather than
@@ -229,6 +242,15 @@ export const trpc = {
       },
       devices: {
         list: { invalidate: () => qc.invalidateQueries({ queryKey: ["devices.list"] }) },
+      },
+      products: {
+        list: {
+          setData: (_input: any, updater: any) => qc.setQueryData(["products.list"], updater),
+          invalidate: () => qc.invalidateQueries({ queryKey: ["products.list"] }),
+        },
+        activeList: {
+          invalidate: () => qc.invalidateQueries({ queryKey: ["products.activeList"] }),
+        },
       },
       dashboard: {
         stats: { invalidate: () => qc.invalidateQueries({ queryKey: ["dashboard.stats"] }) },
@@ -647,4 +669,119 @@ export const trpc = {
         }),
     },
   },
+
+  products: {
+    list: {
+      useQuery: (input?: { search?: string; category?: string; serviceType?: string; status?: string }, options?: any) =>
+        useQuery<Product[]>({
+          queryKey: ["products.list", input],
+          queryFn: () => client.products.list.query(input),
+          staleTime: 5000,
+          ...options,
+        }),
+    },
+    activeList: {
+      useQuery: (_input?: any, options?: any) =>
+        useQuery<Product[]>({
+          queryKey: ["products.activeList"],
+          queryFn: () => client.products.activeList.query(),
+          staleTime: 5000,
+          ...options,
+        }),
+    },
+    create: {
+      useMutation: (options?: { onSuccess?: (data: Product) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: {
+            name: string;
+            category: string;
+            serviceType: string;
+            price: number;
+            status?: "Active" | "Inactive";
+          }) => {
+            try {
+              return await client.products.create.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["products.list"] });
+            qc.invalidateQueries({ queryKey: ["products.activeList"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+    update: {
+      useMutation: (options?: { onSuccess?: (data: Product) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: {
+            id: string;
+            name?: string;
+            category?: string;
+            serviceType?: string;
+            price?: number;
+            status?: "Active" | "Inactive";
+          }) => {
+            try {
+              return await client.products.update.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["products.list"] });
+            qc.invalidateQueries({ queryKey: ["products.activeList"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+    toggleStatus: {
+      useMutation: (options?: { onSuccess?: (data: Product) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: { id: string }) => {
+            try {
+              return await client.products.toggleStatus.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["products.list"] });
+            qc.invalidateQueries({ queryKey: ["products.activeList"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+    delete: {
+      useMutation: (options?: { onSuccess?: (data: { success: boolean; archived: boolean }) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: { id: string }) => {
+            try {
+              return await client.products.delete.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["products.list"] });
+            qc.invalidateQueries({ queryKey: ["products.activeList"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+  },
 };
+

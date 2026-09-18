@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Plus, Trash2, Check, ChevronDown, ChevronUp, User, Tag, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
@@ -9,21 +9,20 @@ type OrderItemInput = {
   price: number;
 };
 
-const catalogTiers: Record<string, { label: string; normalPrice: number; premiumPrice: number }[]> = {
-  default: [
-    { label: "Shirt", normalPrice: 50, premiumPrice: 80 },
-    { label: "Pant", normalPrice: 60, premiumPrice: 90 },
-    { label: "Vasti / Dhoti", normalPrice: 50, premiumPrice: 75 },
-    { label: "Suit (2-pc)", normalPrice: 180, premiumPrice: 250 },
-    { label: "Saree", normalPrice: 120, premiumPrice: 180 },
-    { label: "Blanket", normalPrice: 200, premiumPrice: 280 },
-    { label: "Curtain", normalPrice: 150, premiumPrice: 220 },
-  ],
-};
+const defaultCatalog = [
+  { label: "Shirt", price: 50 },
+  { label: "Pant", price: 60 },
+  { label: "Vasti / Dhoti", price: 50 },
+  { label: "Suit (2-pc)", price: 180 },
+  { label: "Saree", price: 120 },
+  { label: "Blanket", price: 200 },
+  { label: "Curtain", price: 150 },
+];
 
 export default function NewBillModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const utils = trpc.useUtils();
   const { data: customersData } = trpc.customers.list.useQuery();
+  const { data: dbProducts = [] } = trpc.products.list.useQuery();
 
   const [customerMode, setCustomerMode] = useState<"existing" | "new">("new");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -88,10 +87,16 @@ export default function NewBillModal({ onClose, onSuccess }: { onClose: () => vo
     }
   };
 
-  const activeCatalog = catalogTiers.default.map((c) => ({
-    label: c.label,
-    price: customerType === "Premium" ? c.premiumPrice : c.normalPrice,
-  }));
+  const activeCatalog = useMemo(() => {
+    const activeDbItems = dbProducts.filter((p) => p.status === "Active");
+    if (activeDbItems.length > 0) {
+      return activeDbItems.map((p) => ({
+        label: p.name,
+        price: p.price,
+      }));
+    }
+    return defaultCatalog;
+  }, [dbProducts]);
 
   const addItemToBill = (label: string, price: number) => {
     setItems((current) => {
