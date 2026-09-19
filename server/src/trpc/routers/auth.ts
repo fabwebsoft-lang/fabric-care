@@ -18,12 +18,15 @@ export const authRouter = router({
       const existing = await Worker.findOne({ email });
       if (existing) throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists" });
 
+      const count = await Worker.countDocuments();
+      const role = count === 0 ? "admin" : "pending";
+
       const passwordHash = await hashSecret(input.password);
       const worker = await Worker.create({
         name: input.name,
         email,
         passwordHash,
-        role: "pending",
+        role,
         active: true,
       });
 

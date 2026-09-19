@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Users, Search, Phone, Tag, CreditCard, ChevronRight, History, X } from "lucide-react";
 import { toast } from "sonner";
 
-export default function CustomersView() {
+export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?: any) => void }) {
   const { data: customers = [], isLoading } = trpc.customers.list.useQuery();
   const { data: orders = [] } = trpc.orders.list.useQuery();
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,15 +44,25 @@ export default function CustomersView() {
           </p>
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search name, phone, code..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 focus:border-[#0F4C5C]"
-          />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search name, phone, code..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 focus:border-[#0F4C5C]"
+            />
+          </div>
+          {onNewOrder && (
+            <button
+              onClick={() => onNewOrder()}
+              className="px-4 py-2 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95"
+            >
+              + New Bill
+            </button>
+          )}
         </div>
       </div>
 
@@ -74,9 +84,13 @@ export default function CustomersView() {
                 <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
                   <div>
                     <h3 className="font-bold text-slate-800 text-sm">{c.name}</h3>
-                    <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                    <a
+                      href={`tel:${c.phone}`}
+                      className="text-xs text-[#0F4C5C] hover:underline flex items-center gap-1 mt-0.5"
+                      title="Tap to call"
+                    >
                       <Phone className="size-3" /> {c.phone}
-                    </p>
+                    </a>
                   </div>
                   <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-[#0F4C5C]/10 text-[#0F4C5C]">
                     {c.customerType || "Normal"}
@@ -111,12 +125,22 @@ export default function CustomersView() {
                 </div>
               </div>
 
-              <button
-                onClick={() => setSelectedCustomer(c)}
-                className="w-full py-2 bg-slate-50 border border-slate-200 text-[#0F4C5C] text-xs font-semibold rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-1.5 active:scale-95"
-              >
-                <History className="size-3.5" /> View Order History
-              </button>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setSelectedCustomer(c)}
+                  className="flex-1 py-2 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-1 active:scale-95"
+                >
+                  <History className="size-3.5" /> History
+                </button>
+                {onNewOrder && (
+                  <button
+                    onClick={() => onNewOrder(c)}
+                    className="flex-1 py-2 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition flex items-center justify-center gap-1 active:scale-95 shadow-xs"
+                  >
+                    + New Bill
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

@@ -21,6 +21,7 @@ export type OrderItem = { name: string; quantity: number; price: number; clothTa
 
 export type Order = {
   id: string;
+  customerId?: string | null;
   customer: string;
   phone: string;
   customerType: "Normal" | "Premium";
@@ -46,6 +47,7 @@ export type Customer = {
   id: string;
   name: string;
   phone: string;
+  normalizedPhone?: string;
   customerType: "Normal" | "Premium";
   address: string | null;
   alternatePhone: string | null;
@@ -158,6 +160,7 @@ function toDisplayOrder(o: any): Order {
 
   return {
     id: o.id,
+    customerId: o.customerId || null,
     customer: o.customer,
     phone: o.phone,
     customerType: o.customerType,
@@ -227,6 +230,7 @@ export const trpc = {
       },
       customers: {
         list: { invalidate: () => qc.invalidateQueries({ queryKey: ["customers.list"] }) },
+        search: { invalidate: () => qc.invalidateQueries({ queryKey: ["customers.search"] }) },
       },
       expenses: {
         list: { invalidate: () => qc.invalidateQueries({ queryKey: ["expenses.list"] }) },
@@ -422,6 +426,25 @@ export const trpc = {
           queryKey: ["customers.list"],
           queryFn: () => client.customers.list.query(),
           staleTime: 5000,
+          ...options,
+        }),
+    },
+    search: {
+      useQuery: (input: { query: string; limit?: number }, options?: any) =>
+        useQuery<Customer[]>({
+          queryKey: ["customers.search", input],
+          queryFn: () => client.customers.search.query(input),
+          staleTime: 2000,
+          ...options,
+        }),
+    },
+    checkDuplicate: {
+      useQuery: (input: { phone: string; excludeId?: string }, options?: any) =>
+        useQuery<{ exists: boolean; customer: Customer | null }>({
+          queryKey: ["customers.checkDuplicate", input],
+          queryFn: () => client.customers.checkDuplicate.query(input),
+          staleTime: 1000,
+          enabled: Boolean(input?.phone && input.phone.trim().length >= 3),
           ...options,
         }),
     },

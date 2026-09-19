@@ -118,9 +118,14 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                         {order.id}
                       </span>
                       <h3 className="font-bold text-slate-800 text-sm mt-0.5">{order.customer}</h3>
-                      <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                      <a
+                        href={`tel:${order.phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-[11px] text-[#0F4C5C] hover:underline flex items-center gap-1 mt-0.5"
+                        title="Tap to call customer"
+                      >
                         <Phone className="size-3" /> {order.phone}
-                      </p>
+                      </a>
                     </div>
                     <span
                       className={`px-2.5 py-1 text-[10px] font-bold rounded-full border ${

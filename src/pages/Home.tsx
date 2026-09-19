@@ -147,6 +147,7 @@ export default function Home() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [overviewMetrics, setOverviewMetrics] = useState<OverviewMetrics>({ todaysRevenue: 0, collectedToday: 0, pendingDues: 0, inProcessCount: 0, readyCount: 0, ordersReceived: 0, itemsInProcess: 0, processCounts: { Received: 0, Processing: 0, Ready: 0 } });
   const [showNewOrder, setShowNewOrder] = useState(false);
+  const [newOrderCustomer, setNewOrderCustomer] = useState<any | null>(null);
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -409,13 +410,16 @@ export default function Home() {
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => toast.success("Your latest data is already up to date.")} className="hidden items-center gap-2 rounded-xl border border-[#F7F3EE] bg-white px-3.5 py-2.5 text-[11px] font-semibold text-[#0F4C5C] transition hover:border-[#F7F3EE] hover:text-[#0F4C5C] sm:flex"><Zap className="size-3.5 text-[#0F4C5C]" /> Sync now</button>
-                <button onClick={() => setShowNewOrder(true)} className="flex items-center gap-2 rounded-xl bg-[#0F4C5C] px-4 py-2.5 text-[11px] font-bold text-white shadow-[0_8px_18px_rgba(95,120,238,.22)] transition duration-150 hover:bg-[#0F4C5C] active:scale-[.97]"><Plus className="size-4" strokeWidth={2.5} /> New order</button>
+                <button onClick={() => { setNewOrderCustomer(null); setShowNewOrder(true); }} className="flex items-center gap-2 rounded-xl bg-[#0F4C5C] px-4 py-2.5 text-[11px] font-bold text-white shadow-[0_8px_18px_rgba(95,120,238,.22)] transition duration-150 hover:bg-[#0F4C5C] active:scale-[.97]"><Plus className="size-4" strokeWidth={2.5} /> New order</button>
               </div>
             </div>
 
             <SectionView
               section={activeSection}
-              onNewOrder={() => setShowNewOrder(true)}
+              onNewOrder={(cust?: any) => {
+                setNewOrderCustomer(cust || null);
+                setShowNewOrder(true);
+              }}
               onNavigate={(s: any) => navigate(s)}
             />
           </div>
@@ -445,14 +449,24 @@ export default function Home() {
       <BottomNav
         activeSection={activeSection}
         onNavigate={(s) => navigate(s as Section)}
-        onNewOrder={() => setShowNewOrder(true)}
+        onNewOrder={() => {
+          setNewOrderCustomer(null);
+          setShowNewOrder(true);
+        }}
       />
 
       {showNewOrder && (
         <Suspense fallback={null}>
           <NewBillModal
-            onClose={() => setShowNewOrder(false)}
-            onSuccess={() => setShowNewOrder(false)}
+            initialCustomer={newOrderCustomer}
+            onClose={() => {
+              setShowNewOrder(false);
+              setNewOrderCustomer(null);
+            }}
+            onSuccess={() => {
+              setShowNewOrder(false);
+              setNewOrderCustomer(null);
+            }}
           />
         </Suspense>
       )}
@@ -632,13 +646,13 @@ function ViewFallback() {
   );
 }
 
-function SectionView({ section, onNewOrder, onNavigate }: { section: Section; onNewOrder: () => void; onNavigate: (section: Section) => void }) {
+function SectionView({ section, onNewOrder, onNavigate }: { section: Section; onNewOrder: (cust?: any) => void; onNavigate: (section: Section) => void }) {
   return (
     <Suspense fallback={<ViewFallback />}>
       {section === "Active process" && <ActiveProcessView onNewOrder={onNewOrder} />}
       {section === "Orders" && <BillsView onNewOrder={onNewOrder} />}
       {section === "Products" && <ProductsView onNewOrder={onNewOrder} />}
-      {section === "Customers" && <CustomersView />}
+      {section === "Customers" && <CustomersView onNewOrder={onNewOrder} />}
       {section === "Statements" && <StatementsView />}
       {section === "Roles" && <RolesAndAccessView />}
       {section === "Settings" && <SettingsViewComponent />}

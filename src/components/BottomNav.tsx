@@ -1,4 +1,4 @@
-import { trpc } from "@/lib/trpc";
+import { trpc, type Order } from "@/lib/trpc";
 import { useAccessControl } from "@/contexts/AccessControlContext";
 import {
   LayoutDashboard,
@@ -33,7 +33,7 @@ export default function BottomNav({
 }) {
   const { data: orders = [] } = trpc.orders.list.useQuery();
   const { canViewReports } = useAccessControl();
-  const activeCount = orders.filter((o) => o.status !== "Collected").length;
+  const activeCount = orders.filter((o: Order) => o.status !== "Collected").length;
 
   const rawItems: { label: NavSection; displayLabel: string; icon: any; isAction?: boolean; hide?: boolean }[] = [
     { label: "Overview", displayLabel: "Home", icon: LayoutDashboard },

@@ -151,7 +151,13 @@ export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => vo
                       <p className="text-xs font-semibold text-slate-800 mt-0.5">
                         {order.customer}
                       </p>
-                      <p className="text-[11px] text-slate-500">{order.phone}</p>
+                      <a
+                        href={`tel:${order.phone}`}
+                        className="text-[11px] text-[#0F4C5C] hover:underline flex items-center gap-1 mt-0.5"
+                        title="Tap to call customer"
+                      >
+                        {order.phone}
+                      </a>
                     </div>
                     <span
                       className={`px-2.5 py-1 text-[10px] font-bold rounded-full border ${
@@ -346,7 +352,7 @@ function PickupModal({
           <button
             type="button"
             disabled={isPending}
-            onClick={() => onSettle(order.id, collectionAmount)}
+            onClick={() => onSettle(order.id, dueAmount > 0 ? (Number(collectionAmount) || 0) : 0)}
             className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition shadow-xs disabled:opacity-60"
           >
             {isPending ? "Processing..." : "Complete Pickup & Settle"}

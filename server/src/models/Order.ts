@@ -13,6 +13,7 @@ const orderItemSchema = new Schema(
 const orderSchema = new Schema(
   {
     _id: { type: String }, // human-readable order number, e.g. WP-20260917-001-FC01
+    customerId: { type: String, default: null, index: true },
     customer: { type: String, required: true },
     phone: { type: String, required: true, index: true },
     customerType: { type: String, enum: ["Normal", "Premium"], default: "Normal" },
