@@ -430,16 +430,37 @@ export default function Home() {
         <aside className="flex h-full w-[min(82vw,300px)] flex-col justify-between bg-[#0F4C5C] px-5 py-6 text-white shadow-[18px_0_50px_rgba(15,76,92,.25)]" onClick={(event) => event.stopPropagation()}>
           <div>
             <div className="mb-9 flex items-center justify-between px-2"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-[14px] bg-[#F7F3EE]"><img src="/fabric-care-logo.png" alt="Fabric Care logo" className="size-7 object-contain" /></div><div><p className="font-display text-[17px] font-semibold tracking-tight">Fabric Care</p><p className="text-[10px] font-medium uppercase tracking-[.16em] text-[#F7F3EE]">You wear, we care</p></div></div><button onClick={() => setShowMobileNav(false)} className="grid size-8 place-items-center rounded-lg text-[#F7F3EE] hover:bg-white/[.08] hover:text-white" aria-label="Close navigation"><X className="size-4" /></button></div>
-            <div className="mb-8 rounded-2xl border border-white/[.08] bg-white/[.045] p-4"><p className="text-[12px] font-semibold text-white">Use the bottom bar to navigate</p><p className="mt-1.5 text-[10px] leading-4 text-[#F7F3EE]">Overview, orders, process, customers, and costs are always one tap away.</p></div>
+            <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-[#F7F3EE]">Workspace</p>
+            <nav className="space-y-1 mb-6">
+              {visibleNavItems.map(({ label, icon: Icon }) => (
+                <button
+                  key={label}
+                  onClick={() => {
+                    navigate(label);
+                    setShowMobileNav(false);
+                  }}
+                  className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition-all duration-150 ${
+                    activeSection === label
+                      ? "bg-white/[.16] text-white shadow-inner"
+                      : "text-[#F7F3EE] hover:bg-white/[.10] hover:text-white"
+                  }`}
+                >
+                  <Icon className="size-[17px] text-[#F7F3EE]" strokeWidth={1.9} />
+                  {label}
+                </button>
+              ))}
+            </nav>
+
+            <div className="my-5 h-px bg-white/[.09]" />
             <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-[#F7F3EE]">Manage</p>
             <nav className="space-y-1.5">
               {canManageRoles && (
-                <button onClick={() => { setShowMobileNav(false); navigate("Roles"); }} className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium text-[#F7F3EE] hover:bg-white/[.10] hover:text-white">
+                <button onClick={() => { setShowMobileNav(false); navigate("Roles"); }} className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-[#F7F3EE] hover:bg-white/[.10] hover:text-white">
                   <ShieldCheck className="size-[17px] text-[#F7F3EE]" strokeWidth={1.9} /> Roles & Access
                 </button>
               )}
-              <button onClick={() => navigate("Settings")} className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium text-[#F7F3EE] hover:bg-white/[.10] hover:text-white"><Settings className="size-[17px] text-[#F7F3EE]" strokeWidth={1.9} /> Settings</button>
-              <button onClick={() => { setShowMobileNav(false); setShowHelp(true); }} className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium text-[#F7F3EE] hover:bg-white/[.10] hover:text-white"><HelpCircle className="size-[17px] text-[#F7F3EE]" strokeWidth={1.9} /> Help center</button>
+              <button onClick={() => { setShowMobileNav(false); navigate("Settings"); }} className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-[#F7F3EE] hover:bg-white/[.10] hover:text-white"><Settings className="size-[17px] text-[#F7F3EE]" strokeWidth={1.9} /> Settings</button>
+              <button onClick={() => { setShowMobileNav(false); setShowHelp(true); }} className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-[#F7F3EE] hover:bg-white/[.10] hover:text-white"><HelpCircle className="size-[17px] text-[#F7F3EE]" strokeWidth={1.9} /> Help center</button>
             </nav>
           </div>
           <div className="rounded-2xl border border-white/[.08] bg-white/[.045] p-3.5"><div className="mb-3 flex items-center justify-between"><span className="flex items-center gap-2 text-[11px] font-medium text-[#F7F3EE]"><span className="size-2 rounded-full bg-[#F7F3EE]" /> Cloud sync on</span><ChevronRight className="size-3.5 text-[#F7F3EE]" /></div><p className="text-[10px] leading-4 text-[#F7F3EE]">Last synced just now across 2 devices</p></div>

@@ -7,6 +7,7 @@ import {
   FileText,
   Users,
   BarChart3,
+  Shirt,
   Settings,
   ShieldCheck,
 } from "lucide-react";
@@ -39,9 +40,9 @@ export default function BottomNav({
     { label: "Overview", displayLabel: "Home", icon: LayoutDashboard },
     { label: "Active process", displayLabel: "Process", icon: WashingMachine },
     { label: "Overview", displayLabel: "New Bill", icon: PlusCircle, isAction: true },
+    { label: "Products", displayLabel: "Items", icon: Shirt },
     { label: "Orders", displayLabel: "Bills", icon: FileText },
     { label: "Customers", displayLabel: "Clients", icon: Users },
-    { label: "Statements", displayLabel: "Reports", icon: BarChart3, hide: !canViewReports },
   ];
 
   const items = rawItems.filter((i) => !i.hide);
