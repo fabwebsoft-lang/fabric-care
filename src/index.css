@@ -46,29 +46,29 @@
   --primary: #0F4C5C;
   --primary-foreground: #FFFFFF;
   --sidebar-primary: #0F4C5C;
-  --sidebar-primary-foreground: #F7F3EE;
+  --sidebar-primary-foreground: #F8FAFC;
   --chart-1: #0F4C5C;
   --chart-2: #10B981;
   --chart-3: #F59E0B;
   --chart-4: #6366F1;
   --chart-5: #EC4899;
   --radius: 0.75rem;
-  --background: #F7F3EE;
+  --background: #FFFFFF;
   --foreground: #0F4C5C;
   --card: #FFFFFF;
   --card-foreground: #0F4C5C;
   --popover: #FFFFFF;
   --popover-foreground: #0F4C5C;
-  --secondary: #F1EBE4;
+  --secondary: #F8FAFC;
   --secondary-foreground: #0F4C5C;
-  --muted: #EDE7DF;
-  --muted-foreground: #6B7280;
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
   --accent: #E8F3EC;
   --accent-foreground: #0F4C5C;
   --destructive: #EF4444;
   --destructive-foreground: #FFFFFF;
-  --border: #E5E0D8;
-  --input: #E5E0D8;
+  --border: #E2E8F0;
+  --input: #E2E8F0;
   --ring: #0F4C5C;
   --sidebar: #0F4C5C;
   --sidebar-foreground: #FFFFFF;
@@ -88,12 +88,22 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
   body {
     @apply bg-background text-foreground;
-    background-color: #F7F3EE;
+    background-color: #FFFFFF;
     color: #0F4C5C;
     overflow-x: hidden;
+    touch-action: manipulation;
+  }
+  /* Prevent iOS Safari auto-zoom on focus while preserving compact UI */
+  @media screen and (max-width: 768px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),

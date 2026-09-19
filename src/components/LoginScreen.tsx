@@ -18,7 +18,7 @@ export default function LoginScreen({ onSwitchToSignup }: { onSwitchToSignup: ()
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F3EE] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 sm:p-8 space-y-6">
         <div className="flex flex-col items-center gap-3 text-center">
           <div className="grid size-12 place-items-center rounded-2xl bg-[#0F4C5C]">

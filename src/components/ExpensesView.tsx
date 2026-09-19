@@ -94,7 +94,7 @@ export default function ExpensesView() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-[#F7F3EE]/60 p-4 sm:p-6 shadow-xs">
+        <section className="rounded-2xl border border-slate-200 bg-[#F8FAFC] p-4 sm:p-6 shadow-xs">
           <p className="text-xs sm:text-sm font-bold text-[#0F4C5C]">Expense Distribution</p>
           <p className="text-[11px] text-slate-500 mt-0.5">Operational cost allocation by category</p>
           

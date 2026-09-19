@@ -1,17 +1,66 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAccessControl } from "@/contexts/AccessControlContext";
-import { BarChart3, Download, EyeOff, ShieldAlert, Lock, Crown } from "lucide-react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
+import {
+  BarChart3,
+  Download,
+  EyeOff,
+  ShieldAlert,
+  Lock,
+  Crown,
+  Calendar,
+  IndianRupee,
+  CircleDollarSign,
+  TrendingUp,
+  WalletCards,
+  Clock,
+  PackageCheck,
+  ChevronRight,
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+} from "recharts";
 import { toast } from "sonner";
+
+type PeriodType = "Today" | "Month" | "Financial Year" | "Custom";
 
 export default function StatementsView() {
   const { canViewReports, role, setRole } = useAccessControl();
-  const { data: statements, isLoading } = trpc.reports.businessStatements.useQuery(
-    {},
+
+  const [timeRange, setTimeRange] = useState<PeriodType>("Month");
+  const [customStartDate, setCustomStartDate] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [customEndDate, setCustomEndDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  const periodParam =
+    timeRange === "Today"
+      ? "today"
+      : timeRange === "Month"
+      ? "month"
+      : timeRange === "Financial Year"
+      ? "financial_year"
+      : "custom";
+
+  const { data: statements, isLoading, isFetching } = trpc.reports.businessStatements.useQuery(
+    {
+      period: periodParam,
+      startDate: timeRange === "Custom" ? customStartDate : undefined,
+      endDate: timeRange === "Custom" ? customEndDate : undefined,
+    },
     { enabled: canViewReports }
   );
-  const [timeRange, setTimeRange] = useState<"Today" | "Week" | "Month">("Week");
 
   if (!canViewReports) {
     return (
@@ -24,7 +73,9 @@ export default function StatementsView() {
           <span className="px-3 py-1 bg-amber-100 text-amber-800 text-[11px] font-bold rounded-full uppercase">
             Access Restricted · {role.toUpperCase()} Role
           </span>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-800 mt-2.5">Financial Reports & Statements are Hidden</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-800 mt-2.5">
+            Financial Reports & Statements are Hidden
+          </h2>
           <p className="text-xs text-slate-500 mt-1.5 leading-relaxed max-w-md mx-auto">
             According to FabricCare access rules, detailed revenue statements, net profit breakdown, and financial reports are only accessible by <strong>Admin (Shop Owner)</strong>.
           </p>
@@ -56,19 +107,25 @@ export default function StatementsView() {
     );
   }
 
-  if (isLoading || !statements) {
-    return <div className="text-center py-12 text-slate-400 text-sm">Loading business statements...</div>;
-  }
-
-  const { totalSales, totalCollected, totalPending, totalExpenses, netRevenue, dailyBreakdown } = statements;
+  const {
+    totalRevenue = 0,
+    totalCollected = 0,
+    totalPending = 0,
+    totalExpenses = 0,
+    netProfit = 0,
+    orderCount = 0,
+    avgOrderValue = 0,
+    dailyBreakdown = [],
+  } = statements || {};
 
   const handleExportStatement = () => {
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      ["Date,Sales (Billed),Collected,Expenses,Net Revenue"]
+      ["Period/Date,Total Billed (₹),Collected (₹),Expenses (₹),Net Profit (₹),Orders Count"]
         .concat(
           dailyBreakdown.map(
-            (d: any) => `${d.date},${d.sales},${d.collected},${d.expenses},${d.net}`
+            (d: any) =>
+              `"${d.label || d.date}",${d.sales || 0},${d.collected || 0},${d.expenses || 0},${d.net || 0},${d.orders || 0}`
           )
         )
         .join("\n");
@@ -76,114 +133,250 @@ export default function StatementsView() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `financial-statement-${timeRange.toLowerCase()}.csv`);
+    link.setAttribute("download", `financial-statement-${timeRange.toLowerCase().replace(/\s+/g, "_")}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
     toast.success("Statement CSV exported!");
   };
 
+  const periodTitles: Record<PeriodType, string> = {
+    Today: "Today's Operational & Financial Report",
+    Month: "Current Month Financial Overview",
+    "Financial Year": "Financial Year (FY) Statement & Performance",
+    Custom: `Custom Range Statement (${customStartDate} to ${customEndDate})`,
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div>
-          <h2 className="font-display text-lg sm:text-xl font-bold text-[#0F4C5C] flex items-center gap-2">
-            <BarChart3 className="size-5 sm:size-6 text-[#0F4C5C]" />
-            Business Statements & Financials
-          </h2>
-          <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-            Real-time revenue, collections, expenses, and shop net profit/loss analysis
-          </p>
+      {/* Header & Filter Row */}
+      <div className="flex flex-col gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <h2 className="font-display text-lg sm:text-xl font-bold text-[#0F4C5C] flex items-center gap-2">
+              <BarChart3 className="size-5 sm:size-6 text-[#0F4C5C]" />
+              {periodTitles[timeRange]}
+            </h2>
+            <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+              Comprehensive revenue booked, actual collections received, expenses, and net profit analysis
+            </p>
+          </div>
+
+          <button
+            onClick={handleExportStatement}
+            className="px-3.5 py-2 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center gap-1.5 active:scale-95 ml-auto sm:ml-0"
+          >
+            <Download className="size-3.5" /> Export CSV
+          </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <div className="flex bg-slate-100 p-0.5 rounded-xl text-xs font-semibold">
-            {(["Today", "Week", "Month"] as const).map((r) => (
+        {/* Period Selector Tabs & Custom Range Controls */}
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+          <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-semibold overflow-x-auto">
+            {(["Today", "Month", "Financial Year", "Custom"] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => setTimeRange(r)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
+                className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap ${
                   timeRange === r
                     ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                {r}
+                {r === "Financial Year" ? "Financial Year (FY)" : r}
               </button>
             ))}
           </div>
 
-          <button
-            onClick={handleExportStatement}
-            className="px-3.5 py-1.5 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center gap-1.5 active:scale-95 ml-auto sm:ml-0"
-          >
-            <Download className="size-3.5" /> Export
-          </button>
+          {timeRange === "Custom" && (
+            <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200 text-xs">
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase px-1">From:</span>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-medium text-[#0F4C5C] focus:outline-none focus:ring-1 focus:ring-[#0F4C5C]"
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase px-1">To:</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-medium text-[#0F4C5C] focus:outline-none focus:ring-1 focus:ring-[#0F4C5C]"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Summary Cards Grid */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
-          <span className="text-xs font-semibold text-slate-500">Total Billed</span>
-          <p className="text-xl sm:text-2xl font-bold text-[#0F4C5C]">₹{totalSales.toLocaleString("en-IN")}</p>
-          <span className="text-[11px] text-slate-400 block">Gross revenue booked</span>
+      {/* Summary KPI Cards Grid */}
+      <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
+        {/* Total Billed */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">Total Billed</span>
+          <p className="text-lg sm:text-xl font-bold text-[#0F4C5C] tracking-tight">
+            ₹{totalRevenue.toLocaleString("en-IN")}
+          </p>
+          <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">Gross orders booked</span>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
-          <span className="text-xs font-semibold text-slate-500">Total Collected</span>
-          <p className="text-xl sm:text-2xl font-bold text-emerald-600">₹{totalCollected.toLocaleString("en-IN")}</p>
-          <span className="text-[11px] text-slate-400 block">Cash/UPI/Card received</span>
+        {/* Total Collected */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">Total Collected</span>
+          <p className="text-lg sm:text-xl font-bold text-emerald-600 tracking-tight">
+            ₹{totalCollected.toLocaleString("en-IN")}
+          </p>
+          <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">Cash / UPI / Card in</span>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
-          <span className="text-xs font-semibold text-slate-500">Total Expenses</span>
-          <p className="text-xl sm:text-2xl font-bold text-rose-600">₹{totalExpenses.toLocaleString("en-IN")}</p>
-          <span className="text-[11px] text-slate-400 block">Detergents, wages, rent</span>
+        {/* Pending Dues */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">Uncollected Dues</span>
+          <p className="text-lg sm:text-xl font-bold text-rose-600 tracking-tight">
+            ₹{totalPending.toLocaleString("en-IN")}
+          </p>
+          <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">Pending customer balances</span>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
-          <span className="text-xs font-semibold text-slate-500">Net Profit / Revenue</span>
+        {/* Total Expenses */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">Total Expenses</span>
+          <p className="text-lg sm:text-xl font-bold text-amber-600 tracking-tight">
+            ₹{totalExpenses.toLocaleString("en-IN")}
+          </p>
+          <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">Overheads & materials</span>
+        </div>
+
+        {/* Net Profit */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">Net Profit</span>
           <p
-            className={`text-xl sm:text-2xl font-bold ${
-              netRevenue >= 0 ? "text-emerald-600" : "text-rose-600"
+            className={`text-lg sm:text-xl font-bold tracking-tight ${
+              netProfit >= 0 ? "text-emerald-600" : "text-rose-600"
             }`}
           >
-            ₹{netRevenue.toLocaleString("en-IN")}
+            ₹{netProfit.toLocaleString("en-IN")}
           </p>
-          <span className="text-[11px] text-slate-400 block">Collections − Expenses</span>
+          <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">Collected − Expenses</span>
+        </div>
+
+        {/* Total Orders & Avg Value */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">Total Orders</span>
+          <p className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">{orderCount} Orders</p>
+          <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">
+            Avg: ₹{avgOrderValue.toLocaleString("en-IN")} / bill
+          </span>
         </div>
       </div>
 
-      {/* Recharts BarChart */}
+      {/* Recharts Multi-Period Bar & Trend Chart */}
       <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
-        <div>
-          <h3 className="text-sm sm:text-base font-bold text-[#0F4C5C]">Revenue vs. Expenses Trend</h3>
-          <p className="text-[11px] sm:text-xs text-slate-500">Daily financial breakdown</p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-[#0F4C5C]">
+              {timeRange === "Financial Year"
+                ? "Monthly Revenue & Collections Trend (FY)"
+                : timeRange === "Today"
+                ? "Today's Transaction & Collection Flow"
+                : "Periodic Sales, Collections vs Expenses Trend"}
+            </h3>
+            <p className="text-[11px] sm:text-xs text-slate-500">
+              {timeRange === "Financial Year"
+                ? "Full financial year grouped by month (April to March)"
+                : "Timeline breakdown showing performance across the selected interval"}
+            </p>
+          </div>
         </div>
 
-        <div className="h-64 sm:h-72 w-full pt-2">
-          {!dailyBreakdown || dailyBreakdown.length === 0 ? (
+        <div className="h-72 sm:h-80 w-full pt-2">
+          {isLoading || isFetching ? (
+            <div className="h-full flex items-center justify-center text-xs text-slate-400">
+              Loading financial statement data...
+            </div>
+          ) : !dailyBreakdown || dailyBreakdown.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-xs text-slate-400 space-y-2 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 p-4 text-center">
               <BarChart3 className="size-8 text-slate-300" />
-              <span>No transactions recorded for this period yet. Create an order or add an expense to see daily trend.</span>
+              <span>No transactions recorded for this period.</span>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyBreakdown} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={dailyBreakdown} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#64748b" }} />
                 <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#64748b" }} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: "#ffffff", borderRadius: "12px", border: "1px solid #e2e8f0", fontSize: "12px" }}
+                  contentStyle={{
+                    backgroundColor: "#ffffff",
+                    borderRadius: "12px",
+                    border: "1px solid #e2e8f0",
+                    fontSize: "12px",
+                    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+                  }}
+                  formatter={(value: any) => [`₹${Number(value || 0).toLocaleString("en-IN")}`, ""]}
                 />
                 <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-                <Bar dataKey="collected" name="Collected (₹)" fill="#0F4C5C" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expenses" name="Expenses (₹)" fill="#e11d48" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="sales" name="Billed Sales (₹)" fill="#0F4C5C" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="collected" name="Collected (₹)" fill="#10B981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expenses" name="Expenses (₹)" fill="#E11D48" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
+        </div>
+      </div>
+
+      {/* Period Statement Breakdown Table */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
+        <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+          <h3 className="font-bold text-slate-800 text-sm">
+            {timeRange === "Financial Year" ? "Monthly Statement Summary" : "Periodic Statement Summary"}
+          </h3>
+          <span className="text-[11px] text-slate-400 font-medium">
+            {dailyBreakdown.length} breakdown records
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-slate-100 text-slate-400 font-semibold text-[10px] uppercase tracking-wider">
+                <th className="py-2.5 px-3">Period / Date</th>
+                <th className="py-2.5 px-3 text-right">Orders</th>
+                <th className="py-2.5 px-3 text-right">Billed (₹)</th>
+                <th className="py-2.5 px-3 text-right">Collected (₹)</th>
+                <th className="py-2.5 px-3 text-right">Expenses (₹)</th>
+                <th className="py-2.5 px-3 text-right">Net Profit (₹)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {dailyBreakdown.map((row: any, idx: number) => (
+                <tr key={idx} className="hover:bg-slate-50/70 transition">
+                  <td className="py-2.5 px-3 font-semibold text-[#0F4C5C]">{row.label || row.date}</td>
+                  <td className="py-2.5 px-3 text-right text-slate-600">{row.orders || 0}</td>
+                  <td className="py-2.5 px-3 text-right font-bold text-slate-800">
+                    ₹{(row.sales || 0).toLocaleString("en-IN")}
+                  </td>
+                  <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
+                    ₹{(row.collected || 0).toLocaleString("en-IN")}
+                  </td>
+                  <td className="py-2.5 px-3 text-right font-bold text-rose-600">
+                    ₹{(row.expenses || 0).toLocaleString("en-IN")}
+                  </td>
+                  <td
+                    className={`py-2.5 px-3 text-right font-bold ${
+                      (row.net || 0) >= 0 ? "text-emerald-600" : "text-rose-600"
+                    }`}
+                  >
+                    ₹{(row.net || 0).toLocaleString("en-IN")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

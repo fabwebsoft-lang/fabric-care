@@ -95,6 +95,109 @@ export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => vo
         </div>
       </div>
 
+      {/* KPI Metric Cards: 2x2 on mobile, 4-columns on desktop */}
+      <div className="grid gap-2.5 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        {/* Outstanding Processes (Received + Processing) */}
+        <div
+          onClick={() => setActiveTab(activeTab === "Processing" ? "All" : "Processing")}
+          className={`bg-white p-3.5 sm:p-4 rounded-2xl border shadow-xs flex flex-col justify-between space-y-1.5 cursor-pointer transition ${
+            activeTab === "Processing"
+              ? "border-amber-400 ring-2 ring-amber-400/20"
+              : "border-slate-200/90 hover:border-amber-300"
+          }`}
+        >
+          <div className="flex justify-between items-center text-slate-500 text-[11px] sm:text-xs font-semibold gap-1">
+            <span className="truncate">Outstanding Processes</span>
+            <div className="p-1.5 sm:p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0">
+              <WashingMachine className="size-3.5 sm:size-4" />
+            </div>
+          </div>
+          <div>
+            <p className="text-lg sm:text-2xl font-bold text-amber-600 tracking-tight">
+              {counts.Received + counts.Processing} Orders
+            </p>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
+              {counts.Received} Received · {counts.Processing} Washing
+            </p>
+          </div>
+        </div>
+
+        {/* Need to Deliver (Ready) */}
+        <div
+          onClick={() => setActiveTab(activeTab === "Ready" ? "All" : "Ready")}
+          className={`bg-white p-3.5 sm:p-4 rounded-2xl border shadow-xs flex flex-col justify-between space-y-1.5 cursor-pointer transition ${
+            activeTab === "Ready"
+              ? "border-emerald-500 ring-2 ring-emerald-500/20"
+              : "border-slate-200/90 hover:border-emerald-300"
+          }`}
+        >
+          <div className="flex justify-between items-center text-slate-500 text-[11px] sm:text-xs font-semibold gap-1">
+            <span className="truncate">Need to Deliver</span>
+            <div className="p-1.5 sm:p-2 bg-emerald-100 text-emerald-700 rounded-lg shrink-0">
+              <PackageCheck className="size-3.5 sm:size-4" />
+            </div>
+          </div>
+          <div>
+            <p className="text-lg sm:text-2xl font-bold text-emerald-600 tracking-tight">
+              {counts.Ready} Orders
+            </p>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
+              Ready for collection / drop
+            </p>
+          </div>
+        </div>
+
+        {/* Intake / Received */}
+        <div
+          onClick={() => setActiveTab(activeTab === "Received" ? "All" : "Received")}
+          className={`bg-white p-3.5 sm:p-4 rounded-2xl border shadow-xs flex flex-col justify-between space-y-1.5 cursor-pointer transition ${
+            activeTab === "Received"
+              ? "border-sky-500 ring-2 ring-sky-500/20"
+              : "border-slate-200/90 hover:border-sky-300"
+          }`}
+        >
+          <div className="flex justify-between items-center text-slate-500 text-[11px] sm:text-xs font-semibold gap-1">
+            <span className="truncate">Intake / Queued</span>
+            <div className="p-1.5 sm:p-2 bg-sky-100 text-sky-700 rounded-lg shrink-0">
+              <Clock className="size-3.5 sm:size-4" />
+            </div>
+          </div>
+          <div>
+            <p className="text-lg sm:text-2xl font-bold text-sky-700 tracking-tight">
+              {counts.Received} Orders
+            </p>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
+              Tagged & awaiting wash
+            </p>
+          </div>
+        </div>
+
+        {/* Total In Shop */}
+        <div
+          onClick={() => setActiveTab("All")}
+          className={`bg-white p-3.5 sm:p-4 rounded-2xl border shadow-xs flex flex-col justify-between space-y-1.5 cursor-pointer transition ${
+            activeTab === "All"
+              ? "border-[#0F4C5C] ring-2 ring-[#0F4C5C]/20"
+              : "border-slate-200/90 hover:border-[#0F4C5C]/30"
+          }`}
+        >
+          <div className="flex justify-between items-center text-slate-500 text-[11px] sm:text-xs font-semibold gap-1">
+            <span className="truncate">Total In Shop</span>
+            <div className="p-1.5 sm:p-2 bg-[#0F4C5C]/10 text-[#0F4C5C] rounded-lg shrink-0">
+              <CheckCircle2 className="size-3.5 sm:size-4" />
+            </div>
+          </div>
+          <div>
+            <p className="text-lg sm:text-2xl font-bold text-[#0F4C5C] tracking-tight">
+              {counts.All} Orders
+            </p>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
+              Active laundry workflow
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-1.5 sm:gap-2 pb-1 overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
         {(["All", "Received", "Processing", "Ready"] as const).map((tab) => (

@@ -14,6 +14,38 @@ const queryClient = new QueryClient({
   },
 });
 
+// Prevent iOS and touch browser pinch zoom and gesture zoom
+if (typeof window !== "undefined") {
+  document.addEventListener("gesturestart", (e) => e.preventDefault());
+  document.addEventListener("gesturechange", (e) => e.preventDefault());
+  document.addEventListener("gestureend", (e) => e.preventDefault());
+
+  // Prevent multi-touch pinch to zoom
+  document.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    },
+    { passive: false }
+  );
+
+  // Prevent double-tap to zoom
+  let lastTouchEnd = 0;
+  document.addEventListener(
+    "touchend",
+    (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    },
+    { passive: false }
+  );
+}
+
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <trpc.Provider>

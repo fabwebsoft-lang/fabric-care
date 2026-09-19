@@ -6,6 +6,8 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite",
+    "server": "npm run dev --prefix server",
+    "seed": "npm run seed --prefix server",
     "build": "vite build",
     "preview": "vite preview",
     "check": "tsc --noEmit",

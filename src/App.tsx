@@ -13,7 +13,7 @@ function Router() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-screen w-screen items-center justify-center bg-[#F7F3EE]">
+        <div className="flex h-screen w-screen items-center justify-center bg-white">
           <div className="size-8 animate-spin rounded-full border-3 border-[#0F4C5C] border-t-transparent" />
         </div>
       }

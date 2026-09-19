@@ -6,7 +6,7 @@ export default function ContactAdminScreen({ name }: { name?: string | null }) {
   const { logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-[#F7F3EE] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 sm:p-8 text-center space-y-5">
         <div className="size-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
           <Clock className="size-7" />

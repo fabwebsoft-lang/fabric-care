@@ -83,6 +83,9 @@ export default function NewBillModal({
   const [customItemPrice, setCustomItemPrice] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
 
+  // Bill Date State
+  const [billDate, setBillDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+
   // Payment State
   const [discount, setDiscount] = useState<number>(0);
   const [advancePaid, setAdvancePaid] = useState<number>(0);
@@ -361,6 +364,7 @@ export default function NewBillModal({
       storedClothesCode: clothesCode.trim() || `C-${normPhone.slice(-4) || "0000"}`,
       items,
       serviceType: customerType === "Premium" ? "Premium Dry Clean" : "Standard Laundry",
+      orderDate: billDate ? new Date(`${billDate}T12:00:00`).toISOString() : undefined,
       totalAmount: grandTotal,
       discount,
       amountPaid: Math.min(grandTotal, advancePaid),
@@ -403,12 +407,12 @@ export default function NewBillModal({
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6">
           {/* Customer Information */}
-          <div className="rounded-xl border border-slate-200 bg-[#F7F3EE]/40 p-3.5 sm:p-4 space-y-3.5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 sm:p-4 space-y-3.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-[#0F4C5C] flex items-center gap-1.5">
                 <User className="size-3.5 sm:size-4" /> Customer Information
               </span>
-              <div className="flex rounded-lg bg-[#F7F3EE] p-0.5 text-[10px] sm:text-[11px] font-semibold self-start sm:self-auto">
+              <div className="flex rounded-lg bg-slate-200/70 p-0.5 text-[10px] sm:text-[11px] font-semibold self-start sm:self-auto">
                 <button
                   type="button"
                   onClick={() => {
@@ -526,7 +530,7 @@ export default function NewBillModal({
                           onClick={() => handleSelectCustomer(c)}
                           onMouseEnter={() => setHighlightedIndex(idx)}
                           className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition ${
-                            isHighlighted ? "bg-[#F7F3EE] text-[#0F4C5C]" : "hover:bg-[#F7F3EE]/70"
+                            isHighlighted ? "bg-slate-100 text-[#0F4C5C]" : "hover:bg-slate-50"
                           }`}
                         >
                           <div className="min-w-0 pr-2">
@@ -589,6 +593,16 @@ export default function NewBillModal({
                     Premium Tier
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold text-[#0F4C5C]">Bill / Order Date</label>
+                <input
+                  type="date"
+                  value={billDate}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setBillDate(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-[#0F4C5C] focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
+                />
               </div>
 
               <div>
@@ -683,7 +697,7 @@ export default function NewBillModal({
                   type="button"
                   key={cat.label}
                   onClick={() => addItemToBill(cat.label, cat.price)}
-                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-[#0F4C5C] hover:bg-[#F7F3EE] hover:text-[#0F4C5C] transition active:scale-95"
+                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-[#0F4C5C] hover:bg-slate-100 hover:text-[#0F4C5C] transition active:scale-95"
                 >
                   <span>{cat.label}</span>
                   <span className="font-bold text-[#0F4C5C]">₹{cat.price}</span>
@@ -693,7 +707,7 @@ export default function NewBillModal({
               <button
                 type="button"
                 onClick={() => setShowCustomInput(!showCustomInput)}
-                className="flex items-center gap-1 rounded-xl border border-dashed border-[#0F4C5C] bg-white px-2.5 py-1.5 text-xs font-bold text-[#0F4C5C] hover:bg-[#F7F3EE] transition"
+                className="flex items-center gap-1 rounded-xl border border-dashed border-[#0F4C5C] bg-white px-2.5 py-1.5 text-xs font-bold text-[#0F4C5C] hover:bg-slate-50 transition"
               >
                 <Plus className="size-3" /> Custom Item
               </button>
@@ -791,7 +805,7 @@ export default function NewBillModal({
           </div>
 
           {/* Pricing Calculation & Advance */}
-          <div className="rounded-xl border border-slate-200 bg-[#F7F3EE]/30 p-3.5 sm:p-4 space-y-3.5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 sm:p-4 space-y-3.5">
             <div className="flex justify-between items-center text-xs">
               <span className="text-slate-600">Subtotal ({totalGarments} garments):</span>
               <span className="font-bold text-slate-800">₹{subtotal}</span>
@@ -915,7 +929,7 @@ export default function NewBillModal({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-[#F7F3EE]/60 p-3.5 space-y-2 text-xs">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-2 text-xs">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-[#0F4C5C] text-sm">{duplicateCustomer.name}</span>
                   <span className="rounded-md bg-[#0F4C5C]/10 px-2 py-0.5 text-[10px] font-bold text-[#0F4C5C]">

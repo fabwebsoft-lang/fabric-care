@@ -241,7 +241,7 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-[#F7F3EE]/60 text-[10px] font-bold uppercase tracking-wider text-[#0F4C5C]">
+                  <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-[#0F4C5C]">
                     <th className="py-3 px-4">Item Name</th>
                     <th className="py-3 px-4">Category</th>
                     <th className="py-3 px-4">Service Type</th>
@@ -256,7 +256,7 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
                     <tr key={product.id} className="hover:bg-slate-50/80 transition">
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2.5">
-                          <div className="grid size-8 place-items-center rounded-xl bg-[#F7F3EE] text-[#0F4C5C]">
+                          <div className="grid size-8 place-items-center rounded-xl bg-slate-100 text-[#0F4C5C]">
                             <Shirt className="size-4" />
                           </div>
                           <div>
@@ -317,7 +317,7 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
                               setEditingProduct(product);
                               setIsAddModalOpen(true);
                             }}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-[#0F4C5C] hover:bg-[#F7F3EE] transition"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-[#0F4C5C] hover:bg-slate-100 transition"
                             title="Edit Item"
                           >
                             <Edit2 className="size-3.5" />
@@ -343,7 +343,7 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
                 <div key={product.id} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5">
-                      <div className="grid size-9 place-items-center rounded-xl bg-[#F7F3EE] text-[#0F4C5C] shrink-0">
+                      <div className="grid size-9 place-items-center rounded-xl bg-slate-100 text-[#0F4C5C] shrink-0">
                         <Shirt className="size-4" />
                       </div>
                       <div>
@@ -388,7 +388,7 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
                           setEditingProduct(product);
                           setIsAddModalOpen(true);
                         }}
-                        className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#0F4C5C] bg-[#F7F3EE] hover:bg-[#0F4C5C] hover:text-white transition"
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#0F4C5C] bg-slate-100 hover:bg-[#0F4C5C] hover:text-white transition"
                       >
                         Edit
                       </button>
@@ -622,7 +622,7 @@ function ProductFormModal({
 
           <div>
             <label className="mb-1.5 block font-bold text-[#0F4C5C]">Status</label>
-            <div className="flex rounded-xl border border-slate-300 bg-[#F7F3EE] p-1">
+            <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
               <button
                 type="button"
                 onClick={() => setStatus("Active")}

@@ -33,8 +33,9 @@ function toApiOrder(o: any) {
   };
 }
 
-async function nextOrderId(shopCode: string) {
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+async function nextOrderId(shopCode: string, orderDate?: Date) {
+  const d = orderDate || new Date();
+  const dateStr = d.toISOString().slice(0, 10).replace(/-/g, "");
   const countToday = await Order.countDocuments({ _id: { $regex: `^WP-${dateStr}-` } });
   const seq = String(countToday + 1).padStart(3, "0");
   return `WP-${dateStr}-${seq}-${shopCode}`;
@@ -56,6 +57,7 @@ export const ordersRouter = router({
         serviceType: z.string().default("Standard Laundry"),
         deliveryType: z.enum(["Shop Collection", "Home Delivery"]).default("Shop Collection"),
         dueAt: z.string().datetime().optional(),
+        orderDate: z.string().optional(),
         totalAmount: z.number().nonnegative(),
         amountPaid: z.number().nonnegative().default(0),
         discount: z.number().nonnegative().default(0),
@@ -68,7 +70,8 @@ export const ordersRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const id = await nextOrderId("FC01");
+      const creationDate = input.orderDate ? new Date(input.orderDate) : new Date();
+      const id = await nextOrderId("FC01", creationDate);
       const normPhone = normalizePhone(input.phone);
       const clothesCode = input.storedClothesCode?.trim() || `C-${normPhone.slice(-4) || "0000"}`;
 
@@ -136,6 +139,8 @@ export const ordersRouter = router({
         amountPaid: input.amountPaid,
         discount: input.discount,
         items: input.items,
+        createdAt: creationDate,
+        updatedAt: creationDate,
       });
 
       return toApiOrder(order);

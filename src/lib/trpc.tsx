@@ -673,10 +673,10 @@ export const trpc = {
 
   reports: {
     businessStatements: {
-      useQuery: (_input?: any, options?: any) =>
+      useQuery: (input?: { period?: "today" | "month" | "financial_year" | "custom"; startDate?: string; endDate?: string }, options?: any) =>
         useQuery<any>({
-          queryKey: ["reports.businessStatements"],
-          queryFn: async () => toDisplayStatements(await client.reports.businessStatements.query()),
+          queryKey: ["reports.businessStatements", input],
+          queryFn: async () => toDisplayStatements(await client.reports.businessStatements.query(input)),
           ...options,
         }),
     },
