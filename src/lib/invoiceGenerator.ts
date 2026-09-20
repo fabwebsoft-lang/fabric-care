@@ -22,6 +22,19 @@ export interface InvoiceOrderData {
 }
 
 /**
+ * Sanitizes and escapes raw strings for safe HTML injection to prevent XSS.
+ */
+export function escapeHtml(str: string | number | null | undefined): string {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * Formats a Date object or ISO string into DD-MM-YYYY in Asia/Kolkata (IST).
  */
 export function formatISTDate(dateInput?: string | Date | null): string {
@@ -631,18 +644,18 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
     <!-- Header Row -->
     <div class="header-row">
       <div class="shop-brand">
-        <img src="${settings.logoUrl || "/fabric-care-logo.png"}" alt="${settings.shopName}" class="shop-logo" />
+        <img src="${escapeHtml(settings.logoUrl) || "/fabric-care-logo.png"}" alt="${escapeHtml(settings.shopName)}" class="shop-logo" />
         <div class="shop-details">
-          <h1>${settings.shopName}</h1>
-          <div class="shop-tagline">${settings.tagline}</div>
+          <h1>${escapeHtml(settings.shopName)}</h1>
+          <div class="shop-tagline">${escapeHtml(settings.tagline)}</div>
           <div class="shop-meta">
-            ${settings.address ? `<div>${settings.address}</div>` : ""}
+            ${settings.address ? `<div>${escapeHtml(settings.address)}</div>` : ""}
             <div>
-              ${settings.phone ? `Phone: <strong>${settings.phone}</strong>` : ""}
+              ${settings.phone ? `Phone: <strong>${escapeHtml(settings.phone)}</strong>` : ""}
               ${settings.phone && settings.email ? " · " : ""}
-              ${settings.email ? `Email: ${settings.email}` : ""}
+              ${settings.email ? `Email: ${escapeHtml(settings.email)}` : ""}
             </div>
-            ${settings.gstin ? `<div>GSTIN: <strong>${settings.gstin}</strong></div>` : ""}
+            ${settings.gstin ? `<div>GSTIN: <strong>${escapeHtml(settings.gstin)}</strong></div>` : ""}
           </div>
         </div>
       </div>
@@ -652,17 +665,17 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
         <table class="invoice-meta-table">
           <tr>
             <td class="label">Invoice No:</td>
-            <td class="val">${order.id}</td>
+            <td class="val">${escapeHtml(order.id)}</td>
           </tr>
           <tr>
             <td class="label">Bill Date:</td>
-            <td class="val">${dateStr}</td>
+            <td class="val">${escapeHtml(dateStr)}</td>
           </tr>
           ${
             deliveryDateStr
               ? `<tr>
             <td class="label">Expected Ready:</td>
-            <td class="val">${deliveryDateStr}</td>
+            <td class="val">${escapeHtml(deliveryDateStr)}</td>
           </tr>`
               : ""
           }
@@ -674,8 +687,8 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
     <div class="bill-to-row">
       <div class="bill-to-left">
         <div class="bill-to-title">Billed To</div>
-        <div class="customer-name">${order.customer}</div>
-        <div class="customer-phone">${order.phone || "No phone registered"}</div>
+        <div class="customer-name">${escapeHtml(order.customer)}</div>
+        <div class="customer-phone">${escapeHtml(order.phone) || "No phone registered"}</div>
       </div>
       <div>
         <span class="status-stamp ${isPaid ? "stamp-paid" : "stamp-due"}">
@@ -701,8 +714,8 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
           .map(
             (item) => `<tr>
           <td class="text-center" style="color: #64748b; font-weight: 600;">${item.index}</td>
-          <td><span class="item-name">${item.name}</span></td>
-          <td><span class="service-tag">${item.service}</span></td>
+          <td><span class="item-name">${escapeHtml(item.name)}</span></td>
+          <td><span class="service-tag">${escapeHtml(item.service)}</span></td>
           <td class="text-center" style="font-weight: 700;">${item.quantity}</td>
           <td class="text-right" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: nowrap;">${item.rate ? formatRupee(item.rate, false) : "—"}</td>
           <td class="text-right" style="font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: nowrap;">${formatRupee(item.amount, false)}</td>
@@ -718,7 +731,7 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
         <!-- Amount in Words -->
         <div class="amount-in-words">
           <div class="amount-in-words-label">Total Amount in Words</div>
-          <div class="amount-in-words-text">${totalInWords}</div>
+          <div class="amount-in-words-text">${escapeHtml(totalInWords)}</div>
         </div>
 
         <!-- UPI QR Code -->
@@ -728,7 +741,7 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
           <div class="upi-qr">${upiQrSvg}</div>
           <div class="upi-info">
             <div class="upi-title">Scan to Pay via UPI</div>
-            <div class="upi-id">${settings.upiId}</div>
+            <div class="upi-id">${escapeHtml(settings.upiId)}</div>
             <div class="upi-hint">Scan with GPay, PhonePe, Paytm or any UPI App</div>
           </div>
         </div>`
@@ -782,7 +795,7 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
         ? `<div class="terms-card">
       <div class="terms-title">Terms & Conditions</div>
       <ul class="terms-list">
-        ${termsLines.map((line) => `<li>${line}</li>`).join("")}
+        ${termsLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
       </ul>
     </div>`
         : ""
@@ -790,7 +803,7 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
 
     <!-- Footer -->
     <div class="invoice-footer">
-      <div class="footer-thankyou">Thank you for choosing ${settings.shopName}!</div>
+      <div class="footer-thankyou">Thank you for choosing ${escapeHtml(settings.shopName)}!</div>
       <div class="footer-watermark">
         Powered by Mallist | <a href="https://mallist.online" target="_blank" rel="noopener noreferrer">mallist.online</a>
       </div>
@@ -904,20 +917,20 @@ export function generateThermalReceiptHtml(
 <body>
   <div class="thermal-container">
     <div class="center">
-      <div class="title bold">${settings.shopName}</div>
-      <div>${settings.tagline}</div>
-      ${settings.address ? `<div>${settings.address}</div>` : ""}
-      ${settings.phone ? `<div>Tel: ${settings.phone}</div>` : ""}
-      ${settings.gstin ? `<div>GSTIN: ${settings.gstin}</div>` : ""}
+      <div class="title bold">${escapeHtml(settings.shopName)}</div>
+      <div>${escapeHtml(settings.tagline)}</div>
+      ${settings.address ? `<div>${escapeHtml(settings.address)}</div>` : ""}
+      ${settings.phone ? `<div>Tel: ${escapeHtml(settings.phone)}</div>` : ""}
+      ${settings.gstin ? `<div>GSTIN: ${escapeHtml(settings.gstin)}</div>` : ""}
     </div>
 
     <div class="double-divider"></div>
 
-    <div class="row"><span>Bill No:</span><span class="bold">${order.id}</span></div>
-    <div class="row"><span>Date:</span><span>${dateStr}</span></div>
-    ${deliveryDateStr ? `<div class="row"><span>Ready Date:</span><span>${deliveryDateStr}</span></div>` : ""}
-    <div class="row"><span>Customer:</span><span class="bold">${order.customer}</span></div>
-    <div class="row"><span>Phone:</span><span>${order.phone || "—"}</span></div>
+    <div class="row"><span>Bill No:</span><span class="bold">${escapeHtml(order.id)}</span></div>
+    <div class="row"><span>Date:</span><span>${escapeHtml(dateStr)}</span></div>
+    ${deliveryDateStr ? `<div class="row"><span>Ready Date:</span><span>${escapeHtml(deliveryDateStr)}</span></div>` : ""}
+    <div class="row"><span>Customer:</span><span class="bold">${escapeHtml(order.customer)}</span></div>
+    <div class="row"><span>Phone:</span><span>${escapeHtml(order.phone) || "—"}</span></div>
 
     <div class="divider"></div>
 
@@ -925,7 +938,7 @@ export function generateThermalReceiptHtml(
     ${items
       .map(
         (it) => `<div class="item-row">
-      <div class="item-name">${it.index}. ${it.name} (${it.service})</div>
+      <div class="item-name">${it.index}. ${escapeHtml(it.name)} (${escapeHtml(it.service)})</div>
       <div class="item-calc">
         <span>${it.quantity} Qty x ${formatRupee(it.rate, false)}</span>
         <span class="bold">${formatRupee(it.amount, false)}</span>
@@ -950,7 +963,7 @@ export function generateThermalReceiptHtml(
       termsLines.length > 0
         ? `<div class="divider"></div>
     <div class="footer-note">
-      ${termsLines.map((l) => `<div>${l}</div>`).join("")}
+      ${termsLines.map((l) => `<div>${escapeHtml(l)}</div>`).join("")}
     </div>`
         : ""
     }
@@ -958,7 +971,7 @@ export function generateThermalReceiptHtml(
     <div class="double-divider"></div>
 
     <div class="center" style="font-size: 11px; margin-top: 4px;">
-      <div class="bold">Thank you for choosing ${settings.shopName}!</div>
+      <div class="bold">Thank you for choosing ${escapeHtml(settings.shopName)}!</div>
       <div style="margin-top: 3px; font-size: 9.5px; color: #555;">
         Powered by Mallist | mallist.online
       </div>

@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
-import { getSessionToken, getCachedUser } from "@/lib/session";
+import { getSessionToken, getCachedUser, clearAllSession } from "@/lib/session";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
@@ -21,7 +21,10 @@ export function useAuth(_options?: UseAuthOptions) {
   });
 
   const logout = useCallback(async () => {
-    await logoutMutation.mutateAsync();
+    try {
+      await logoutMutation.mutateAsync();
+    } catch {}
+    clearAllSession();
     utils.auth.me.setData(undefined, null);
     await utils.auth.me.invalidate();
   }, [logoutMutation, utils]);

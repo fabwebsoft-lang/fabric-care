@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, approvedProcedure } from "../trpc.js";
+import { router, approvedProcedure, requirePermission } from "../trpc.js";
 import { Product } from "../../models/Product.js";
 import { Order } from "../../models/Order.js";
 
@@ -83,7 +83,7 @@ export const productsRouter = router({
     return products.map(toApiProduct);
   }),
 
-  create: approvedProcedure
+  create: requirePermission("canManageSettings")
     .input(
       z.object({
         name: z.string().trim().min(1, "Item name is required"),
@@ -118,7 +118,7 @@ export const productsRouter = router({
       return toApiProduct(product);
     }),
 
-  update: approvedProcedure
+  update: requirePermission("canManageSettings")
     .input(
       z.object({
         id: z.string(),
@@ -163,7 +163,7 @@ export const productsRouter = router({
       return toApiProduct(product);
     }),
 
-  toggleStatus: approvedProcedure
+  toggleStatus: requirePermission("canManageSettings")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       const product = await Product.findById(input.id);
@@ -177,7 +177,7 @@ export const productsRouter = router({
       return toApiProduct(product);
     }),
 
-  delete: approvedProcedure
+  delete: requirePermission("canManageSettings")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       const product = await Product.findById(input.id);
