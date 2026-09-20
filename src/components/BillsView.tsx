@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   X,
   ChevronDown,
+  ChevronUp,
   Check,
   Send,
   Copy,
@@ -89,6 +90,34 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // User manual expand/collapse state overrides (persisted across filters & queries)
+  // Default: Collected (Delivered) -> collapsed (false), others -> expanded (true)
+  const [manualExpandedState, setManualExpandedState] = useState<Record<string, boolean>>({});
+
+  const isOrderExpanded = (order: any): boolean => {
+    if (manualExpandedState[order.id] !== undefined) {
+      return manualExpandedState[order.id];
+    }
+    return order.status !== "Collected";
+  };
+
+  const toggleOrderExpanded = (orderId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setManualExpandedState((prev) => {
+      const order = orders.find((o) => o.id === orderId);
+      const currentlyExpanded =
+        prev[orderId] !== undefined
+          ? prev[orderId]
+          : order
+          ? order.status !== "Collected"
+          : true;
+      return {
+        ...prev,
+        [orderId]: !currentlyExpanded,
+      };
+    });
+  };
 
   // Modals & Sheets
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
@@ -198,6 +227,27 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
     const paidCount = filteredOrders.filter((o) => (o.totalAmount || 0) <= (o.amountPaid || 0)).length;
     return { totalBilled, totalCollected, totalDue, paidCount, count: filteredOrders.length };
   }, [filteredOrders]);
+
+  // Expand / Collapse All handlers for filtered view
+  const handleExpandAll = () => {
+    const next: Record<string, boolean> = {};
+    filteredOrders.forEach((o) => {
+      next[o.id] = true;
+    });
+    setManualExpandedState((prev) => ({ ...prev, ...next }));
+  };
+
+  const handleCollapseAll = () => {
+    const next: Record<string, boolean> = {};
+    filteredOrders.forEach((o) => {
+      next[o.id] = false;
+    });
+    setManualExpandedState((prev) => ({ ...prev, ...next }));
+  };
+
+  const areAllExpanded =
+    filteredOrders.length > 0 &&
+    filteredOrders.every((o) => isOrderExpanded(o));
 
   // Selection handlers
   const isAllSelected =
@@ -435,7 +485,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
         </div>
 
         {/* Filter Summary Badge */}
-        <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 font-medium">
           <span className="font-bold text-slate-800">{summary.count} bills</span>
           <span>·</span>
           <span>₹{summary.totalBilled.toLocaleString("en-IN")} billed</span>
@@ -462,6 +512,26 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
               className="ml-1 px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md font-bold text-[10px] flex items-center gap-1"
             >
               <X className="size-3" /> Clear date
+            </button>
+          )}
+
+          {/* Collapse all / Expand all Toggle Button */}
+          {filteredOrders.length > 0 && (
+            <button
+              type="button"
+              onClick={areAllExpanded ? handleCollapseAll : handleExpandAll}
+              className="ml-auto sm:ml-2 px-2.5 py-1 bg-white hover:bg-slate-50 text-[#0F4C5C] border border-slate-200/90 rounded-lg font-bold text-[10px] flex items-center gap-1 transition shadow-2xs active:scale-95 whitespace-nowrap"
+              title={areAllExpanded ? "Collapse all bills" : "Expand all bills"}
+            >
+              {areAllExpanded ? (
+                <>
+                  <ChevronUp className="size-3 text-[#0F4C5C]" /> Collapse all
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="size-3 text-[#0F4C5C]" /> Expand all
+                </>
+              )}
             </button>
           )}
         </div>
@@ -522,102 +592,159 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
         </div>
       ) : (
         <>
-          {/* Mobile Cards View (< md) */}
-          <div className="grid gap-3 grid-cols-1 md:hidden">
+          {/* Mobile Cards View (< md) with 200ms collapsible animation */}
+          <div className="grid gap-2.5 sm:gap-3 grid-cols-1 md:hidden">
             {filteredOrders.map((order) => {
               const isSelected = selectedIds.includes(order.id);
               const dueAmount = Math.max(0, order.totalAmount - order.amountPaid);
               const orderDateIST = toISTDateString(order.createdAt);
+              const expanded = isOrderExpanded(order);
 
               return (
                 <div
                   key={order.id}
-                  onClick={() => setSelectedOrder(order)}
-                  className={`bg-white rounded-2xl border p-4 shadow-xs space-y-3 cursor-pointer transition active:bg-slate-50 relative ${
+                  className={`bg-white rounded-2xl border shadow-xs transition-all duration-200 overflow-hidden relative ${
                     isSelected
                       ? "border-[#0F4C5C] ring-2 ring-[#0F4C5C]/20 bg-[#0F4C5C]/5"
                       : "border-slate-200 hover:border-[#0F4C5C]/40"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2.5">
-                      {/* Row Checkbox */}
+                  {/* Card Header (One compact row - Always visible) */}
+                  <div
+                    onClick={(e) => toggleOrderExpanded(order.id, e)}
+                    className="p-3 sm:p-3.5 flex items-center justify-between gap-2 cursor-pointer select-none active:bg-slate-50 transition-colors"
+                  >
+                    {/* Left: Checkbox + Order ID + Customer Name */}
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={(e) => handleToggleRow(order.id, e as any)}
                         onClick={(e) => e.stopPropagation()}
-                        className="size-4 mt-0.5 rounded text-[#0F4C5C] focus:ring-[#0F4C5C] cursor-pointer"
+                        className="size-4.5 rounded text-[#0F4C5C] focus:ring-[#0F4C5C] cursor-pointer shrink-0"
+                        aria-label={`Select order ${order.id}`}
                       />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-bold text-[#0F4C5C]">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-xs font-bold text-[#0F4C5C] truncate">
                             {order.id}
                           </span>
                           <span className="text-[10px] text-slate-400">{orderDateIST}</span>
                         </div>
-                        <h3 className="font-bold text-slate-800 text-sm mt-0.5">{order.customer}</h3>
-                        <a
-                          href={`tel:${order.phone}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-[11px] text-[#0F4C5C] hover:underline flex items-center gap-1 mt-0.5"
-                          title="Tap to call customer"
-                        >
-                          <Phone className="size-3" /> {order.phone}
-                        </a>
+                        <h3 className="font-bold text-slate-800 text-xs sm:text-sm truncate mt-0.5">
+                          {order.customer}
+                        </h3>
                       </div>
                     </div>
 
-                    <span
-                      className={`px-2.5 py-1 text-[10px] font-bold rounded-full border shrink-0 ${
-                        statusStyles[order.status]
-                      }`}
-                    >
-                      {order.status}
-                    </span>
-                  </div>
+                    {/* Right: Total Amount + Paid/Due label + Status Badge + Chevron */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-right">
+                        <div className="text-xs font-bold text-slate-800">{order.amount}</div>
+                        <div className="text-[10px] font-bold">
+                          {dueAmount > 0 ? (
+                            <span className="text-rose-600">₹{dueAmount} due</span>
+                          ) : (
+                            <span className="text-emerald-600">Paid</span>
+                          )}
+                        </div>
+                      </div>
 
-                  <div className="bg-slate-50 p-2.5 rounded-xl text-xs text-slate-600 font-medium">
-                    <span className="text-[10px] text-slate-400 block mb-0.5">Garments:</span>
-                    <p className="truncate">{order.items}</p>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs gap-2">
-                    <div>
-                      <span className="text-slate-500 text-[11px]">Total: </span>
-                      <strong className="text-slate-800 font-bold">{order.amount}</strong>
-                      <span className="ml-2">
-                        {dueAmount > 0 ? (
-                          <span className="text-rose-600 font-bold text-[11px]">₹{dueAmount} due</span>
-                        ) : (
-                          <span className="text-emerald-600 font-bold text-[11px]">Paid</span>
-                        )}
+                      <span
+                        className={`px-2 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-full border shrink-0 ${
+                          statusStyles[order.status]
+                        }`}
+                      >
+                        {order.status}
                       </span>
-                    </div>
 
-                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={(e) => handleSendSingleSms(order, e)}
-                        className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs"
-                        title="Send SMS"
+                        onClick={(e) => toggleOrderExpanded(order.id, e)}
+                        className="p-1 -mr-1 text-slate-400 hover:text-[#0F4C5C] hover:bg-slate-100 rounded-lg transition-transform duration-200"
+                        aria-label={expanded ? "Collapse order" : "Expand order"}
                       >
-                        <MessageSquare className="size-3.5 text-[#0F4C5C]" />
+                        <ChevronDown
+                          className={`size-4 transition-transform duration-200 ${
+                            expanded ? "rotate-180 text-[#0F4C5C]" : "rotate-0 text-slate-400"
+                          }`}
+                        />
                       </button>
-                      <button
-                        type="button"
-                        onClick={(e) => handleShareOrder(order, e)}
-                        className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs"
-                        title="Share Bill"
-                      >
-                        <Share2 className="size-3.5 text-[#0F4C5C]" />
-                      </button>
-                      <button
-                        type="button"
-                        className="px-2 py-1 bg-slate-100 text-[#0F4C5C] font-bold rounded-lg text-[11px] flex items-center gap-1"
-                      >
-                        <Eye className="size-3" /> View
-                      </button>
+                    </div>
+                  </div>
+
+                  {/* Collapsible Body (Phone, Garments, Actions) with 200ms smooth transition */}
+                  <div
+                    className={`grid transition-all duration-200 ease-in-out ${
+                      expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                    }`}
+                  >
+                    <div className="overflow-hidden min-h-0">
+                      <div className="px-3 pb-3 sm:px-3.5 sm:pb-3.5 pt-0 space-y-2.5 border-t border-slate-100">
+                        {/* Phone Number */}
+                        <div className="pt-2">
+                          <a
+                            href={`tel:${order.phone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[11px] text-[#0F4C5C] hover:underline inline-flex items-center gap-1 font-medium bg-[#0F4C5C]/5 px-2 py-1 rounded-lg"
+                            title="Tap to call customer"
+                          >
+                            <Phone className="size-3" /> {order.phone || "No phone"}
+                          </a>
+                        </div>
+
+                        {/* Garments Box */}
+                        <div className="bg-slate-50 p-2.5 rounded-xl text-xs text-slate-600 font-medium border border-slate-100">
+                          <span className="text-[10px] text-slate-400 block mb-0.5 font-bold uppercase tracking-wider">
+                            Garments:
+                          </span>
+                          <p className="truncate text-slate-700">{order.items}</p>
+                        </div>
+
+                        {/* Action Row (SMS, Share, View) */}
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs gap-2">
+                          <div className="text-[11px] text-slate-500">
+                            <span>Total: </span>
+                            <strong className="text-slate-800 font-bold">{order.amount}</strong>
+                            <span className="ml-1.5">
+                              {dueAmount > 0 ? (
+                                <span className="text-rose-600 font-bold">₹{dueAmount} due</span>
+                              ) : (
+                                <span className="text-emerald-600 font-bold">Paid</span>
+                              )}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => handleSendSingleSms(order, e)}
+                              className="p-1.5 sm:p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs active:scale-95 transition"
+                              title="Send SMS"
+                            >
+                              <MessageSquare className="size-3.5 text-[#0F4C5C]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleShareOrder(order, e)}
+                              className="p-1.5 sm:p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs active:scale-95 transition"
+                              title="Share Bill"
+                            >
+                              <Share2 className="size-3.5 text-[#0F4C5C]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedOrder(order);
+                              }}
+                              className="px-2.5 sm:px-3 py-1.5 bg-[#0F4C5C] text-white hover:bg-[#0F4C5C]/90 font-bold rounded-xl text-[11px] flex items-center gap-1 shadow-2xs active:scale-95 transition"
+                            >
+                              <Eye className="size-3.5" /> View
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
