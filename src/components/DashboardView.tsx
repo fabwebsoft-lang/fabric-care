@@ -21,7 +21,7 @@ export default function DashboardView({
 }) {
   const { data: stats } = trpc.dashboard.stats.useQuery();
   const { data: orders = [] } = trpc.orders.list.useQuery();
-  const { data: statements } = trpc.reports.businessStatements.useQuery({});
+  const { data: statements } = trpc.reports.businessStatements.useQuery({ period: "7_days" });
 
   const metrics = stats || {
     todaysSales: 0,
@@ -135,7 +135,7 @@ export default function DashboardView({
           </div>
           <div>
             <p className="text-lg sm:text-xl font-bold text-amber-600 tracking-tight">
-              {outstandingProcessesCount} Orders
+              {outstandingProcessesCount} {outstandingProcessesCount === 1 ? "Order" : "Orders"}
             </p>
             <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
               {receivedCount} recv · {processingCount} washing
@@ -156,7 +156,7 @@ export default function DashboardView({
           </div>
           <div>
             <p className="text-lg sm:text-xl font-bold text-indigo-600 tracking-tight">
-              {needToDeliverCount} Orders
+              {needToDeliverCount} {needToDeliverCount === 1 ? "Order" : "Orders"}
             </p>
             <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
               Ready for pickup/delivery
@@ -177,7 +177,7 @@ export default function DashboardView({
           </div>
           <div>
             <p className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
-              {activeProcessCount} Orders
+              {activeProcessCount} {activeProcessCount === 1 ? "Order" : "Orders"}
             </p>
             <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">Active total workload</p>
           </div>

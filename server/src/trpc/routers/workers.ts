@@ -26,9 +26,21 @@ export const workersRouter = router({
   }),
 
   create: requirePermission("canManageRoles")
-    .input(z.object({ name: z.string().min(1), role: roleSchema }))
+    .input(z.object({ name: z.string().min(1), role: roleSchema, pin: z.string().length(4).optional() }))
     .mutation(async ({ input }) => {
-      const worker = await Worker.create({ name: input.name, role: input.role, active: true });
+      if ((input.role === "admin" || input.role === "manager") && (!input.pin || !/^\d{4}$/.test(input.pin))) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Admin and Manager roles require a 4-digit security PIN.",
+        });
+      }
+      const pinHash = input.pin ? await hashSecret(input.pin) : undefined;
+      const worker = await Worker.create({
+        name: input.name,
+        role: input.role,
+        pinHash,
+        active: true,
+      });
       return { id: worker._id.toString(), name: worker.name, role: worker.role };
     }),
 
@@ -38,9 +50,17 @@ export const workersRouter = router({
   updateRole: requirePermission("canManageRoles")
     .input(z.object({ workerId: z.string(), role: roleSchema }))
     .mutation(async ({ input }) => {
-      const worker = await Worker.findByIdAndUpdate(input.workerId, { role: input.role }, { new: true });
-      if (!worker) throw new TRPCError({ code: "NOT_FOUND" });
-      return { id: worker._id.toString(), role: worker.role };
+      const existing = await Worker.findById(input.workerId);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if ((input.role === "admin" || input.role === "manager") && !existing.pinHash) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot assign Admin or Manager role without a security PIN. Set a PIN first.",
+        });
+      }
+      existing.role = input.role;
+      await existing.save();
+      return { id: existing._id.toString(), role: existing.role };
     }),
 
   delete: requirePermission("canManageRoles")
@@ -51,7 +71,7 @@ export const workersRouter = router({
     }),
 
   setPin: requirePermission("canManageRoles")
-    .input(z.object({ workerId: z.string(), pin: z.string().length(4) }))
+    .input(z.object({ workerId: z.string(), pin: z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits") }))
     .mutation(async ({ input }) => {
       const pinHash = await hashSecret(input.pin);
       const worker = await Worker.findByIdAndUpdate(input.workerId, { pinHash }, { new: true });

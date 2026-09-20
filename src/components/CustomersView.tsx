@@ -109,7 +109,9 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
 
                   <div className="flex justify-between items-center text-slate-600">
                     <span>Total Orders:</span>
-                    <span className="font-bold text-slate-800">{c.orderCount} orders</span>
+                    <span className="font-bold text-slate-800">
+                      {c.orderCount} {c.orderCount === 1 ? "order" : "orders"}
+                    </span>
                   </div>
 
                   <div className="flex justify-between items-center text-slate-600">

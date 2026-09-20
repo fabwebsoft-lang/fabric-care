@@ -209,14 +209,22 @@ export default function Home() {
   }, [shop]);
 
   useEffect(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
+    const isToday = (dateStr?: string | Date | null) => {
+      if (!dateStr) return false;
+      const d = new Date(dateStr);
+      const now = new Date();
+      return (
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate()
+      );
+    };
     const active = orders.filter((order) => order.status !== "Collected");
-    const today = orders.filter((order) => new Date(order.createdAt) >= start);
+    const today = orders.filter((order) => isToday(order.createdAt));
     const processCounts = { Received: active.filter((order) => order.status === "Received").length, Processing: active.filter((order) => order.status === "Processing").length, Ready: active.filter((order) => order.status === "Ready").length };
     setOverviewMetrics({
       todaysRevenue: today.reduce((sum, order) => sum + money(order.amount), 0),
-      collectedToday: orders.filter((order) => new Date(order.updatedAt) >= start).reduce((sum, order) => sum + order.amountPaid, 0),
+      collectedToday: today.reduce((sum, order) => sum + order.amountPaid, 0),
       pendingDues: orders.reduce((sum, order) => sum + Math.max(0, order.totalAmount - order.amountPaid), 0),
       inProcessCount: active.length,
       readyCount: processCounts.Ready,

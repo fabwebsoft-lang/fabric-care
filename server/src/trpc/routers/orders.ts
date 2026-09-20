@@ -165,6 +165,21 @@ export const ordersRouter = router({
       return toApiOrder(order);
     }),
 
+  bulkUpdateStatus: requirePermission("canUpdateOrderStatus")
+    .input(
+      z.object({
+        ids: z.array(z.string()).min(1),
+        status: z.enum(["Received", "Processing", "Ready", "Collected"]),
+      })
+    )
+    .mutation(async ({ input }) => {
+      await Order.updateMany(
+        { _id: { $in: input.ids } },
+        { status: input.status, updatedAt: new Date() }
+      );
+      return { success: true, count: input.ids.length };
+    }),
+
   settlePayment: requirePermission("canSettlePayments")
     .input(
       z.object({
@@ -182,6 +197,21 @@ export const ordersRouter = router({
       if (input.deliveryType) order.deliveryType = input.deliveryType;
       await order.save();
       return toApiOrder(order);
+    }),
+
+  bulkMarkAsPaid: requirePermission("canSettlePayments")
+    .input(
+      z.object({
+        ids: z.array(z.string()).min(1),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const orders = await Order.find({ _id: { $in: input.ids } });
+      for (const order of orders) {
+        order.amountPaid = order.totalAmount;
+        await order.save();
+      }
+      return { success: true, count: orders.length };
     }),
 
   delete: requirePermission("canDeleteOrders")

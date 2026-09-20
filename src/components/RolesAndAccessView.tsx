@@ -29,6 +29,7 @@ export default function RolesAndAccessView() {
   const [newWorkerName, setNewWorkerName] = useState("");
   const [newWorkerPhone, setNewWorkerPhone] = useState("");
   const [newWorkerRole, setNewWorkerRole] = useState<UserRole>("staff");
+  const [newWorkerPin, setNewWorkerPin] = useState("");
 
   const [pinWorkerId, setPinWorkerId] = useState<string | null>(null);
   const [pinInput, setPinInput] = useState("");
@@ -39,6 +40,7 @@ export default function RolesAndAccessView() {
       setShowAddWorker(false);
       setNewWorkerName("");
       setNewWorkerPhone("");
+      setNewWorkerPin("");
       toast.success("Team member added successfully");
     },
     onError: (err) => toast.error("Failed to add worker", { description: err.message }),
@@ -73,9 +75,14 @@ export default function RolesAndAccessView() {
   const handleAddWorker = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWorkerName.trim()) return;
+    if ((newWorkerRole === "admin" || newWorkerRole === "manager") && newWorkerPin.length !== 4) {
+      toast.error("Please enter a 4-digit security PIN for Admin or Manager role.");
+      return;
+    }
     createWorkerMutation.mutate({
       name: newWorkerName.trim(),
       role: newWorkerRole,
+      pin: newWorkerPin || undefined,
     });
   };
 
@@ -439,13 +446,27 @@ export default function RolesAndAccessView() {
                       <p className="text-[10px] font-semibold text-slate-600">Approve as:</p>
                       <div className="flex gap-1.5">
                         <button
-                          onClick={() => updateWorkerRoleMutation.mutate({ workerId: w.id, role: "admin" })}
+                          onClick={() => {
+                            if (!w.hasPin) {
+                              toast.error(`Cannot approve ${w.name} as Admin without setting a PIN first.`);
+                              setPinWorkerId(w.id);
+                              return;
+                            }
+                            updateWorkerRoleMutation.mutate({ workerId: w.id, role: "admin" });
+                          }}
                           className="flex-1 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-purple-700 hover:bg-purple-50 transition text-[11px]"
                         >
                           👑 Admin
                         </button>
                         <button
-                          onClick={() => updateWorkerRoleMutation.mutate({ workerId: w.id, role: "manager" })}
+                          onClick={() => {
+                            if (!w.hasPin) {
+                              toast.error(`Cannot approve ${w.name} as Manager without setting a PIN first.`);
+                              setPinWorkerId(w.id);
+                              return;
+                            }
+                            updateWorkerRoleMutation.mutate({ workerId: w.id, role: "manager" });
+                          }}
                           className="flex-1 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-blue-700 hover:bg-blue-50 transition text-[11px]"
                         >
                           👔 Manager
@@ -480,13 +501,23 @@ export default function RolesAndAccessView() {
                   <div className="flex justify-between items-start gap-2">
                     <div>
                       <p className="font-bold text-slate-800 text-sm">{w.name}</p>
-                      <p className="text-slate-500 text-[11px]">{w.email || "PIN-only · no login"}</p>
+                      <p className="text-slate-500 text-[11px]">{w.email || (w.hasPin ? "PIN-only access" : "No login credentials")}</p>
+                      {(w.role === "admin" || w.role === "manager") && !w.hasPin && (
+                        <span className="inline-flex items-center gap-1 mt-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded font-medium">
+                          <AlertTriangle className="size-3 text-amber-600" /> Restricted: PIN required
+                        </span>
+                      )}
                     </div>
 
                     <select
                       value={currentRoleKey}
                       onChange={(e) => {
                         const newRole = e.target.value as UserRole;
+                        if ((newRole === "admin" || newRole === "manager") && !w.hasPin) {
+                          toast.error(`Cannot assign ${newRole === "admin" ? "Admin" : "Manager"} role without setting a PIN. Please set a security PIN for ${w.name} first.`);
+                          setPinWorkerId(w.id);
+                          return;
+                        }
                         updateWorkerRoleMutation.mutate({
                           workerId: w.id,
                           role: newRole,
@@ -508,7 +539,7 @@ export default function RolesAndAccessView() {
                         </span>
                       ) : (
                         <span className="text-amber-600 font-semibold flex items-center gap-1">
-                          <AlertTriangle className="size-3" /> No PIN
+                          <AlertTriangle className="size-3" /> No PIN Set
                         </span>
                       )}
                     </div>
@@ -584,6 +615,26 @@ export default function RolesAndAccessView() {
               </select>
             </div>
 
+            {(newWorkerRole === "admin" || newWorkerRole === "manager") && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Security PIN (4 digits) *
+                </label>
+                <input
+                  type="password"
+                  maxLength={4}
+                  required
+                  value={newWorkerPin}
+                  onChange={(e) => setNewWorkerPin(e.target.value.replace(/\D/g, ""))}
+                  placeholder="e.g. 1234"
+                  className="w-full px-3 py-2.5 text-center font-mono text-base tracking-widest bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
+                />
+                <p className="text-[10px] text-amber-700 mt-1">
+                  {newWorkerRole === "admin" ? "Admin" : "Manager"} role requires a 4-digit security PIN.
+                </p>
+              </div>
+            )}
+
             <div className="pt-2 flex gap-2">
               <button
                 type="button"
@@ -609,15 +660,15 @@ export default function RolesAndAccessView() {
         <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
           <form onSubmit={handleSetPin} className="bg-white rounded-2xl sm:rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
             <h3 className="text-base font-bold text-[#0F4C5C]">Set Worker Security PIN</h3>
-            <p className="text-[11px] sm:text-xs text-slate-500">Enter a 4 to 6 digit security PIN for this team member</p>
+            <p className="text-[11px] sm:text-xs text-slate-500">Enter a 4-digit security PIN for this team member</p>
 
             <input
               type="password"
-              maxLength={6}
+              maxLength={4}
               required
               autoFocus
               value={pinInput}
-              onChange={(e) => setPinInput(e.target.value)}
+              onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
               placeholder="e.g. 1234"
               className="w-full px-3 py-2.5 text-center font-mono text-lg tracking-widest bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
             />
@@ -635,8 +686,8 @@ export default function RolesAndAccessView() {
               </button>
               <button
                 type="submit"
-                disabled={setPinMutation.isPending}
-                className="flex-1 py-2.5 bg-[#0F4C5C] text-white text-xs font-bold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs"
+                disabled={setPinMutation.isPending || pinInput.length !== 4}
+                className="flex-1 py-2.5 bg-[#0F4C5C] text-white text-xs font-bold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs disabled:opacity-50"
               >
                 {setPinMutation.isPending ? "Saving..." : "Save PIN"}
               </button>

@@ -20,8 +20,8 @@ export default function ExpensesView() {
   });
 
   const totalExpenseAmount = apiExpenses.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
-  const totalOrderRevenue = orders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
-  const netBalance = totalOrderRevenue - totalExpenseAmount;
+  const totalCollectedAmount = orders.reduce((sum, o) => sum + Number(o.amountPaid || 0), 0);
+  const netProfit = totalCollectedAmount - totalExpenseAmount;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -54,10 +54,10 @@ export default function ExpensesView() {
                 ₹{totalExpenseAmount.toLocaleString("en-IN")}
               </p>
             </div>
-            <div className="rounded-xl p-3.5 bg-emerald-50 border border-emerald-100">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Net Profit</p>
-              <p className="mt-1 text-base sm:text-lg font-bold text-emerald-800">
-                ₹{netBalance.toLocaleString("en-IN")}
+            <div className={`rounded-xl p-3.5 border ${netProfit >= 0 ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"}`}>
+              <p className={`text-[10px] font-bold uppercase tracking-wider ${netProfit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>Net Profit</p>
+              <p className={`mt-1 text-base sm:text-lg font-bold ${netProfit >= 0 ? "text-emerald-800" : "text-rose-800"}`}>
+                ₹{netProfit.toLocaleString("en-IN")}
               </p>
             </div>
             <div className="rounded-xl p-3.5 bg-blue-50 border border-blue-100">

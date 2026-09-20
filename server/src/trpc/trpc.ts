@@ -15,9 +15,19 @@ export async function createContext({ req }: CreateExpressContextOptions) {
   // immediately, without the user needing to log out and back in.
   let selfRole: RoleName | "pending" | null = null;
   if (session?.userId) {
-    const self = await Worker.findById(session.userId).select("role active");
+    const self = await Worker.findById(session.userId).select("role active pinHash passwordHash");
     if (self?.active) {
-      selfRole = self.role === "admin" || self.role === "manager" || self.role === "staff" ? self.role : "pending";
+      if (self.role === "admin" || self.role === "manager") {
+        if (!self.pinHash && !self.passwordHash) {
+          selfRole = "staff";
+        } else {
+          selfRole = self.role;
+        }
+      } else if (self.role === "staff") {
+        selfRole = "staff";
+      } else {
+        selfRole = "pending";
+      }
     }
   }
 

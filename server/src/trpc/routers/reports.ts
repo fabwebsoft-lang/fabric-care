@@ -5,18 +5,24 @@ import { Expense } from "../../models/Expense.js";
 
 const filterInput = z
   .object({
-    period: z.enum(["today", "month", "financial_year", "custom"]).default("month"),
+    period: z.enum(["today", "7_days", "month", "financial_year", "custom"]).default("month"),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
   })
   .optional();
 
-function getPeriodDateRange(period: "today" | "month" | "financial_year" | "custom", startStr?: string, endStr?: string) {
+function getPeriodDateRange(period: "today" | "7_days" | "month" | "financial_year" | "custom", startStr?: string, endStr?: string) {
   const now = new Date();
 
   if (period === "today") {
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    return { start, end, groupMode: "day" as const };
+  }
+
+  if (period === "7_days") {
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6, 0, 0, 0, 0);
     return { start, end, groupMode: "day" as const };
   }
 

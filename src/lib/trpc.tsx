@@ -389,12 +389,46 @@ export const trpc = {
           onError: options?.onError,
         }),
     },
+    bulkUpdateStatus: {
+      useMutation: (options?: {
+        onSuccess?: (data: { count: number; ids: string[] }, variables: { ids: string[]; status: Order["status"] }) => void | Promise<any>;
+        onError?: (err: Error) => void;
+      }) =>
+        useMutation({
+          mutationFn: async (input: { ids: string[]; status: Order["status"] }) => {
+            try {
+              return await client.orders.bulkUpdateStatus.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: options?.onSuccess,
+          onError: options?.onError,
+        }),
+    },
     settlePayment: {
-      useMutation: (options?: { onSuccess?: (data: Order) => void; onError?: (err: Error) => void }) =>
+      useMutation: (options?: { onSuccess?: (data: Order, variables?: any) => void; onError?: (err: Error) => void }) =>
         useMutation({
           mutationFn: async (input: any) => {
             try {
               return toDisplayOrder(await client.orders.settlePayment.mutate(input));
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: options?.onSuccess,
+          onError: options?.onError,
+        }),
+    },
+    bulkMarkAsPaid: {
+      useMutation: (options?: {
+        onSuccess?: (data: { count: number; ids: string[] }, variables: { ids: string[] }) => void | Promise<any>;
+        onError?: (err: Error) => void;
+      }) =>
+        useMutation({
+          mutationFn: async (input: { ids: string[] }) => {
+            try {
+              return await client.orders.bulkMarkAsPaid.mutate(input);
             } catch (err) {
               throw new Error(errorMessage(err));
             }
@@ -571,7 +605,7 @@ export const trpc = {
     create: {
       useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) =>
         useMutation({
-          mutationFn: async (input: { name: string; role: Worker["role"] }) => {
+          mutationFn: async (input: { name: string; role: Worker["role"]; pin?: string }) => {
             try {
               return await client.workers.create.mutate(input);
             } catch (err) {
@@ -673,7 +707,7 @@ export const trpc = {
 
   reports: {
     businessStatements: {
-      useQuery: (input?: { period?: "today" | "month" | "financial_year" | "custom"; startDate?: string; endDate?: string }, options?: any) =>
+      useQuery: (input?: { period?: "today" | "7_days" | "month" | "financial_year" | "custom"; startDate?: string; endDate?: string }, options?: any) =>
         useQuery<any>({
           queryKey: ["reports.businessStatements", input],
           queryFn: async () => toDisplayStatements(await client.reports.businessStatements.query(input)),
