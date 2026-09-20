@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import InvoiceModal from "./InvoiceModal";
 import {
   IndianRupee,
   CircleDollarSign,
@@ -9,6 +11,7 @@ import {
   TrendingUp,
   PackageCheck,
   ChevronRight,
+  Eye,
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
@@ -22,6 +25,8 @@ export default function DashboardView({
   const { data: stats } = trpc.dashboard.stats.useQuery();
   const { data: orders = [] } = trpc.orders.list.useQuery();
   const { data: statements } = trpc.reports.businessStatements.useQuery({ period: "7_days" });
+
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
   const metrics = stats || {
     todaysSales: 0,
@@ -232,22 +237,36 @@ export default function DashboardView({
 
         <div className="divide-y divide-slate-100">
           {recentOrders.map((order) => (
-            <div key={order.id} className="py-3 flex items-center justify-between text-xs gap-2">
+            <div
+              key={order.id}
+              onClick={() => setSelectedOrder(order)}
+              className="py-3 px-2 -mx-2 rounded-xl flex items-center justify-between text-xs gap-2 cursor-pointer hover:bg-slate-50 transition group"
+            >
               <div className="min-w-0 flex-1">
                 <span className="font-mono font-bold text-[#0F4C5C] block text-xs">{order.id}</span>
                 <span className="font-semibold text-slate-800 block truncate">{order.customer}</span>
                 <span className="text-slate-400 text-[11px] block truncate">{order.items}</span>
               </div>
-              <div className="text-right shrink-0">
-                <span className="font-bold text-slate-800 block text-xs">₹{order.totalAmount}</span>
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-700 mt-0.5 inline-block">
-                  {order.status}
-                </span>
+              <div className="text-right shrink-0 flex items-center gap-2">
+                <div>
+                  <span className="font-bold text-slate-800 block text-xs">₹{order.totalAmount}</span>
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-700 mt-0.5 inline-block">
+                    {order.status}
+                  </span>
+                </div>
+                <ChevronRight className="size-4 text-slate-300 group-hover:text-[#0F4C5C] group-hover:translate-x-0.5 transition" />
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {selectedOrder && (
+        <InvoiceModal
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Users, Search, Phone, Tag, CreditCard, ChevronRight, History, X } from "lucide-react";
+import InvoiceModal from "./InvoiceModal";
+import { Users, Search, Phone, Tag, CreditCard, ChevronRight, History, X, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?: any) => void }) {
@@ -8,6 +9,7 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
   const { data: orders = [] } = trpc.orders.list.useQuery();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
 
   const customerStats = customers.map((c) => {
     const customerOrders = orders.filter((o) => o.phone === c.phone || o.customer === c.name);
@@ -153,13 +155,33 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
         <CustomerHistoryModal
           customer={selectedCustomer}
           onClose={() => setSelectedCustomer(null)}
+          onSelectOrder={(o) => {
+            setSelectedCustomer(null);
+            setSelectedInvoiceOrder(o);
+          }}
+        />
+      )}
+
+      {/* Invoice Modal for selected order */}
+      {selectedInvoiceOrder && (
+        <InvoiceModal
+          order={selectedInvoiceOrder}
+          onClose={() => setSelectedInvoiceOrder(null)}
         />
       )}
     </div>
   );
 }
 
-function CustomerHistoryModal({ customer, onClose }: { customer: any; onClose: () => void }) {
+function CustomerHistoryModal({
+  customer,
+  onClose,
+  onSelectOrder,
+}: {
+  customer: any;
+  onClose: () => void;
+  onSelectOrder: (order: any) => void;
+}) {
   return (
     <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
       <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 max-h-[90vh] flex flex-col">
@@ -192,9 +214,15 @@ function CustomerHistoryModal({ customer, onClose }: { customer: any; onClose: (
             <p className="text-xs text-slate-400 text-center py-6">No order history found.</p>
           ) : (
             customer.customerOrders.map((o: any) => (
-              <div key={o.id} className="border border-slate-200/80 p-3 rounded-xl space-y-1 text-xs bg-slate-50/50">
+              <div
+                key={o.id}
+                onClick={() => onSelectOrder(o)}
+                className="border border-slate-200/80 p-3 rounded-xl space-y-1 text-xs bg-slate-50/50 hover:bg-slate-100/80 cursor-pointer transition group"
+              >
                 <div className="flex justify-between font-mono font-bold text-[#0F4C5C]">
-                  <span>{o.id}</span>
+                  <span className="group-hover:underline flex items-center gap-1">
+                    <FileText className="size-3" /> {o.id}
+                  </span>
                   <span className="text-slate-700 font-sans font-semibold text-[11px]">{o.status}</span>
                 </div>
                 <p className="text-slate-600 text-[11px] line-clamp-2">{o.items}</p>

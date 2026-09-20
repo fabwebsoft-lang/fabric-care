@@ -16,7 +16,7 @@ export interface RoleTokenPayload {
 
 export function signSessionToken(userId: string): string {
   const payload: SessionTokenPayload = { type: "session", userId };
-  return jwt.sign(payload, env.jwtSecret, { expiresIn: "7d" });
+  return jwt.sign(payload, env.jwtSecret, { expiresIn: "30d" });
 }
 
 export function signRoleToken(workerId: string, role: RoleName): string {

@@ -4,10 +4,10 @@
 
 export interface BillOrder {
   id: string;
-  createdAt: string;
+  createdAt?: string | Date;
   customer: string;
   phone: string;
-  items: string;
+  items?: string;
   serviceType?: string;
   totalAmount: number;
   amountPaid: number;
@@ -50,6 +50,7 @@ export function buildBillText(order: BillOrder): string {
     `Balance: ₹${dueAmount}`,
     `Status: ${order.status}`,
     "Thank you!",
+    "Powered by Mallist - mallist.online",
   ].join("\n");
 }
 

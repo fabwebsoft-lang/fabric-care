@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAccessControl } from "@/contexts/AccessControlContext";
 import { buildBillText, getSmsUri, getWhatsAppUri, BillOrder } from "@/lib/billText";
+import InvoiceModal from "./InvoiceModal";
 import {
   FileText,
   Search,
@@ -93,11 +94,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [shareOrder, setShareOrder] = useState<any | null>(null);
   const [smsQueueOrders, setSmsQueueOrders] = useState<any[] | null>(null);
-  const [bulkConfirmAction, setBulkConfirmAction] = useState<{
-    type: "status" | "paid";
-    status?: "Received" | "Processing" | "Ready" | "Collected";
-    ids: string[];
-  } | null>(null);
+  const [bulkConfirmPaidIds, setBulkConfirmPaidIds] = useState<string[] | null>(null);
 
   // Clear selection when filters change
   useEffect(() => {
@@ -105,16 +102,6 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
   }, [statusFilter, searchQuery, dateFilter, customFromDate, customToDate]);
 
   // Mutations
-  const bulkUpdateStatusMutation = trpc.orders.bulkUpdateStatus.useMutation({
-    onSuccess: async (_data: { count: number; ids: string[] }, variables: { ids: string[]; status: any }) => {
-      await utils.orders.list.invalidate();
-      await utils.dashboard.stats.invalidate();
-      toast.success(`Updated status to ${variables.status} for ${variables.ids.length} bills`);
-      setSelectedIds([]);
-      setBulkConfirmAction(null);
-    },
-    onError: (err: Error) => toast.error("Failed to update status", { description: err.message }),
-  });
 
   const bulkMarkAsPaidMutation = trpc.orders.bulkMarkAsPaid.useMutation({
     onSuccess: async (_data: { count: number; ids: string[] }, variables: { ids: string[] }) => {
@@ -122,9 +109,19 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
       await utils.dashboard.stats.invalidate();
       toast.success(`Marked ${variables.ids.length} bills as Paid in Full`);
       setSelectedIds([]);
-      setBulkConfirmAction(null);
+      setBulkConfirmPaidIds(null);
     },
     onError: (err: Error) => toast.error("Failed to update payments", { description: err.message }),
+  });
+
+  const deleteOrderMutation = trpc.orders.delete.useMutation({
+    onSuccess: async () => {
+      await utils.orders.list.invalidate();
+      await utils.dashboard.stats.invalidate();
+      toast.success("Bill deleted successfully");
+      setSelectedOrder(null);
+    },
+    onError: (err: Error) => toast.error("Failed to delete bill", { description: err.message }),
   });
 
   // Date filtering logic (IST based)
@@ -472,77 +469,39 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
 
       {/* FEATURE 1: Sticky Bulk Action Bar */}
       {selectedIds.length > 0 && (
-        <div className="sticky top-2 z-30 bg-[#0F4C5C] text-white p-3 sm:p-4 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200 border border-white/10">
-          <div className="flex items-center gap-2.5">
-            <span className="size-7 rounded-full bg-white/20 grid place-items-center font-bold text-xs">
+        <div className="sticky top-2 z-30 bg-[#0F4C5C] text-white p-2.5 sm:p-3.5 rounded-2xl shadow-xl flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-2 duration-200 border border-white/10">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="size-6 sm:size-7 rounded-full bg-white/20 grid place-items-center font-bold text-[11px] sm:text-xs">
               {selectedIds.length}
             </span>
             <span className="font-bold text-xs sm:text-sm">
-              {selectedIds.length} {selectedIds.length === 1 ? "bill" : "bills"} selected
+              <span className="hidden sm:inline">{selectedIds.length} {selectedIds.length === 1 ? "bill" : "bills"} </span>selected
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Status Change Dropdown Menu */}
-            <div className="relative group">
-              <select
-                defaultValue=""
-                onChange={(e) => {
-                  const val = e.target.value as any;
-                  if (val) {
-                    setBulkConfirmAction({
-                      type: "status",
-                      status: val,
-                      ids: selectedIds,
-                    });
-                    e.target.value = "";
-                  }
-                }}
-                className="px-3 py-1.5 bg-white/15 hover:bg-white/25 border border-white/30 text-white rounded-xl text-xs font-bold focus:outline-none cursor-pointer"
-              >
-                <option value="" disabled className="text-slate-800">
-                  Change Status ▾
-                </option>
-                <option value="Received" className="text-slate-800">
-                  Move to Received
-                </option>
-                <option value="Processing" className="text-slate-800">
-                  Move to Processing
-                </option>
-                <option value="Ready" className="text-slate-800">
-                  Move to Ready
-                </option>
-                <option value="Collected" className="text-slate-800">
-                  Move to Collected
-                </option>
-              </select>
-            </div>
-
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Mark as Paid Button */}
             <button
-              onClick={() => {
-                setBulkConfirmAction({
-                  type: "paid",
-                  ids: selectedIds,
-                });
-              }}
-              className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs active:scale-95"
+              onClick={() => setBulkConfirmPaidIds(selectedIds)}
+              className="px-2.5 sm:px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs active:scale-95 whitespace-nowrap"
             >
-              <CheckCircle2 className="size-3.5" /> Mark as Paid
+              <CheckCircle2 className="size-3.5 shrink-0" />
+              <span>Mark as Paid</span>
             </button>
 
             {/* Bulk SMS Queue Button */}
             <button
               onClick={handleTriggerBulkSms}
-              className="px-3 py-1.5 bg-white text-[#0F4C5C] hover:bg-slate-100 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs active:scale-95"
+              className="px-2.5 sm:px-3 py-1.5 bg-white text-[#0F4C5C] hover:bg-slate-100 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs active:scale-95 whitespace-nowrap"
             >
-              <Send className="size-3.5" /> Send SMS Queue
+              <Send className="size-3.5 shrink-0" />
+              <span>SMS Queue</span>
             </button>
 
             {/* Clear Selection */}
             <button
               onClick={() => setSelectedIds([])}
-              className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white/90 rounded-xl text-xs font-medium transition"
+              className="px-2 sm:px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white/90 rounded-xl text-xs font-medium transition whitespace-nowrap"
             >
               Clear
             </button>
@@ -780,50 +739,35 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
       )}
 
       {/* Confirmation Modal for Bulk Actions */}
-      {bulkConfirmAction && (
+      {bulkConfirmPaidIds && bulkConfirmPaidIds.length > 0 && (
         <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4">
             <h3 className="text-base font-bold text-[#0F4C5C]">
-              {bulkConfirmAction.type === "status"
-                ? `Move ${bulkConfirmAction.ids.length} Bills to ${bulkConfirmAction.status}?`
-                : `Mark ${bulkConfirmAction.ids.length} Bills as Paid in Full?`}
+              Mark {bulkConfirmPaidIds.length} {bulkConfirmPaidIds.length === 1 ? "Bill" : "Bills"} as Paid in Full?
             </h3>
             <p className="text-xs text-slate-500">
-              {bulkConfirmAction.type === "status"
-                ? `This will update the order status to "${bulkConfirmAction.status}" for all ${bulkConfirmAction.ids.length} selected bills.`
-                : `This will settle the outstanding dues and mark all ${bulkConfirmAction.ids.length} selected bills as Paid.`}
+              This will settle the outstanding dues and mark all {bulkConfirmPaidIds.length} selected bills as Paid.
             </p>
 
             <div className="pt-2 flex gap-2">
               <button
                 type="button"
-                onClick={() => setBulkConfirmAction(null)}
+                onClick={() => setBulkConfirmPaidIds(null)}
                 className="flex-1 py-2.5 border border-slate-300 text-slate-600 text-xs font-semibold rounded-xl hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={
-                  bulkUpdateStatusMutation.isPending || bulkMarkAsPaidMutation.isPending
-                }
+                disabled={bulkMarkAsPaidMutation.isPending}
                 onClick={() => {
-                  if (bulkConfirmAction.type === "status" && bulkConfirmAction.status) {
-                    bulkUpdateStatusMutation.mutate({
-                      ids: bulkConfirmAction.ids,
-                      status: bulkConfirmAction.status,
-                    });
-                  } else if (bulkConfirmAction.type === "paid") {
-                    bulkMarkAsPaidMutation.mutate({
-                      ids: bulkConfirmAction.ids,
-                    });
-                  }
+                  bulkMarkAsPaidMutation.mutate({
+                    ids: bulkConfirmPaidIds,
+                  });
                 }}
                 className="flex-1 py-2.5 bg-[#0F4C5C] text-white text-xs font-bold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs disabled:opacity-50"
               >
-                {bulkUpdateStatusMutation.isPending || bulkMarkAsPaidMutation.isPending
-                  ? "Updating..."
-                  : "Confirm & Update"}
+                {bulkMarkAsPaidMutation.isPending ? "Updating..." : "Confirm & Update"}
               </button>
             </div>
           </div>
@@ -843,20 +787,27 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
         <ShareBillModal order={shareOrder} onClose={() => setShareOrder(null)} />
       )}
 
-      {/* Bill Details Modal */}
+      {/* Bill Details / Professional Invoice Modal */}
       {selectedOrder && (
-        <BillDetailsModal
+        <InvoiceModal
           order={selectedOrder}
           onClose={() => setSelectedOrder(null)}
-          onShare={() => {
-            const order = selectedOrder;
-            setSelectedOrder(null);
-            handleShareOrder(order);
-          }}
           onSendSms={() => {
             const order = selectedOrder;
             handleSendSingleSms(order);
           }}
+          onDelete={() => {
+            if (!canDelete) {
+              toast.error("Permission Denied", {
+                description: "Staff role is restricted from deleting bills. Contact an Admin or Manager.",
+              });
+              return;
+            }
+            if (confirm(`Are you sure you want to delete Bill ${selectedOrder.id}? This action cannot be undone.`)) {
+              deleteOrderMutation.mutate({ id: selectedOrder.id });
+            }
+          }}
+          canDelete={canDelete}
         />
       )}
     </div>
@@ -1072,178 +1023,4 @@ function ShareBillModal({
   );
 }
 
-/**
- * Bill Details Modal with Download, SMS, and Share buttons
- */
-function BillDetailsModal({
-  order,
-  onClose,
-  onShare,
-  onSendSms,
-}: {
-  order: any;
-  onClose: () => void;
-  onShare: () => void;
-  onSendSms: () => void;
-}) {
-  const { canDelete } = useAccessControl();
-  const utils = trpc.useUtils();
-  const dueAmount = Math.max(0, order.totalAmount - order.amountPaid);
-  const orderDateIST = toISTDateString(order.createdAt);
 
-  const deleteOrderMutation = trpc.orders.delete.useMutation({
-    onSuccess: async () => {
-      await utils.orders.list.invalidate();
-      await utils.dashboard.stats.invalidate();
-      toast.success(`Bill ${order.id} deleted`);
-      onClose();
-    },
-    onError: (err) => toast.error("Failed to delete bill", { description: err.message }),
-  });
-
-  const handleDelete = () => {
-    if (!canDelete) {
-      toast.error("Permission Denied", {
-        description: "Staff role is restricted from deleting bills. Contact an Admin or Manager.",
-      });
-      return;
-    }
-    if (confirm(`Are you sure you want to delete Bill ${order.id}? This action cannot be undone.`)) {
-      deleteOrderMutation.mutate({ id: order.id });
-    }
-  };
-
-  const handleDownloadReceipt = () => {
-    const receiptHtml = `<!doctype html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Fabric Care Receipt ${order.id}</title>
-  <style>
-    body { margin:0; background:#f8fafc; color:#0f172a; font:14px Arial,sans-serif; }
-    .receipt { width:100%; max-width:580px; margin:24px auto; background:#fff; padding:28px; border-radius:16px; border:1px solid #e2e8f0; }
-    .brand { color:#0F4C5C; font-size:22px; font-weight:700; }
-    .muted { color:#64748b; font-size:12px; }
-    .rule { border:0; border-top:1px solid #e2e8f0; margin:20px 0; }
-    .row { display:flex; justify-space-between; padding:8px 0; font-size:13px; }
-    .value { font-weight:700; text-align:right; }
-    .footer { margin-top:24px; color:#64748b; font-size:11px; text-align:center; }
-  </style>
-</head>
-<body>
-  <div class="receipt">
-    <div class="brand">Fabric Care</div>
-    <div class="muted">Laundry & Dry Cleaning Operations</div>
-    <hr class="rule">
-    <div class="row"><span class="muted">Bill #</span><span class="value">${order.id}</span></div>
-    <div class="row"><span class="muted">Date</span><span class="value">${orderDateIST}</span></div>
-    <div class="row"><span class="muted">Customer</span><span class="value">${order.customer}</span></div>
-    <div class="row"><span class="muted">Phone</span><span class="value">${order.phone}</span></div>
-    <div class="row"><span class="muted">Garments</span><span class="value">${order.items}</span></div>
-    <div class="row"><span class="muted">Status</span><span class="value">${order.status}</span></div>
-    <hr class="rule">
-    <div class="row"><span class="muted">Total Amount</span><span class="value">${order.amount}</span></div>
-    <div class="row"><span class="muted">Amount Paid</span><span class="value">₹${order.amountPaid}</span></div>
-    <div class="row"><span class="muted">Balance Due</span><span class="value" style="color:${dueAmount > 0 ? '#e11d48' : '#059669'}">₹${dueAmount}</span></div>
-    <div class="footer">Thank you for trusting Fabric Care!</div>
-  </div>
-</body>
-</html>`;
-
-    const blob = new Blob([receiptHtml], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `fabric-care-${order.id.toLowerCase()}-receipt.html`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    toast.success("Receipt downloaded successfully");
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0F4C5C]/50 backdrop-blur-sm p-3 sm:p-6 flex justify-center items-center min-h-screen">
-      <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 bg-slate-50 shrink-0">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-bold text-[#0F4C5C]">{order.id}</span>
-              <span className="text-[10px] text-slate-400 font-medium">{orderDateIST}</span>
-            </div>
-            <h3 className="text-base font-bold text-slate-800">{order.customer}</h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="grid size-8 place-items-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80">
-              <span className="text-[10px] text-slate-400 font-semibold uppercase">Phone</span>
-              <p className="font-bold text-slate-700 mt-0.5">{order.phone || "No phone"}</p>
-            </div>
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80">
-              <span className="text-[10px] text-slate-400 font-semibold uppercase">Status</span>
-              <p className="font-bold text-[#0F4C5C] mt-0.5">{order.status}</p>
-            </div>
-          </div>
-
-          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2">
-            <span className="text-[10px] text-slate-400 font-semibold uppercase block">Garments List</span>
-            <p className="font-medium text-slate-700">{order.items}</p>
-          </div>
-
-          <div className="bg-[#0F4C5C]/5 p-4 rounded-xl border border-[#0F4C5C]/20 space-y-2">
-            <div className="flex justify-between items-center text-slate-600">
-              <span>Total Bill Amount:</span>
-              <span className="font-bold text-slate-800 text-sm">{order.amount}</span>
-            </div>
-            <div className="flex justify-between items-center text-slate-600">
-              <span>Advance Paid:</span>
-              <span className="font-bold text-emerald-600">₹{order.amountPaid}</span>
-            </div>
-            <div className="flex justify-between items-center pt-2 border-t border-[#0F4C5C]/15">
-              <span className="font-bold text-slate-800">Remaining Balance:</span>
-              <span className={`font-bold text-sm ${dueAmount > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                {dueAmount > 0 ? `₹${dueAmount}` : "Paid in Full"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-slate-200 p-4 bg-slate-50 flex flex-wrap gap-2 justify-end shrink-0">
-          <button
-            onClick={onSendSms}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5"
-          >
-            <MessageSquare className="size-3.5 text-[#0F4C5C]" /> Send SMS
-          </button>
-          <button
-            onClick={onShare}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5"
-          >
-            <Share2 className="size-3.5 text-[#0F4C5C]" /> Share
-          </button>
-          <button
-            onClick={handleDownloadReceipt}
-            className="px-3 py-2 bg-[#0F4C5C] text-white font-bold rounded-xl text-xs hover:bg-[#0F4C5C]/90 transition flex items-center gap-1.5 shadow-xs"
-          >
-            <Download className="size-3.5" /> Download
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={deleteOrderMutation.isPending || !canDelete}
-            className="px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200 font-bold rounded-xl text-xs hover:bg-rose-100 transition flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <Trash2 className="size-3.5" /> Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}

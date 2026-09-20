@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { getSessionToken, getCachedUser } from "@/lib/session";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
@@ -8,6 +9,8 @@ type UseAuthOptions = {
 
 export function useAuth(_options?: UseAuthOptions) {
   const utils = trpc.useUtils();
+  const token = typeof window !== "undefined" ? getSessionToken() : null;
+  const cachedUser = typeof window !== "undefined" ? getCachedUser() : null;
 
   const meQuery = trpc.auth.me.useQuery();
 
@@ -24,13 +27,18 @@ export function useAuth(_options?: UseAuthOptions) {
   }, [logoutMutation, utils]);
 
   const state = useMemo(() => {
+    const user = meQuery.data ?? (token ? cachedUser : null);
+    const isLoading = token ? meQuery.isLoading && !user : false;
+
     return {
-      user: meQuery.data ?? null,
-      loading: meQuery.isLoading || logoutMutation.isPending,
+      user: user ?? null,
+      loading: isLoading || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
-      isAuthenticated: Boolean(meQuery.data),
+      isAuthenticated: Boolean(user),
     };
   }, [
+    token,
+    cachedUser,
     meQuery.data,
     meQuery.error,
     meQuery.isLoading,

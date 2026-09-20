@@ -8,6 +8,9 @@ import {
   setRoleToken,
   clearRoleToken,
   getRoleToken,
+  getCachedUser,
+  setCachedUser,
+  clearAllSession,
 } from "./session";
 
 // ---------------------------------------------------------------------------
@@ -269,26 +272,49 @@ export const trpc = {
 
   auth: {
     me: {
-      useQuery: (_input?: any, options?: any) =>
-        useQuery<any>({
+      useQuery: (_input?: any, options?: any) => {
+        const token = getSessionToken();
+        const cached = token ? getCachedUser() : null;
+
+        return useQuery<any>({
           queryKey: ["auth.me"],
           queryFn: async () => {
-            if (!getSessionToken()) return null;
+            const currentToken = getSessionToken();
+            if (!currentToken) return null;
             try {
-              return await client.auth.me.query();
-            } catch {
-              clearSessionToken();
-              clearRoleToken();
+              const res = await client.auth.me.query();
+              if (res) {
+                if (res.refreshedToken) {
+                  setSessionToken(res.refreshedToken);
+                }
+                const userObj = { id: res.id, name: res.name, email: res.email, role: res.role };
+                setCachedUser(userObj);
+                return userObj;
+              }
+              return null;
+            } catch (err: any) {
+              const msg = errorMessage(err).toLowerCase();
+              // Only clear session if explicitly unauthenticated by server (e.g. invalid token, user deleted)
+              if (msg.includes("unauthorized") || msg.includes("forbidden") || msg.includes("invalid token")) {
+                clearAllSession();
+                return null;
+              }
+              // If offline or network error, retain existing cached session
+              const existingCached = getCachedUser();
+              if (existingCached) return existingCached;
               return null;
             }
           },
-          staleTime: Infinity,
-          retry: false,
+          initialData: cached || undefined,
+          staleTime: 1000 * 60 * 5, // 5 minutes fresh
+          gcTime: 1000 * 60 * 60 * 24 * 30, // 30 days cache
+          retry: 2,
           // Poll while awaiting admin approval so the "Contact Admin" screen
           // unlocks on its own once a role is assigned, no refresh needed.
           refetchInterval: (query: any) => (query.state.data?.role === "pending" ? 5000 : false),
           ...options,
-        }),
+        });
+      },
     },
     signup: {
       useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
@@ -298,6 +324,7 @@ export const trpc = {
             try {
               const res = await client.auth.signup.mutate(input);
               setSessionToken(res.token);
+              setCachedUser(res.user);
               return res.user;
             } catch (err) {
               throw new Error(errorMessage(err));
@@ -319,6 +346,7 @@ export const trpc = {
             try {
               const res = await client.auth.login.mutate(input);
               setSessionToken(res.token);
+              setCachedUser(res.user);
               return res.user;
             } catch (err) {
               throw new Error(errorMessage(err));
@@ -337,8 +365,10 @@ export const trpc = {
         const qc = useQueryClient();
         return useMutation({
           mutationFn: async () => {
-            clearSessionToken();
-            clearRoleToken();
+            try {
+              await client.auth.logout.mutate();
+            } catch {}
+            clearAllSession();
             return { success: true };
           },
           onSuccess: (data) => {

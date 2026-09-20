@@ -1,0 +1,952 @@
+import { InvoiceSettings, getInvoiceSettings } from "./invoiceSettings";
+import { numberToIndianWords } from "./numberToWords";
+import { generateQrSvg } from "./qrcode";
+
+export type PaperSize = "A4" | "Thermal80" | "Thermal58";
+
+export interface InvoiceOrderData {
+  id: string;
+  createdAt: string | Date;
+  dueAt?: string | Date | null;
+  due?: string;
+  customer: string;
+  phone: string;
+  customerType?: string;
+  serviceType?: string;
+  status: string;
+  totalAmount: number;
+  amountPaid: number;
+  discount?: number;
+  items?: string;
+  structuredItems?: { name: string; quantity: number; price?: number; service?: string }[];
+}
+
+/**
+ * Formats a Date object or ISO string into DD-MM-YYYY in Asia/Kolkata (IST).
+ */
+export function formatISTDate(dateInput?: string | Date | null): string {
+  if (!dateInput) return "";
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  }).format(d);
+}
+
+/**
+ * Formats rupee currency string: e.g. ₹ 1,250.00 or ₹ 400
+ */
+export function formatRupee(amount: number, showDecimals = true): string {
+  const num = Number(amount) || 0;
+  if (showDecimals && num % 1 !== 0) {
+    return `₹ ${num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return `₹ ${num.toLocaleString("en-IN")}`;
+}
+
+/**
+ * Normalizes order items list for table rendering
+ */
+export function getOrderItemsList(order: InvoiceOrderData) {
+  if (order.structuredItems && order.structuredItems.length > 0) {
+    return order.structuredItems.map((item, idx) => {
+      const qty = Number(item.quantity) || 1;
+      const rate = Number(item.price) || 0;
+      const amount = qty * rate;
+      return {
+        index: idx + 1,
+        name: item.name || "Laundry Item",
+        service: item.service || order.serviceType || "Standard Laundry",
+        quantity: qty,
+        rate,
+        amount,
+      };
+    });
+  }
+
+  // Fallback parsing from items string
+  if (order.items) {
+    const rawParts = order.items.split(/[·,]/).map((s) => s.trim()).filter(Boolean);
+    const parsedItems: { index: number; name: string; service: string; quantity: number; rate: number; amount: number }[] = [];
+
+    // Check if it's formatted like "3 items · Standard Laundry" or item names
+    let runningIdx = 1;
+    for (const part of rawParts) {
+      if (/^\d+\s+items/i.test(part)) continue;
+      parsedItems.push({
+        index: runningIdx++,
+        name: part,
+        service: order.serviceType || "Standard Laundry",
+        quantity: 1,
+        rate: order.totalAmount / Math.max(1, rawParts.length),
+        amount: order.totalAmount / Math.max(1, rawParts.length),
+      });
+    }
+
+    if (parsedItems.length > 0) return parsedItems;
+  }
+
+  return [
+    {
+      index: 1,
+      name: order.serviceType || "Laundry & Dry Cleaning Service",
+      service: order.serviceType || "Standard Laundry",
+      quantity: 1,
+      rate: order.totalAmount,
+      amount: order.totalAmount,
+    },
+  ];
+}
+
+/**
+ * Generates the professional A4 Invoice HTML string
+ */
+export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: InvoiceSettings = getInvoiceSettings()): string {
+  const items = getOrderItemsList(order);
+  const dateStr = formatISTDate(order.createdAt);
+  const deliveryDateStr = order.dueAt ? formatISTDate(order.dueAt) : order.due && order.due !== "—" ? order.due : "";
+
+  const subtotal = items.reduce((sum, item) => sum + item.amount, 0) || order.totalAmount;
+  const discount = Number(order.discount) || 0;
+  const taxableBase = Math.max(0, subtotal - discount);
+
+  let taxAmount = 0;
+  if (settings.enableTax && settings.taxRate > 0) {
+    taxAmount = Math.round((taxableBase * settings.taxRate) / 100);
+  }
+
+  const grandTotal = settings.enableTax ? taxableBase + taxAmount : order.totalAmount;
+  const amountPaid = Number(order.amountPaid) || 0;
+  const balanceDue = Math.max(0, grandTotal - amountPaid);
+  const isPaid = balanceDue <= 0;
+
+  const totalInWords = numberToIndianWords(grandTotal);
+
+  // UPI QR Code (if UPI ID is set)
+  let upiQrSvg = "";
+  if (settings.upiId && settings.upiId.trim()) {
+    const payAmount = balanceDue > 0 ? balanceDue : grandTotal;
+    const upiUri = `upi://pay?pa=${encodeURIComponent(settings.upiId.trim())}&pn=${encodeURIComponent(settings.shopName)}&am=${payAmount}&cu=INR&tn=${encodeURIComponent(`Bill ${order.id}`)}`;
+    upiQrSvg = generateQrSvg(upiUri, 110);
+  }
+
+  const termsLines = (settings.terms || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Invoice - ${order.id} - ${settings.shopName}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm 15mm 15mm;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1e293b;
+      background: #f8fafc;
+      font-size: 13px;
+      line-height: 1.45;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .invoice-container {
+      width: 100%;
+      max-width: 820px;
+      margin: 20px auto;
+      background: #ffffff;
+      padding: 36px 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+      border: 1px solid #e2e8f0;
+      position: relative;
+    }
+    @media print {
+      body {
+        background: #ffffff;
+      }
+      .invoice-container {
+        margin: 0;
+        padding: 0;
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
+        max-width: 100%;
+      }
+    }
+
+    /* Header */
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #0F4C5C;
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+      gap: 20px;
+    }
+    .shop-brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .shop-logo {
+      width: 58px;
+      height: 58px;
+      object-fit: contain;
+      border-radius: 12px;
+      background: #ffffff;
+      padding: 4px;
+      border: 1px solid #e2e8f0;
+    }
+    .shop-details h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0F4C5C;
+      letter-spacing: -0.02em;
+      margin-bottom: 2px;
+    }
+    .shop-tagline {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+    .shop-meta {
+      font-size: 11px;
+      color: #475569;
+      line-height: 1.4;
+    }
+
+    .invoice-title-block {
+      text-align: right;
+    }
+    .invoice-badge {
+      font-size: 28px;
+      font-weight: 900;
+      color: #0F4C5C;
+      letter-spacing: 0.05em;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .invoice-meta-table {
+      margin-left: auto;
+      font-size: 11.5px;
+      border-collapse: collapse;
+    }
+    .invoice-meta-table td {
+      padding: 2px 0 2px 12px;
+      text-align: right;
+    }
+    .invoice-meta-table .label {
+      color: #64748b;
+      font-weight: 500;
+    }
+    .invoice-meta-table .val {
+      font-weight: 700;
+      color: #0f172a;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    /* Bill To Section */
+    .bill-to-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #F8FAFC;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 22px;
+    }
+    .bill-to-title {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #64748b;
+      margin-bottom: 3px;
+    }
+    .customer-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0F4C5C;
+    }
+    .customer-phone {
+      font-size: 12px;
+      color: #475569;
+      font-weight: 600;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      margin-top: 2px;
+    }
+
+    /* Status Stamp */
+    .status-stamp {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-width: 1.5px;
+      border-style: solid;
+    }
+    .stamp-paid {
+      background: #ecfdf5;
+      color: #065f46;
+      border-color: #10b981;
+    }
+    .stamp-due {
+      background: #fff1f2;
+      color: #9f1239;
+      border-color: #f43f5e;
+    }
+
+    /* Items Table */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 12px;
+    }
+    .items-table thead th {
+      background: #0F4C5C;
+      color: #ffffff;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 10.5px;
+      letter-spacing: 0.06em;
+      padding: 9px 12px;
+      text-align: left;
+    }
+    .items-table thead th.text-center { text-align: center; }
+    .items-table thead th.text-right { text-align: right; }
+    .items-table thead th:first-child { border-top-left-radius: 8px; }
+    .items-table thead th:last-child { border-top-right-radius: 8px; }
+
+    .items-table tbody tr {
+      border-bottom: 1px solid #e2e8f0;
+      page-break-inside: avoid;
+    }
+    .items-table tbody tr:nth-child(even) {
+      background: #fafafa;
+    }
+    .items-table tbody td {
+      padding: 10px 12px;
+      color: #1e293b;
+      vertical-align: middle;
+    }
+    .items-table tbody td.text-center { text-align: center; }
+    .items-table tbody td.text-right { text-align: right; }
+    .items-table .item-name {
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .items-table .service-tag {
+      font-size: 10.5px;
+      color: #64748b;
+    }
+
+    /* Summary & Totals Layout */
+    .summary-section {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      margin-top: 10px;
+      page-break-inside: avoid;
+    }
+    .summary-left {
+      flex: 1.2;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .amount-in-words {
+      background: #F8FAFC;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 11px;
+    }
+    .amount-in-words-label {
+      font-size: 9.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .amount-in-words-text {
+      font-weight: 700;
+      color: #0F4C5C;
+    }
+
+    .upi-block {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: #F8FAFC;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+    .upi-qr {
+      width: 80px;
+      height: 80px;
+      flex-shrink: 0;
+      background: #ffffff;
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .upi-info {
+      font-size: 11px;
+    }
+    .upi-title {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #0F4C5C;
+      margin-bottom: 2px;
+    }
+    .upi-id {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 11px;
+    }
+    .upi-hint {
+      font-size: 10px;
+      color: #64748b;
+      margin-top: 3px;
+    }
+
+    .summary-right {
+      flex: 1;
+      max-width: 320px;
+    }
+    .totals-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .totals-table td {
+      padding: 7px 14px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .totals-table td.label {
+      color: #64748b;
+      font-weight: 500;
+    }
+    .totals-table td.value {
+      text-align: right;
+      font-weight: 600;
+      color: #0f172a;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .totals-table tr.grand-total {
+      background: #0F4C5C;
+    }
+    .totals-table tr.grand-total td {
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 9px 14px;
+      border-bottom: none;
+    }
+    .totals-table tr.grand-total td.label {
+      color: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .totals-table tr.balance-row {
+      background: #F8FAFC;
+    }
+    .totals-table tr.balance-row td.value {
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .text-emerald { color: #059669 !important; }
+    .text-rose { color: #e11d48 !important; }
+
+    /* Terms & Conditions */
+    .terms-card {
+      margin-top: 24px;
+      padding: 12px 16px;
+      background: #F8FAFC;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      font-size: 10.5px;
+      color: #475569;
+      page-break-inside: avoid;
+    }
+    .terms-title {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      margin-bottom: 5px;
+    }
+    .terms-list {
+      list-style: none;
+      line-height: 1.5;
+    }
+    .terms-list li {
+      margin-bottom: 2px;
+    }
+
+    /* Footer */
+    .invoice-footer {
+      margin-top: 28px;
+      padding-top: 14px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #64748b;
+      page-break-inside: avoid;
+    }
+    .footer-thankyou {
+      font-weight: 700;
+      color: #0F4C5C;
+    }
+    .footer-watermark {
+      font-size: 10.5px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+    .footer-watermark a {
+      color: #94a3b8;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="invoice-container">
+    <!-- Header Row -->
+    <div class="header-row">
+      <div class="shop-brand">
+        <img src="${settings.logoUrl || "/fabric-care-logo.png"}" alt="${settings.shopName}" class="shop-logo" />
+        <div class="shop-details">
+          <h1>${settings.shopName}</h1>
+          <div class="shop-tagline">${settings.tagline}</div>
+          <div class="shop-meta">
+            ${settings.address ? `<div>${settings.address}</div>` : ""}
+            <div>
+              ${settings.phone ? `Phone: <strong>${settings.phone}</strong>` : ""}
+              ${settings.phone && settings.email ? " · " : ""}
+              ${settings.email ? `Email: ${settings.email}` : ""}
+            </div>
+            ${settings.gstin ? `<div>GSTIN: <strong>${settings.gstin}</strong></div>` : ""}
+          </div>
+        </div>
+      </div>
+
+      <div class="invoice-title-block">
+        <div class="invoice-badge">INVOICE</div>
+        <table class="invoice-meta-table">
+          <tr>
+            <td class="label">Invoice No:</td>
+            <td class="val">${order.id}</td>
+          </tr>
+          <tr>
+            <td class="label">Bill Date:</td>
+            <td class="val">${dateStr}</td>
+          </tr>
+          ${
+            deliveryDateStr
+              ? `<tr>
+            <td class="label">Expected Ready:</td>
+            <td class="val">${deliveryDateStr}</td>
+          </tr>`
+              : ""
+          }
+        </table>
+      </div>
+    </div>
+
+    <!-- Bill To Section -->
+    <div class="bill-to-row">
+      <div>
+        <div class="bill-to-title">Billed To</div>
+        <div class="customer-name">${order.customer}</div>
+        <div class="customer-phone">${order.phone || "No phone registered"}</div>
+      </div>
+      <div>
+        <span class="status-stamp ${isPaid ? "stamp-paid" : "stamp-due"}">
+          ${isPaid ? "PAID IN FULL" : `BALANCE DUE: ${formatRupee(balanceDue)}`}
+        </span>
+      </div>
+    </div>
+
+    <!-- Items Table -->
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th style="width: 44px;" class="text-center">#</th>
+          <th>Item / Garment</th>
+          <th>Service</th>
+          <th style="width: 60px;" class="text-center">Qty</th>
+          <th style="width: 90px;" class="text-right">Rate (₹)</th>
+          <th style="width: 100px;" class="text-right">Amount (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items
+          .map(
+            (item) => `<tr>
+          <td class="text-center" style="color: #64748b; font-weight: 600;">${item.index}</td>
+          <td><span class="item-name">${item.name}</span></td>
+          <td><span class="service-tag">${item.service}</span></td>
+          <td class="text-center" style="font-weight: 700;">${item.quantity}</td>
+          <td class="text-right">${item.rate ? formatRupee(item.rate, false).replace("₹ ", "") : "—"}</td>
+          <td class="text-right" style="font-weight: 700;">${formatRupee(item.amount, false).replace("₹ ", "")}</td>
+        </tr>`
+          )
+          .join("")}
+      </tbody>
+    </table>
+
+    <!-- Totals & Payment Summary -->
+    <div class="summary-section">
+      <div class="summary-left">
+        <!-- Amount in Words -->
+        <div class="amount-in-words">
+          <div class="amount-in-words-label">Total Amount in Words</div>
+          <div class="amount-in-words-text">${totalInWords}</div>
+        </div>
+
+        <!-- UPI QR Code -->
+        ${
+          upiQrSvg
+            ? `<div class="upi-block">
+          <div class="upi-qr">${upiQrSvg}</div>
+          <div class="upi-info">
+            <div class="upi-title">Scan to Pay via UPI</div>
+            <div class="upi-id">${settings.upiId}</div>
+            <div class="upi-hint">Scan with GPay, PhonePe, Paytm or any UPI App</div>
+          </div>
+        </div>`
+            : ""
+        }
+      </div>
+
+      <div class="summary-right">
+        <table class="totals-table">
+          <tr>
+            <td class="label">Subtotal</td>
+            <td class="value">${formatRupee(subtotal)}</td>
+          </tr>
+          ${
+            discount > 0
+              ? `<tr>
+            <td class="label">Discount</td>
+            <td class="value text-rose">- ${formatRupee(discount)}</td>
+          </tr>`
+              : ""
+          }
+          ${
+            settings.enableTax && settings.taxRate > 0
+              ? `<tr>
+            <td class="label">GST / Tax (${settings.taxRate}%)</td>
+            <td class="value">${formatRupee(taxAmount)}</td>
+          </tr>`
+              : ""
+          }
+          <tr class="grand-total">
+            <td class="label">Grand Total</td>
+            <td class="value" style="color:#ffffff;">${formatRupee(grandTotal)}</td>
+          </tr>
+          <tr>
+            <td class="label">Amount Paid</td>
+            <td class="value text-emerald">${formatRupee(amountPaid)}</td>
+          </tr>
+          <tr class="balance-row">
+            <td class="label" style="font-weight:700; color:#0f172a;">Balance Due</td>
+            <td class="value ${balanceDue > 0 ? "text-rose" : "text-emerald"}">
+              ${balanceDue > 0 ? formatRupee(balanceDue) : "₹ 0 (Paid)"}
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Terms and Notes -->
+    ${
+      termsLines.length > 0
+        ? `<div class="terms-card">
+      <div class="terms-title">Terms & Conditions</div>
+      <ul class="terms-list">
+        ${termsLines.map((line) => `<li>${line}</li>`).join("")}
+      </ul>
+    </div>`
+        : ""
+    }
+
+    <!-- Footer -->
+    <div class="invoice-footer">
+      <div class="footer-thankyou">Thank you for choosing ${settings.shopName}!</div>
+      <div class="footer-watermark">
+        Powered by Mallist | <a href="https://mallist.online" target="_blank" rel="noopener noreferrer">mallist.online</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+/**
+ * Generates the compact POS Thermal Receipt HTML string (80mm or 58mm)
+ */
+export function generateThermalReceiptHtml(
+  order: InvoiceOrderData,
+  size: "80mm" | "58mm" = "80mm",
+  settings: InvoiceSettings = getInvoiceSettings()
+): string {
+  const items = getOrderItemsList(order);
+  const dateStr = formatISTDate(order.createdAt);
+  const deliveryDateStr = order.dueAt ? formatISTDate(order.dueAt) : order.due && order.due !== "—" ? order.due : "";
+
+  const subtotal = items.reduce((sum, item) => sum + item.amount, 0) || order.totalAmount;
+  const discount = Number(order.discount) || 0;
+  const grandTotal = order.totalAmount;
+  const amountPaid = Number(order.amountPaid) || 0;
+  const balanceDue = Math.max(0, grandTotal - amountPaid);
+  const isPaid = balanceDue <= 0;
+
+  const widthMm = size === "58mm" ? "58mm" : "80mm";
+  const charWidth = size === "58mm" ? "280px" : "340px";
+
+  const termsLines = (settings.terms || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Receipt - ${order.id}</title>
+  <style>
+    @page {
+      size: ${widthMm} auto;
+      margin: 2mm 0;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: ui-monospace, SFMono-Regular, "Courier New", monospace;
+      color: #000000;
+      background: #ffffff;
+      font-size: ${size === "58mm" ? "11px" : "12px"};
+      line-height: 1.3;
+      padding: 6px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .thermal-container {
+      width: 100%;
+      max-width: ${charWidth};
+      margin: 0 auto;
+    }
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .bold { font-weight: bold; }
+    .title { font-size: ${size === "58mm" ? "14px" : "16px"}; font-weight: 800; }
+    .divider {
+      border-top: 1px dashed #000000;
+      margin: 6px 0;
+    }
+    .double-divider {
+      border-top: 2px solid #000000;
+      margin: 6px 0;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin: 2px 0;
+    }
+    .status-box {
+      border: 1.5px solid #000000;
+      padding: 4px;
+      margin: 6px 0;
+      text-align: center;
+      font-weight: bold;
+    }
+    .item-row {
+      margin: 4px 0;
+    }
+    .item-name {
+      font-weight: bold;
+    }
+    .item-calc {
+      display: flex;
+      justify-content: space-between;
+      font-size: ${size === "58mm" ? "10px" : "11px"};
+      padding-left: 6px;
+    }
+    .footer-note {
+      font-size: 10px;
+      margin-top: 6px;
+      text-align: center;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="thermal-container">
+    <div class="center">
+      <div class="title bold">${settings.shopName}</div>
+      <div>${settings.tagline}</div>
+      ${settings.address ? `<div>${settings.address}</div>` : ""}
+      ${settings.phone ? `<div>Tel: ${settings.phone}</div>` : ""}
+      ${settings.gstin ? `<div>GSTIN: ${settings.gstin}</div>` : ""}
+    </div>
+
+    <div class="double-divider"></div>
+
+    <div class="row"><span>Bill No:</span><span class="bold">${order.id}</span></div>
+    <div class="row"><span>Date:</span><span>${dateStr}</span></div>
+    ${deliveryDateStr ? `<div class="row"><span>Ready Date:</span><span>${deliveryDateStr}</span></div>` : ""}
+    <div class="row"><span>Customer:</span><span class="bold">${order.customer}</span></div>
+    <div class="row"><span>Phone:</span><span>${order.phone || "—"}</span></div>
+
+    <div class="divider"></div>
+
+    <div class="bold" style="margin-bottom: 4px;">ITEMS & SERVICES:</div>
+    ${items
+      .map(
+        (it) => `<div class="item-row">
+      <div class="item-name">${it.index}. ${it.name} (${it.service})</div>
+      <div class="item-calc">
+        <span>${it.quantity} Qty x ${formatRupee(it.rate, false)}</span>
+        <span class="bold">${formatRupee(it.amount, false)}</span>
+      </div>
+    </div>`
+      )
+      .join("")}
+
+    <div class="divider"></div>
+
+    <div class="row"><span>Subtotal:</span><span>${formatRupee(subtotal)}</span></div>
+    ${discount > 0 ? `<div class="row"><span>Discount:</span><span>- ${formatRupee(discount)}</span></div>` : ""}
+    <div class="row bold" style="font-size: 13px;"><span>TOTAL AMOUNT:</span><span>${formatRupee(grandTotal)}</span></div>
+    <div class="row"><span>Amount Paid:</span><span>${formatRupee(amountPaid)}</span></div>
+    <div class="row bold"><span>BALANCE DUE:</span><span>${balanceDue > 0 ? formatRupee(balanceDue) : "PAID (₹ 0)"}</span></div>
+
+    <div class="status-box">
+      ${isPaid ? "*** PAID IN FULL ***" : `*** BALANCE DUE: ${formatRupee(balanceDue)} ***`}
+    </div>
+
+    ${
+      termsLines.length > 0
+        ? `<div class="divider"></div>
+    <div class="footer-note">
+      ${termsLines.map((l) => `<div>${l}</div>`).join("")}
+    </div>`
+        : ""
+    }
+
+    <div class="double-divider"></div>
+
+    <div class="center" style="font-size: 11px; margin-top: 4px;">
+      <div class="bold">Thank you for choosing ${settings.shopName}!</div>
+      <div style="margin-top: 3px; font-size: 9.5px; color: #555;">
+        Powered by Mallist | mallist.online
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+/**
+ * Triggers native browser print with the formatted invoice
+ */
+export function printInvoice(
+  order: InvoiceOrderData,
+  size: PaperSize = "A4",
+  settings: InvoiceSettings = getInvoiceSettings()
+) {
+  const html =
+    size === "A4"
+      ? generateA4InvoiceHtml(order, settings)
+      : generateThermalReceiptHtml(order, size === "Thermal58" ? "58mm" : "80mm", settings);
+
+  const printWindow = window.open("", "_blank", "width=850,height=900");
+  if (!printWindow) {
+    alert("Please allow popups to print invoice.");
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+
+  // Trigger print after resources load
+  printWindow.onload = () => {
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 250);
+  };
+}
+
+/**
+ * Triggers download of the standalone HTML receipt/invoice
+ */
+export function downloadInvoiceHtml(
+  order: InvoiceOrderData,
+  size: PaperSize = "A4",
+  settings: InvoiceSettings = getInvoiceSettings()
+) {
+  const html =
+    size === "A4"
+      ? generateA4InvoiceHtml(order, settings)
+      : generateThermalReceiptHtml(order, size === "Thermal58" ? "58mm" : "80mm", settings);
+
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const filename =
+    size === "A4"
+      ? `fabric-care-invoice-${order.id.toLowerCase()}.html`
+      : `fabric-care-receipt-${order.id.toLowerCase()}-${size.toLowerCase()}.html`;
+
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}

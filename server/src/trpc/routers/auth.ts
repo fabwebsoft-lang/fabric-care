@@ -47,8 +47,16 @@ export const authRouter = router({
 
   me: protectedProcedure.query(async ({ ctx }) => {
     const worker = await Worker.findById(ctx.userId);
-    if (!worker) throw new TRPCError({ code: "UNAUTHORIZED" });
-    return toApiSelf(worker);
+    if (!worker || !worker.active) throw new TRPCError({ code: "UNAUTHORIZED" });
+    const refreshedToken = signSessionToken(worker._id.toString());
+    return { ...toApiSelf(worker), refreshedToken };
+  }),
+
+  refreshToken: protectedProcedure.mutation(async ({ ctx }) => {
+    const worker = await Worker.findById(ctx.userId);
+    if (!worker || !worker.active) throw new TRPCError({ code: "UNAUTHORIZED" });
+    const token = signSessionToken(worker._id.toString());
+    return { token, user: toApiSelf(worker) };
   }),
 
   logout: protectedProcedure.mutation(async () => {

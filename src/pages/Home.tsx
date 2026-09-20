@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import { downloadInvoiceHtml } from "@/lib/invoiceGenerator";
 import AuthScreen from "@/components/AuthScreen";
 import ContactAdminScreen from "@/components/ContactAdminScreen";
 import {
@@ -48,8 +49,9 @@ import {
   UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-import BottomNav from "@/components/BottomNav";
 import { useAccessControl, ROLE_DEFINITIONS } from "@/contexts/AccessControlContext";
+import HelpCenterModal from "@/components/HelpCenterModal";
+import { usePWAInstall, IOSInstallGuideModal } from "@/components/InstallModal";
 
 const NewBillModal = lazy(() => import("@/components/NewBillModal"));
 const ActiveProcessView = lazy(() => import("@/components/ActiveProcessView"));
@@ -138,6 +140,7 @@ export default function Home() {
   // nonce cookie and must run only at the moment of navigation.
   let { user, loading, error, isAuthenticated, logout } = useAuth();
   const { role: activeRole, canViewReports, canManageRoles, setRole, isSimulating } = useAccessControl();
+  const { installed, showIOSGuide, setShowIOSGuide, handleInstallClick } = usePWAInstall();
 
   const hasApprovedAccess = isAuthenticated && user?.role !== "pending";
 
@@ -299,8 +302,12 @@ export default function Home() {
                   className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium transition-all duration-150 ${activeSection === label ? "bg-white/15 text-white shadow-inner shadow-white/[.03]" : "text-white/80 hover:bg-white/[.10] hover:text-white"}`}
                 >
                   <Icon className={`size-[17px] ${activeSection === label ? "text-white" : "text-white/80 group-hover:text-white"}`} strokeWidth={1.9} />
-                  {label}
-                  {label === "Active process" && <span className="ml-auto rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] font-bold text-white">12</span>}
+                  <span className="flex-1">{label}</span>
+                  {label === "Active process" && overviewMetrics.inProcessCount > 0 && (
+                    <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                      {overviewMetrics.inProcessCount}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
@@ -319,19 +326,45 @@ export default function Home() {
               <button onClick={() => setShowHelp(true)} className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium text-white/80 transition-all hover:bg-white/[.10] hover:text-white">
                 <HelpCircle className="size-[17px] text-white/80 group-hover:text-white" strokeWidth={1.9} /> Help center
               </button>
+              {!installed && (
+                <button
+                  onClick={handleInstallClick}
+                  className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium text-emerald-300 transition-all hover:bg-white/[.10] hover:text-emerald-200"
+                >
+                  <Download className="size-[17px] text-emerald-300 group-hover:text-emerald-200" strokeWidth={1.9} /> Install App
+                </button>
+              )}
             </nav>
           </div>
 
-          <div className="rounded-2xl border border-white/[.08] bg-white/[.045] p-3.5">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="flex items-center gap-2 text-[11px] font-medium text-white/80"><span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(102,216,165,.12)]" /> Cloud sync on</span>
-              <ChevronRight className="size-3.5 text-white/60" />
+          <div className="space-y-2 mt-auto">
+            <div className="rounded-2xl border border-white/[.08] bg-white/[.045] p-3.5">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="flex items-center gap-2 text-[11px] font-medium text-white/80"><span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(102,216,165,.12)]" /> Cloud sync on</span>
+                <ChevronRight className="size-3.5 text-white/60" />
+              </div>
+              <p className="text-[10px] leading-4 text-white/60">Last synced just now across 2 devices</p>
             </div>
-            <p className="text-[10px] leading-4 text-white/60">Last synced just now across 2 devices</p>
+
+            <div className="pt-2 pb-1 text-center">
+              <a
+                href="https://mallist.online"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex flex-col items-center group transition py-0.5"
+              >
+                <span className="text-[10px] font-medium text-white/50 group-hover:text-white/80 transition-colors">
+                  Powered by Mallist
+                </span>
+                <span className="text-[9px] text-white/35 group-hover:text-white/60 transition-colors">
+                  mallist.online
+                </span>
+              </a>
+            </div>
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 pb-24 lg:pb-0">
+        <main className="min-w-0 flex-1 pb-20 lg:pb-0">
           <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl sm:px-8 lg:px-10">
             <div className="flex items-center gap-3">
               <button className="grid size-10 place-items-center rounded-xl border border-slate-200 bg-white text-[#0F4C5C] transition hover:border-slate-300 hover:text-[#0F4C5C] lg:hidden" onClick={() => setShowMobileNav(true)} aria-label="Open navigation"><Menu className="size-[18px]" /></button>
@@ -426,7 +459,12 @@ export default function Home() {
                   }`}
                 >
                   <Icon className="size-[17px] text-white/80" strokeWidth={1.9} />
-                  {label}
+                  <span className="flex-1">{label}</span>
+                  {label === "Active process" && overviewMetrics.inProcessCount > 0 && (
+                    <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                      {overviewMetrics.inProcessCount}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
@@ -441,20 +479,54 @@ export default function Home() {
               )}
               <button onClick={() => { setShowMobileNav(false); navigate("Settings"); }} className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-white/80 hover:bg-white/[.10] hover:text-white"><Settings className="size-[17px] text-white/80" strokeWidth={1.9} /> Settings</button>
               <button onClick={() => { setShowMobileNav(false); setShowHelp(true); }} className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-white/80 hover:bg-white/[.10] hover:text-white"><HelpCircle className="size-[17px] text-white/80" strokeWidth={1.9} /> Help center</button>
+              {!installed && (
+                <button
+                  onClick={() => {
+                    setShowMobileNav(false);
+                    handleInstallClick();
+                  }}
+                  className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-emerald-300 hover:bg-white/[.10] hover:text-emerald-200"
+                >
+                  <Download className="size-[17px] text-emerald-300" strokeWidth={1.9} /> Install App
+                </button>
+              )}
             </nav>
           </div>
-          <div className="rounded-2xl border border-white/[.08] bg-white/[.045] p-3.5"><div className="mb-3 flex items-center justify-between"><span className="flex items-center gap-2 text-[11px] font-medium text-white/80"><span className="size-2 rounded-full bg-emerald-400" /> Cloud sync on</span><ChevronRight className="size-3.5 text-white/60" /></div><p className="text-[10px] leading-4 text-white/60">Last synced just now across 2 devices</p></div>
+          <div className="space-y-2 mt-auto">
+            <div className="rounded-2xl border border-white/[.08] bg-white/[.045] p-3.5"><div className="mb-3 flex items-center justify-between"><span className="flex items-center gap-2 text-[11px] font-medium text-white/80"><span className="size-2 rounded-full bg-emerald-400" /> Cloud sync on</span><ChevronRight className="size-3.5 text-white/60" /></div><p className="text-[10px] leading-4 text-white/60">Last synced just now across 2 devices</p></div>
+            <div className="pt-2 pb-1 text-center">
+              <a
+                href="https://mallist.online"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex flex-col items-center group transition py-0.5"
+              >
+                <span className="text-[10px] font-medium text-white/50 group-hover:text-white/80 transition-colors">
+                  Powered by Mallist
+                </span>
+                <span className="text-[9px] text-white/35 group-hover:text-white/60 transition-colors">
+                  mallist.online
+                </span>
+              </a>
+            </div>
+          </div>
         </aside>
       </div>}
 
-      <BottomNav
-        activeSection={activeSection}
-        onNavigate={(s) => navigate(s as Section)}
-        onNewOrder={() => {
-          setNewOrderCustomer(null);
-          setShowNewOrder(true);
-        }}
-      />
+      {/* Mobile Floating Action Button (FAB) for New Bill */}
+      {!showNewOrder && (
+        <button
+          onClick={() => {
+            setNewOrderCustomer(null);
+            setShowNewOrder(true);
+          }}
+          aria-label="New Bill"
+          title="New Bill"
+          className="fixed right-5 bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] z-30 flex size-14 items-center justify-center rounded-full bg-[#0F4C5C] text-white shadow-[0_8px_25px_rgba(15,76,92,0.38)] transition-all hover:scale-105 active:scale-95 lg:hidden border-2 border-white/25 focus:outline-none focus:ring-4 focus:ring-[#0F4C5C]/30 cursor-pointer"
+        >
+          <Plus className="size-7" strokeWidth={2.5} />
+        </button>
+      )}
 
       {showNewOrder && (
         <Suspense fallback={null}>
@@ -471,7 +543,8 @@ export default function Home() {
           />
         </Suspense>
       )}
-      {showHelp && <OverlayModal title="Fabric Care help center" onClose={() => setShowHelp(false)}><p className="text-[13px] leading-6 text-[#0F4C5C]">Need a hand? Start with the <strong className="text-[#0F4C5C]">Getting started</strong> guide for setting up pricing, team roles, and your first order. For shop-specific support, email support@fabriccare.in.</p><button onClick={() => { setShowHelp(false); toast.success("Guide opened in a new workspace tab."); }} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F4C5C] py-3 text-[12px] font-bold text-white">Open getting started <ChevronRight className="size-4" /></button></OverlayModal>}
+      {showHelp && <HelpCenterModal onClose={() => setShowHelp(false)} />}
+      {showIOSGuide && <IOSInstallGuideModal onClose={() => setShowIOSGuide(false)} />}
     </div>
   );
 }
@@ -556,17 +629,7 @@ function OrderDetailsModal({ order, onClose }: { order: Order; onClose: () => vo
 }
 
 function downloadReceipt(order: Order) {
-  const items = order.items.split(" · ").slice(1).join(" · ");
-  const receiptHtml = `<!doctype html><html><head><meta charset="UTF-8"><title>Fabric Care Receipt ${order.id}</title><style>body{margin:0;background:#F8FAFC;color:#0F4C5C;font:14px Arial,sans-serif}.receipt{box-sizing:border-box;width:680px;max-width:calc(100% - 32px);margin:32px auto;background:#fff;padding:40px;border-radius:18px;box-shadow:0 12px 35px rgba(17,17,17,.10)}.brand{color:#0F4C5C;font-size:24px;font-weight:700}.muted{color:#64748B;font-size:12px}.rule{border:0;border-top:1px solid #E2E8F0;margin:24px 0}.row{display:flex;justify-content:space-between;gap:20px;padding:11px 0;border-bottom:1px solid #E2E8F0}.label{color:#64748B}.value{font-weight:700;text-align:right}.total{font-size:20px;color:#0F4C5C}.balance{color:#0F4C5C}.footer{margin-top:28px;color:#64748B;font-size:11px;line-height:1.6}</style></head><body><main class="receipt"><div class="brand">Fabric Care</div><div class="muted">You wear, we care · Laundry receipt</div><hr class="rule"><div class="row"><span class="label">Bill number</span><span class="value">${order.id}</span></div><div class="row"><span class="label">Customer</span><span class="value">${order.customer}</span></div><div class="row"><span class="label">Phone</span><span class="value">${order.phone}</span></div><div class="row"><span class="label">Items</span><span class="value">${items}</span></div><div class="row"><span class="label">Pickup</span><span class="value">${order.due}</span></div><div class="row"><span class="label">Status</span><span class="value">${order.status}</span></div><hr class="rule"><div class="row"><span class="label">Bill amount</span><span class="value total">${order.amount}</span></div><div class="row"><span class="label">Balance</span><span class="value balance">${order.balance}</span></div><div class="footer">Thank you for choosing Fabric Care.<br>Generated from the Fabric Care laundry operations dashboard.</div></main></body></html>`;
-  const blob = new Blob([receiptHtml], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `fabric-care-${order.id.toLowerCase()}-receipt.html`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  downloadInvoiceHtml(order as any, "A4");
 }
 
 function DetailCell({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) { return <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-3"><p className="text-[9px] font-bold uppercase tracking-[.1em] text-slate-500">{label}</p><p className={`mt-1.5 text-[12px] font-bold ${danger ? "text-amber-600" : "text-[#0F4C5C]"}`}>{value}</p></div>; }
