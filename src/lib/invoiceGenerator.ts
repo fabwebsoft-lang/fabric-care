@@ -130,7 +130,7 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
   if (settings.upiId && settings.upiId.trim()) {
     const payAmount = balanceDue > 0 ? balanceDue : grandTotal;
     const upiUri = `upi://pay?pa=${encodeURIComponent(settings.upiId.trim())}&pn=${encodeURIComponent(settings.shopName)}&am=${payAmount}&cu=INR&tn=${encodeURIComponent(`Bill ${order.id}`)}`;
-    upiQrSvg = generateQrSvg(upiUri, 110);
+    upiQrSvg = generateQrSvg(upiUri, 100);
   }
 
   const termsLines = (settings.terms || "")
@@ -147,44 +147,64 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
   <style>
     @page {
       size: A4 portrait;
-      margin: 12mm 15mm 15mm 15mm;
+      margin: 0;
     }
     *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      max-width: 100%;
     }
-    body {
+    html, body {
+      width: 210mm;
+      margin: 0 auto;
+      padding: 0;
+      background: #f1f5f9;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       color: #1e293b;
-      background: #f8fafc;
-      font-size: 13px;
-      line-height: 1.45;
+      font-size: 12px;
+      line-height: 1.4;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .invoice-container {
-      width: 100%;
-      max-width: 820px;
-      margin: 20px auto;
+    .invoice-page {
+      width: 210mm;
+      min-height: 297mm;
+      max-width: 210mm;
+      margin: 15px auto;
       background: #ffffff;
-      padding: 36px 40px;
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
-      border: 1px solid #e2e8f0;
+      padding: 12mm 14mm;
+      box-sizing: border-box;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
       position: relative;
     }
     @media print {
-      body {
-        background: #ffffff;
+      @page {
+        size: A4 portrait;
+        margin: 0;
       }
-      .invoice-container {
+      html, body {
+        width: 210mm;
         margin: 0;
         padding: 0;
+        background: #ffffff;
+      }
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .invoice-page {
+        width: 210mm;
+        min-height: 297mm;
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 12mm 14mm;
+        box-sizing: border-box;
+        overflow: hidden;
         border: none;
         box-shadow: none;
         border-radius: 0;
-        max-width: 100%;
       }
     }
 
@@ -194,68 +214,85 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
       justify-content: space-between;
       align-items: flex-start;
       border-bottom: 2px solid #0F4C5C;
-      padding-bottom: 20px;
-      margin-bottom: 24px;
-      gap: 20px;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+      gap: 16px;
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
     .shop-brand {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
     }
     .shop-logo {
-      width: 58px;
-      height: 58px;
+      height: 48px;
+      width: auto;
+      max-width: 140px;
       object-fit: contain;
-      border-radius: 12px;
+      border-radius: 10px;
       background: #ffffff;
-      padding: 4px;
+      padding: 3px;
       border: 1px solid #e2e8f0;
+      flex-shrink: 0;
+    }
+    .shop-details {
+      min-width: 0;
     }
     .shop-details h1 {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 800;
       color: #0F4C5C;
       letter-spacing: -0.02em;
       margin-bottom: 2px;
+      word-break: break-word;
     }
     .shop-tagline {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.1em;
       color: #64748b;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
     .shop-meta {
-      font-size: 11px;
+      font-size: 10.5px;
       color: #475569;
-      line-height: 1.4;
+      line-height: 1.35;
+      word-break: break-word;
     }
 
     .invoice-title-block {
       text-align: right;
+      flex-shrink: 0;
+      min-width: 0;
+      max-width: 45%;
     }
     .invoice-badge {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 900;
       color: #0F4C5C;
       letter-spacing: 0.05em;
       line-height: 1;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .invoice-meta-table {
       margin-left: auto;
-      font-size: 11.5px;
+      font-size: 11px;
       border-collapse: collapse;
+      table-layout: auto;
     }
     .invoice-meta-table td {
-      padding: 2px 0 2px 12px;
+      padding: 1.5px 0 1.5px 8px;
       text-align: right;
+      word-break: break-word;
     }
     .invoice-meta-table .label {
       color: #64748b;
       font-weight: 500;
+      white-space: nowrap;
     }
     .invoice-meta-table .val {
       font-weight: 700;
@@ -270,29 +307,38 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
       align-items: center;
       background: #F8FAFC;
       border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 14px 18px;
-      margin-bottom: 22px;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      gap: 12px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .bill-to-left {
+      min-width: 0;
+      flex: 1;
     }
     .bill-to-title {
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.12em;
       color: #64748b;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
     .customer-name {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       color: #0F4C5C;
+      word-break: break-word;
     }
     .customer-phone {
-      font-size: 12px;
+      font-size: 11px;
       color: #475569;
       font-weight: 600;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      margin-top: 2px;
+      margin-top: 1px;
+      word-break: break-all;
     }
 
     /* Status Stamp */
@@ -300,14 +346,16 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 6px 14px;
+      padding: 5px 12px;
       border-radius: 8px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.06em;
       border-width: 1.5px;
       border-style: solid;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .stamp-paid {
       background: #ecfdf5;
@@ -323,72 +371,85 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
     /* Items Table */
     .items-table {
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
-      margin-bottom: 20px;
-      font-size: 12px;
+      margin-bottom: 18px;
+      font-size: 11.5px;
+      word-break: break-word;
+      overflow-wrap: break-word;
     }
     .items-table thead th {
       background: #0F4C5C;
       color: #ffffff;
       font-weight: 700;
       text-transform: uppercase;
-      font-size: 10.5px;
-      letter-spacing: 0.06em;
-      padding: 9px 12px;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      padding: 8px 6px;
       text-align: left;
+      overflow-wrap: break-word;
     }
     .items-table thead th.text-center { text-align: center; }
     .items-table thead th.text-right { text-align: right; }
-    .items-table thead th:first-child { border-top-left-radius: 8px; }
-    .items-table thead th:last-child { border-top-right-radius: 8px; }
+    .items-table thead th:first-child { border-top-left-radius: 6px; }
+    .items-table thead th:last-child { border-top-right-radius: 6px; }
 
     .items-table tbody tr {
       border-bottom: 1px solid #e2e8f0;
       page-break-inside: avoid;
+      break-inside: avoid;
     }
     .items-table tbody tr:nth-child(even) {
       background: #fafafa;
     }
     .items-table tbody td {
-      padding: 10px 12px;
+      padding: 8px 6px;
       color: #1e293b;
       vertical-align: middle;
+      overflow-wrap: break-word;
+      word-break: break-word;
     }
     .items-table tbody td.text-center { text-align: center; }
     .items-table tbody td.text-right { text-align: right; }
     .items-table .item-name {
       font-weight: 600;
       color: #0f172a;
+      display: block;
+      word-break: break-word;
     }
     .items-table .service-tag {
-      font-size: 10.5px;
+      font-size: 10px;
       color: #64748b;
+      display: block;
+      word-break: break-word;
     }
 
     /* Summary & Totals Layout */
     .summary-section {
       display: flex;
       justify-content: space-between;
-      gap: 24px;
-      margin-top: 10px;
+      gap: 16px;
+      margin-top: 8px;
       page-break-inside: avoid;
+      break-inside: avoid;
     }
     .summary-left {
       flex: 1.2;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 16px;
+      gap: 12px;
     }
     .amount-in-words {
       background: #F8FAFC;
       border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-size: 11px;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 10.5px;
     }
     .amount-in-words-label {
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.08em;
@@ -398,34 +459,41 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
     .amount-in-words-text {
       font-weight: 700;
       color: #0F4C5C;
+      word-break: break-word;
+      line-height: 1.35;
     }
 
     .upi-block {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       background: #F8FAFC;
       border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 10px 14px;
+      border-radius: 8px;
+      padding: 8px 12px;
     }
     .upi-qr {
-      width: 80px;
-      height: 80px;
+      width: 68px;
+      height: 68px;
       flex-shrink: 0;
       background: #ffffff;
-      padding: 4px;
-      border-radius: 8px;
+      padding: 3px;
+      border-radius: 6px;
       border: 1px solid #e2e8f0;
       display: flex;
       align-items: center;
       justify-content: center;
     }
+    .upi-qr svg {
+      width: 100%;
+      height: 100%;
+    }
     .upi-info {
-      font-size: 11px;
+      font-size: 10.5px;
+      min-width: 0;
     }
     .upi-title {
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 800;
       color: #0F4C5C;
       margin-bottom: 2px;
@@ -434,49 +502,56 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-weight: 700;
       color: #0f172a;
-      font-size: 11px;
+      font-size: 10.5px;
+      word-break: break-all;
     }
     .upi-hint {
-      font-size: 10px;
+      font-size: 9.5px;
       color: #64748b;
-      margin-top: 3px;
+      margin-top: 2px;
     }
 
     .summary-right {
       flex: 1;
-      max-width: 320px;
+      min-width: 0;
+      max-width: 280px;
     }
     .totals-table {
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
-      font-size: 12px;
+      font-size: 11px;
       background: #ffffff;
       border: 1px solid #e2e8f0;
-      border-radius: 10px;
+      border-radius: 8px;
       overflow: hidden;
     }
     .totals-table td {
-      padding: 7px 14px;
+      padding: 5.5px 10px;
       border-bottom: 1px solid #f1f5f9;
+      word-break: break-word;
     }
     .totals-table td.label {
+      width: 55%;
       color: #64748b;
       font-weight: 500;
     }
     .totals-table td.value {
+      width: 45%;
       text-align: right;
       font-weight: 600;
       color: #0f172a;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      white-space: nowrap;
     }
     .totals-table tr.grand-total {
       background: #0F4C5C;
     }
     .totals-table tr.grand-total td {
       color: #ffffff;
-      font-size: 14px;
+      font-size: 12.5px;
       font-weight: 800;
-      padding: 9px 14px;
+      padding: 7px 10px;
       border-bottom: none;
     }
     .totals-table tr.grand-total td.label {
@@ -488,7 +563,7 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
       background: #F8FAFC;
     }
     .totals-table tr.balance-row td.value {
-      font-size: 13px;
+      font-size: 11.5px;
       font-weight: 800;
     }
     .text-emerald { color: #059669 !important; }
@@ -496,49 +571,52 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
 
     /* Terms & Conditions */
     .terms-card {
-      margin-top: 24px;
-      padding: 12px 16px;
+      margin-top: 16px;
+      padding: 10px 12px;
       background: #F8FAFC;
       border: 1px dashed #cbd5e1;
-      border-radius: 10px;
-      font-size: 10.5px;
+      border-radius: 8px;
+      font-size: 10px;
       color: #475569;
       page-break-inside: avoid;
+      break-inside: avoid;
     }
     .terms-title {
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.1em;
       color: #64748b;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
     }
     .terms-list {
       list-style: none;
-      line-height: 1.5;
+      line-height: 1.45;
     }
     .terms-list li {
       margin-bottom: 2px;
+      word-break: break-word;
     }
 
     /* Footer */
     .invoice-footer {
-      margin-top: 28px;
-      padding-top: 14px;
+      margin-top: 18px;
+      padding-top: 10px;
       border-top: 1px solid #e2e8f0;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 11px;
+      font-size: 10px;
       color: #64748b;
       page-break-inside: avoid;
+      break-inside: avoid;
     }
     .footer-thankyou {
       font-weight: 700;
       color: #0F4C5C;
     }
     .footer-watermark {
-      font-size: 10.5px;
+      font-size: 9.5px;
       color: #94a3b8;
       font-weight: 500;
     }
@@ -549,7 +627,7 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
   </style>
 </head>
 <body>
-  <div class="invoice-container">
+  <div class="invoice-page">
     <!-- Header Row -->
     <div class="header-row">
       <div class="shop-brand">
@@ -594,7 +672,7 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
 
     <!-- Bill To Section -->
     <div class="bill-to-row">
-      <div>
+      <div class="bill-to-left">
         <div class="bill-to-title">Billed To</div>
         <div class="customer-name">${order.customer}</div>
         <div class="customer-phone">${order.phone || "No phone registered"}</div>
@@ -606,16 +684,16 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
       </div>
     </div>
 
-    <!-- Items Table -->
+    <!-- Items Table: 7%, 24%, 29%, 10%, 15%, 15% -->
     <table class="items-table">
       <thead>
         <tr>
-          <th style="width: 44px;" class="text-center">#</th>
-          <th>Item / Garment</th>
-          <th>Service</th>
-          <th style="width: 60px;" class="text-center">Qty</th>
-          <th style="width: 90px;" class="text-right">Rate (₹)</th>
-          <th style="width: 100px;" class="text-right">Amount (₹)</th>
+          <th style="width: 7%;" class="text-center">#</th>
+          <th style="width: 24%;">ITEM / GARMENT</th>
+          <th style="width: 29%;">SERVICE</th>
+          <th style="width: 10%;" class="text-center">QTY</th>
+          <th style="width: 15%;" class="text-right">RATE</th>
+          <th style="width: 15%;" class="text-right">AMOUNT</th>
         </tr>
       </thead>
       <tbody>
@@ -626,8 +704,8 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
           <td><span class="item-name">${item.name}</span></td>
           <td><span class="service-tag">${item.service}</span></td>
           <td class="text-center" style="font-weight: 700;">${item.quantity}</td>
-          <td class="text-right">${item.rate ? formatRupee(item.rate, false).replace("₹ ", "") : "—"}</td>
-          <td class="text-right" style="font-weight: 700;">${formatRupee(item.amount, false).replace("₹ ", "")}</td>
+          <td class="text-right" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: nowrap;">${item.rate ? formatRupee(item.rate, false) : "—"}</td>
+          <td class="text-right" style="font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: nowrap;">${formatRupee(item.amount, false)}</td>
         </tr>`
           )
           .join("")}

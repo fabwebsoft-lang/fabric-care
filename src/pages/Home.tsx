@@ -284,12 +284,12 @@ export default function Home() {
         <aside className="hidden w-[254px] shrink-0 flex-col justify-between bg-[#0F4C5C] px-5 py-6 text-white lg:flex">
           <div>
             <div className="mb-10 flex items-center gap-3 px-2">
-              <div className="grid size-10 place-items-center rounded-[14px] bg-white shadow-[0_8px_20px_rgba(15,76,92,.18)]">
+              <div className="grid size-10 place-items-center rounded-[14px] bg-[#F7F3EE] shadow-[0_8px_20px_rgba(15,76,92,.18)]">
                 <img src="/fabric-care-logo.png" alt="Fabric Care logo" className="size-7 object-contain" />
               </div>
               <div>
                 <p className="font-display text-[17px] font-semibold tracking-tight">Fabric Care</p>
-                <p className="text-[10px] font-medium uppercase tracking-[.16em] text-white/70">You wear, we care</p>
+                <p className="text-[10px] font-medium uppercase tracking-[.16em] text-[#F7F3EE]">You wear, we care</p>
               </div>
             </div>
 
@@ -442,7 +442,24 @@ export default function Home() {
       {showMobileNav && <div className="fixed inset-0 z-40 bg-[#0F4C5C]/35 backdrop-blur-[2px] lg:hidden" onClick={() => setShowMobileNav(false)}>
         <aside className="flex h-full w-[min(82vw,300px)] flex-col justify-between bg-[#0F4C5C] px-5 py-6 text-white shadow-[18px_0_50px_rgba(15,76,92,.25)]" onClick={(event) => event.stopPropagation()}>
           <div>
-            <div className="mb-9 flex items-center justify-between px-2"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-[14px] bg-white"><img src="/fabric-care-logo.png" alt="Fabric Care logo" className="size-7 object-contain" /></div><div><p className="font-display text-[17px] font-semibold tracking-tight">Fabric Care</p><p className="text-[10px] font-medium uppercase tracking-[.16em] text-white/70">You wear, we care</p></div></div><button onClick={() => setShowMobileNav(false)} className="grid size-8 place-items-center rounded-lg text-white/80 hover:bg-white/[.08] hover:text-white" aria-label="Close navigation"><X className="size-4" /></button></div>
+            <div className="mb-8 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="grid size-10 place-items-center rounded-[14px] bg-[#F7F3EE] shadow-[0_8px_20px_rgba(15,76,92,.18)]">
+                  <img src="/fabric-care-logo.png" alt="Fabric Care logo" className="size-7 object-contain" />
+                </div>
+                <div>
+                  <p className="font-display text-[17px] font-semibold tracking-tight">Fabric Care</p>
+                  <p className="text-[10px] font-medium uppercase tracking-[.16em] text-[#F7F3EE]">You wear, we care</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowMobileNav(false)}
+                className="grid size-9 place-items-center rounded-xl text-white/80 hover:bg-white/[.12] hover:text-white shrink-0"
+                aria-label="Close navigation"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
             <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-white/60">Workspace</p>
             <nav className="space-y-1 mb-6">
               {visibleNavItems.map(({ label, icon: Icon }) => (

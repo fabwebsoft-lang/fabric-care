@@ -1,14 +1,21 @@
-const CACHE_NAME = "fabric-care-shell-v2";
+const CACHE_NAME = "fabric-care-shell-v4";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
   "/manifest.json",
   "/manifest.webmanifest",
+  "/assets/branding/logo-icon.png",
+  "/assets/branding/logo-wordmark.png",
+  "/assets/branding/logo-full.png",
   "/fabric-care-logo.png",
+  "/fabric-care-banner.png",
   "/icon-192.png",
   "/icon-512.png",
   "/icon-maskable-512.png",
   "/apple-touch-icon.png",
+  "/favicon-16x16.png",
+  "/favicon-32x32.png",
+  "/favicon.ico",
 ];
 
 // Install: Cache App Shell
