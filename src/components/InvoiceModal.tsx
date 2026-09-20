@@ -162,27 +162,38 @@ export default function InvoiceModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0F4C5C]/50 backdrop-blur-sm p-2 sm:p-4 md:p-6 flex justify-center items-center min-h-screen">
-      <div className="relative w-full max-w-4xl bg-slate-100 rounded-2xl shadow-2xl border border-slate-300 flex flex-col max-h-[95vh] overflow-hidden my-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm p-2 sm:p-4 md:p-6 flex justify-center items-center min-h-screen">
+      <div className="relative w-full max-w-3xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[94vh] sm:max-h-[92vh] overflow-hidden my-auto">
         {/* Modal Top Bar */}
-        <div className="bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="size-8 rounded-lg bg-[#0F4C5C] text-white flex items-center justify-center font-bold text-xs">
-              <FileText className="size-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold text-[#0F4C5C]">{normalizedOrder.id}</span>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isPaid ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>
-                  {isPaid ? "PAID" : `DUE ${formatRupee(balanceDue)}`}
-                </span>
+        <div className="bg-white border-b border-slate-200 px-3.5 sm:px-5 py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
+          <div className="flex items-center justify-between sm:justify-start gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="size-8 rounded-lg bg-[#0F4C5C] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                <FileText className="size-4" />
               </div>
-              <p className="text-xs font-semibold text-slate-700">{normalizedOrder.customer}</p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-bold text-[#0F4C5C]">{normalizedOrder.id}</span>
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isPaid ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>
+                    {isPaid ? "PAID" : `DUE ${formatRupee(balanceDue)}`}
+                  </span>
+                </div>
+                <p className="text-xs font-semibold text-slate-700 truncate max-w-[180px] sm:max-w-xs">{normalizedOrder.customer}</p>
+              </div>
             </div>
+
+            {/* Close Button on Mobile */}
+            <button
+              onClick={onClose}
+              className="sm:hidden size-8 grid place-items-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+              aria-label="Close modal"
+            >
+              <X className="size-4" />
+            </button>
           </div>
 
           {/* Format Switcher & Actions */}
-          <div className="flex items-center flex-wrap gap-2">
+          <div className="flex items-center justify-between sm:justify-end flex-wrap gap-2">
             {/* Format toggle */}
             <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
               <button
@@ -208,101 +219,91 @@ export default function InvoiceModal({
               </button>
             </div>
 
-            {/* Print Button */}
-            <button
-              onClick={handlePrint}
-              className="px-3 py-1.5 bg-[#0F4C5C] text-white font-bold rounded-xl text-xs hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center gap-1.5"
-            >
-              <Printer className="size-3.5" /> Print
-            </button>
+            <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
+              {/* Print Button */}
+              <button
+                onClick={handlePrint}
+                className="px-3 py-1.5 bg-[#0F4C5C] text-white font-bold rounded-xl text-xs hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center gap-1.5 active:scale-95"
+              >
+                <Printer className="size-3.5" /> <span className="hidden md:inline">Print</span>
+              </button>
 
-            {/* Download Button */}
-            <button
-              onClick={handleDownload}
-              className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-50 transition shadow-xs flex items-center gap-1.5"
-            >
-              <Download className="size-3.5" /> Download
-            </button>
+              {/* Download Button */}
+              <button
+                onClick={handleDownload}
+                className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-50 transition shadow-xs flex items-center gap-1.5 active:scale-95"
+              >
+                <Download className="size-3.5" /> <span className="hidden md:inline">Download</span>
+              </button>
 
-            {/* Share Button */}
-            <div className="relative">
+              {/* Share Button */}
               <button
                 onClick={handleShareNative}
-                className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-50 transition shadow-xs flex items-center gap-1.5"
+                className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-50 transition shadow-xs flex items-center gap-1.5 active:scale-95"
               >
-                <Share2 className="size-3.5" /> Share
+                <Share2 className="size-3.5" /> <span className="hidden md:inline">Share</span>
+              </button>
+
+              {/* Close Button on desktop */}
+              <button
+                onClick={onClose}
+                className="hidden sm:grid size-8 place-items-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition ml-1"
+                aria-label="Close modal"
+              >
+                <X className="size-4" />
               </button>
             </div>
-
-            {/* Close Button */}
-            <button
-              onClick={onClose}
-              className="size-8 grid place-items-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition ml-1"
-            >
-              <X className="size-4" />
-            </button>
           </div>
         </div>
 
-        {/* Modal Scrollable Body - Live Preview */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex justify-center">
+        {/* Modal Scrollable Body - Live Preview seamlessly styled inside the white container */}
+        <div className="flex-1 overflow-y-auto bg-slate-50/50 p-2 sm:p-4 md:p-6 flex justify-center">
           {format === "A4" ? (
             /* A4 Professional Invoice View */
-            <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg border border-slate-200 p-6 sm:p-8 text-slate-800 space-y-6 text-xs transition-all">
+            <div className="w-full bg-white rounded-2xl shadow-sm border border-slate-200/90 p-4 sm:p-6 md:p-8 text-slate-800 space-y-4 sm:space-y-6 text-xs">
               {/* Header Row */}
-              <div className="flex justify-between items-start border-b-2 border-[#0F4C5C] pb-5 gap-4">
-                <div className="flex items-center gap-3.5">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-2 border-[#0F4C5C] pb-4 sm:pb-5 gap-3 sm:gap-4">
+                <div className="flex items-center gap-3">
                   <img
                     src={settings.logoUrl || "/fabric-care-logo.png"}
                     alt={settings.shopName}
-                    className="size-12 object-contain rounded-xl bg-white p-1 border border-slate-200 shadow-xs"
+                    className="size-11 sm:size-12 object-contain rounded-xl bg-slate-50 p-1 border border-slate-200 shadow-2xs shrink-0"
                   />
                   <div>
-                    <h2 className="text-xl font-black text-[#0F4C5C] tracking-tight">{settings.shopName}</h2>
+                    <h2 className="text-lg sm:text-xl font-black text-[#0F4C5C] tracking-tight">{settings.shopName}</h2>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{settings.tagline}</p>
-                    <div className="text-[11px] text-slate-600 mt-1 space-y-0.5">
+                    <div className="text-[11px] text-slate-600 mt-0.5 space-y-0.5">
                       {settings.address && <p>{settings.address}</p>}
-                      <p>
+                      <p className="text-[10px] sm:text-[11px]">
                         {settings.phone && <span>Phone: <strong>{settings.phone}</strong></span>}
                         {settings.phone && settings.email && " · "}
                         {settings.email && <span>{settings.email}</span>}
                       </p>
-                      {settings.gstin && <p>GSTIN: <strong>{settings.gstin}</strong></p>}
+                      {settings.gstin && <p className="text-[10px]">GSTIN: <strong>{settings.gstin}</strong></p>}
                     </div>
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <h1 className="text-2xl font-black text-[#0F4C5C] tracking-wider">INVOICE</h1>
-                  <table className="text-[11px] text-right ml-auto mt-1">
-                    <tbody>
-                      <tr>
-                        <td className="text-slate-500 pr-2 font-medium">Invoice No:</td>
-                        <td className="font-mono font-bold text-slate-900">{normalizedOrder.id}</td>
-                      </tr>
-                      <tr>
-                        <td className="text-slate-500 pr-2 font-medium">Date:</td>
-                        <td className="font-mono font-bold text-slate-900">{dateStr}</td>
-                      </tr>
-                      {deliveryDateStr && (
-                        <tr>
-                          <td className="text-slate-500 pr-2 font-medium">Expected Ready:</td>
-                          <td className="font-mono font-bold text-slate-900">{deliveryDateStr}</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                <div className="sm:text-right w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex flex-row sm:flex-col justify-between sm:justify-start items-center sm:items-end gap-1">
+                  <h1 className="text-xl sm:text-2xl font-black text-[#0F4C5C] tracking-wider">INVOICE</h1>
+                  <div className="text-[11px] text-slate-600 space-y-0.5 text-right">
+                    <p><span className="text-slate-400 mr-1">No:</span><span className="font-mono font-bold text-slate-900">{normalizedOrder.id}</span></p>
+                    <p><span className="text-slate-400 mr-1">Date:</span><span className="font-mono font-bold text-slate-900">{dateStr}</span></p>
+                    {deliveryDateStr && (
+                      <p><span className="text-slate-400 mr-1">Ready:</span><span className="font-mono font-bold text-slate-900">{deliveryDateStr}</span></p>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Bill To & Status Section */}
-              <div className="flex justify-between items-center bg-slate-50 border border-slate-200/80 rounded-xl p-3.5">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50/90 border border-slate-200/80 rounded-xl p-3.5 gap-2.5">
                 <div>
-                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-500 block">Billed To</span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400 block">Billed To</span>
                   <p className="text-sm font-bold text-[#0F4C5C] mt-0.5">{normalizedOrder.customer}</p>
                   <p className="text-xs text-slate-600 font-mono font-medium">{normalizedOrder.phone || "No phone registered"}</p>
                 </div>
-                <div>
+                <div className="w-full sm:w-auto flex justify-start sm:justify-end">
                   <span
                     className={`inline-block px-3 py-1.5 rounded-lg text-xs font-extrabold tracking-wide uppercase border ${
                       isPaid
@@ -316,16 +317,16 @@ export default function InvoiceModal({
               </div>
 
               {/* Items Table */}
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-left border-collapse text-xs">
+              <div className="border border-slate-200 rounded-xl overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs min-w-[340px]">
                   <thead>
                     <tr className="bg-[#0F4C5C] text-white text-[10px] font-bold uppercase tracking-wider">
-                      <th className="py-2.5 px-3 text-center w-10">#</th>
+                      <th className="py-2.5 px-3 text-center w-8">#</th>
                       <th className="py-2.5 px-3">Item / Garment</th>
                       <th className="py-2.5 px-3">Service</th>
-                      <th className="py-2.5 px-3 text-center w-14">Qty</th>
-                      <th className="py-2.5 px-3 text-right w-20">Rate (₹)</th>
-                      <th className="py-2.5 px-3 text-right w-24">Amount (₹)</th>
+                      <th className="py-2.5 px-2 text-center w-12">Qty</th>
+                      <th className="py-2.5 px-3 text-right w-16">Rate (₹)</th>
+                      <th className="py-2.5 px-3 text-right w-20">Amount (₹)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -334,7 +335,7 @@ export default function InvoiceModal({
                         <td className="py-2.5 px-3 text-center text-slate-400 font-medium">{it.index}</td>
                         <td className="py-2.5 px-3 font-semibold text-slate-800">{it.name}</td>
                         <td className="py-2.5 px-3 text-slate-500 text-[11px]">{it.service}</td>
-                        <td className="py-2.5 px-3 text-center font-bold text-slate-800">{it.quantity}</td>
+                        <td className="py-2.5 px-2 text-center font-bold text-slate-800">{it.quantity}</td>
                         <td className="py-2.5 px-3 text-right text-slate-600 font-mono">
                           {it.rate ? formatRupee(it.rate, false).replace("₹ ", "") : "—"}
                         </td>
@@ -348,17 +349,17 @@ export default function InvoiceModal({
               </div>
 
               {/* Summary Layout */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 {/* Left Side: Words & QR */}
                 <div className="space-y-3">
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 block">Total in Words</span>
+                  <div className="bg-slate-50/90 border border-slate-200/80 rounded-xl p-3">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Total in Words</span>
                     <p className="font-bold text-[#0F4C5C] text-xs mt-0.5 leading-snug">{totalInWords}</p>
                   </div>
 
                   {upiQrDataUrl && (
-                    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200/80 rounded-xl p-3">
-                      <img src={upiQrDataUrl} alt="UPI QR Code" className="size-16 bg-white p-1 rounded-lg border border-slate-200" />
+                    <div className="flex items-center gap-3 bg-slate-50/90 border border-slate-200/80 rounded-xl p-3">
+                      <img src={upiQrDataUrl} alt="UPI QR Code" className="size-16 bg-white p-1 rounded-lg border border-slate-200 shrink-0" />
                       <div className="text-[11px]">
                         <p className="font-bold text-[#0F4C5C] text-xs">Scan to Pay via UPI</p>
                         <p className="font-mono font-bold text-slate-800 text-[10px] mt-0.5">{settings.upiId}</p>
@@ -369,7 +370,7 @@ export default function InvoiceModal({
                 </div>
 
                 {/* Right Side: Totals Box */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white divide-y divide-slate-100 text-xs">
+                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white divide-y divide-slate-100 text-xs shadow-2xs">
                   <div className="flex justify-between px-3.5 py-2 text-slate-600">
                     <span>Subtotal</span>
                     <span className="font-mono font-semibold text-slate-800">{formatRupee(subtotal)}</span>
@@ -394,7 +395,7 @@ export default function InvoiceModal({
                     <span>Amount Paid</span>
                     <span className="font-mono font-bold">{formatRupee(amountPaid)}</span>
                   </div>
-                  <div className="flex justify-between px-3.5 py-2 bg-slate-50 font-bold">
+                  <div className="flex justify-between px-3.5 py-2.5 bg-slate-50 font-bold">
                     <span className="text-slate-800">Balance Due</span>
                     <span className={`font-mono ${balanceDue > 0 ? "text-rose-600" : "text-emerald-600"}`}>
                       {balanceDue > 0 ? formatRupee(balanceDue) : "₹ 0 (Paid)"}
@@ -429,8 +430,8 @@ export default function InvoiceModal({
           ) : (
             /* Thermal POS Receipt View (80mm / 58mm) */
             <div
-              className={`bg-white rounded-lg shadow-md border border-slate-300 p-4 font-mono text-black text-xs space-y-3 ${
-                format === "Thermal58" ? "max-w-[280px]" : "max-w-[340px]"
+              className={`bg-white rounded-xl shadow-md border border-slate-300 p-4 font-mono text-black text-xs space-y-3 h-fit ${
+                format === "Thermal58" ? "w-full max-w-[280px]" : "w-full max-w-[340px]"
               }`}
             >
               <div className="text-center space-y-0.5">
@@ -508,14 +509,14 @@ export default function InvoiceModal({
             {onSendSms && (
               <button
                 onClick={onSendSms}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition"
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95"
               >
                 <MessageSquare className="size-3.5 text-[#0F4C5C]" /> Send SMS
               </button>
             )}
             <button
               onClick={() => setShowShareMenu(true)}
-              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition"
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95"
             >
               <Share2 className="size-3.5 text-[#0F4C5C]" /> More Share Options
             </button>
@@ -525,14 +526,14 @@ export default function InvoiceModal({
             {canDelete && onDelete && (
               <button
                 onClick={onDelete}
-                className="px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200 font-bold rounded-xl text-xs hover:bg-rose-100 transition"
+                className="px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200 font-bold rounded-xl text-xs hover:bg-rose-100 transition active:scale-95"
               >
                 Delete Bill
               </button>
             )}
             <button
               onClick={handlePrint}
-              className="px-4 py-2 bg-[#0F4C5C] text-white font-bold rounded-xl text-xs hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center gap-1.5"
+              className="px-4 py-2 bg-[#0F4C5C] text-white font-bold rounded-xl text-xs hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center gap-1.5 active:scale-95"
             >
               <Printer className="size-3.5" /> Print Bill
             </button>
