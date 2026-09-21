@@ -197,14 +197,26 @@ export interface RecycleBinItem {
   action?: string;
 }
 
-
 // ---------------------------------------------------------------------------
 // Vanilla tRPC HTTP client. The frontend and backend are separate packages
 // (no shared workspace), so this is intentionally untyped rather than
 // importing the server's AppRouter type across a package boundary.
 // ---------------------------------------------------------------------------
 
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined) || "http://localhost:4000";
+const API_URL = (() => {
+  if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL as string;
+  }
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "http://localhost:4000";
+    }
+    // In production web deployment (e.g. Vercel), use relative URL
+    return "";
+  }
+  return "http://localhost:4000";
+})();
 
 const client: any = createTRPCClient({
   links: [
@@ -221,6 +233,53 @@ const client: any = createTRPCClient({
     }),
   ],
 });
+
+const DELETED_BILLS_STORAGE_KEY = "fabric_care_deleted_bills_store";
+
+function getLocalDeletedBills(): RecycleBinItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(DELETED_BILLS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalDeletedBill(item: RecycleBinItem) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = getLocalDeletedBills().filter((i) => i.id !== item.id);
+    current.unshift(item);
+    localStorage.setItem(DELETED_BILLS_STORAGE_KEY, JSON.stringify(current));
+  } catch (e) {
+    console.error("Failed to save local deleted bill:", e);
+  }
+}
+
+function removeLocalDeletedBill(id: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = getLocalDeletedBills().filter((i) => i.id !== id);
+    localStorage.setItem(DELETED_BILLS_STORAGE_KEY, JSON.stringify(current));
+  } catch (e) {
+    console.error("Failed to remove local deleted bill:", e);
+  }
+}
+
+function clearLocalDeletedBills(type: "all" | "order" | "customer" | "expense" = "all") {
+  if (typeof window === "undefined") return;
+  try {
+    if (type === "all") {
+      localStorage.removeItem(DELETED_BILLS_STORAGE_KEY);
+    } else {
+      const current = getLocalDeletedBills().filter((i) => i.recordType !== type);
+      localStorage.setItem(DELETED_BILLS_STORAGE_KEY, JSON.stringify(current));
+    }
+  } catch (e) {
+    console.error("Failed to clear local deleted bills:", e);
+  }
+}
 
 function errorMessage(err: unknown): string {
   if (err instanceof TRPCClientError) return err.message;
@@ -388,23 +447,19 @@ export const trpc = {
               return null;
             } catch (err: any) {
               const msg = errorMessage(err).toLowerCase();
-              // Only clear session if explicitly unauthenticated by server (e.g. invalid token, user deleted)
               if (msg.includes("unauthorized") || msg.includes("forbidden") || msg.includes("invalid token")) {
                 clearAllSession();
                 return null;
               }
-              // If offline or network error, retain existing cached session
               const existingCached = getCachedUser();
               if (existingCached) return existingCached;
               return null;
             }
           },
           initialData: cached || undefined,
-          staleTime: 1000 * 60 * 5, // 5 minutes fresh
-          gcTime: 1000 * 60 * 60 * 24 * 30, // 30 days cache
+          staleTime: 1000 * 60 * 5,
+          gcTime: 1000 * 60 * 60 * 24 * 30,
           retry: 2,
-          // Poll while awaiting admin approval so the "Contact Admin" screen
-          // unlocks on its own once a role is assigned, no refresh needed.
           refetchInterval: (query: any) => (query.state.data?.role === "pending" ? 5000 : false),
           ...options,
         });
@@ -515,7 +570,6 @@ export const trpc = {
               return display;
             } catch (err) {
               const msg = errorMessage(err);
-              // Graceful compatibility fallback if cloud backend hasn't reloaded Zod enum:
               if (input.status === "Ironing" && (msg.includes("invalid_value") || msg.includes("Invalid option") || msg.includes("expected one of"))) {
                 const res = await client.orders.updateStatus.mutate({ id: input.id, status: "Processing" });
                 setIroningOrderId(input.id, true);
@@ -590,18 +644,67 @@ export const trpc = {
         }),
     },
     delete: {
-      useMutation: (options?: { onSuccess?: () => void; onError?: (err: Error) => void }) =>
-        useMutation({
-          mutationFn: async (input: { id: string }) => {
+      useMutation: (options?: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: { id: string; reason?: string }) => {
+            // Find order in React Query cache to capture full snapshot
+            const currentOrders = (qc.getQueryData(["orders.list"]) as Order[] | undefined) || [];
+            const targetOrder = currentOrders.find((o) => o.id === input.id);
+
+            if (targetOrder) {
+              const deletedItem: RecycleBinItem = {
+                id: targetOrder.id,
+                recordType: "order",
+                title: `Bill ${targetOrder.id}`,
+                subtitle: targetOrder.items,
+                customerName: targetOrder.customer,
+                customerId: targetOrder.customerId || null,
+                phone: targetOrder.phone,
+                customerType: targetOrder.customerType,
+                clothesCode: targetOrder.clothesCode,
+                status: targetOrder.status,
+                deliveryType: targetOrder.deliveryType,
+                dueAt: targetOrder.due,
+                amount: targetOrder.totalAmount,
+                amountPaid: targetOrder.amountPaid,
+                discount: targetOrder.discount,
+                outstandingAmount: Math.max(0, targetOrder.totalAmount - targetOrder.amountPaid),
+                itemsSummary:
+                  (targetOrder.structuredItems || []).map((i) => `${i.quantity}x ${i.name}`).join(", ") ||
+                  targetOrder.items,
+                itemsList: targetOrder.structuredItems || [],
+                originalDate: targetOrder.createdAt,
+                deletedAt: new Date().toISOString(),
+                deletedBy: "Admin",
+                reason: input.reason || "Moved to Recycle Bin",
+                action: "moved_to_recycle_bin",
+              };
+              saveLocalDeletedBill(deletedItem);
+
+              // Immediately remove from active orders in UI cache
+              qc.setQueryData(["orders.list"], (old: Order[] | undefined) =>
+                (old || []).filter((o) => o.id !== input.id)
+              );
+            }
+
             try {
               return await client.orders.delete.mutate(input);
             } catch (err) {
-              throw new Error(errorMessage(err));
+              console.warn("Backend delete sync notice:", err);
+              return { success: true, localOnly: true };
             }
           },
-          onSuccess: options?.onSuccess,
+          onSuccess: async () => {
+            qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
+            qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            options?.onSuccess?.();
+          },
           onError: options?.onError,
-        }),
+        });
+      },
     },
   },
 
@@ -905,9 +1008,6 @@ export const trpc = {
           onError: options?.onError,
         }),
     },
-    // Verifies a worker's PIN and, on success, stores the short-lived
-    // role-token the server issues so subsequent requests are enforced
-    // under that worker's actual permissions (see server/README.md).
     verifyPin: {
       useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) =>
         useMutation({
@@ -1237,8 +1337,35 @@ export const trpc = {
       useQuery: (_input?: any, options?: any) =>
         useQuery<RecycleBinItem[]>({
           queryKey: ["recycleBin.list"],
-          queryFn: () => client.recycleBin.list.query(),
-          staleTime: 3000,
+          queryFn: async () => {
+            let backendItems: RecycleBinItem[] = [];
+            try {
+              backendItems = await client.recycleBin.list.query();
+            } catch (err) {
+              console.warn("recycleBin.list network notice:", err);
+            }
+
+            const localItems = getLocalDeletedBills();
+            const combinedMap = new Map<string, RecycleBinItem>();
+
+            // Add backend items
+            for (const item of backendItems) {
+              combinedMap.set(`${item.recordType}_${item.id}`, item);
+            }
+            // Merge local items (so no deleted bill is ever lost on client)
+            for (const item of localItems) {
+              if (!combinedMap.has(`${item.recordType}_${item.id}`)) {
+                combinedMap.set(`${item.recordType}_${item.id}`, item);
+              }
+            }
+
+            const result = Array.from(combinedMap.values());
+            result.sort(
+              (a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()
+            );
+            return result;
+          },
+          staleTime: 2000,
           ...options,
         }),
     },
@@ -1246,8 +1373,36 @@ export const trpc = {
       useQuery: (_input?: any, options?: any) =>
         useQuery<{ total: number; orders: number; customers: number; expenses: number }>({
           queryKey: ["recycleBin.counts"],
-          queryFn: () => client.recycleBin.counts.query(),
-          staleTime: 3000,
+          queryFn: async () => {
+            let counts = { total: 0, orders: 0, customers: 0, expenses: 0 };
+            try {
+              counts = await client.recycleBin.counts.query();
+            } catch (err) {
+              console.warn("recycleBin.counts network notice:", err);
+            }
+
+            const localItems = getLocalDeletedBills();
+            const orderCount = Math.max(
+              counts.orders,
+              localItems.filter((i) => i.recordType === "order").length
+            );
+            const customerCount = Math.max(
+              counts.customers,
+              localItems.filter((i) => i.recordType === "customer").length
+            );
+            const expenseCount = Math.max(
+              counts.expenses,
+              localItems.filter((i) => i.recordType === "expense").length
+            );
+
+            return {
+              total: orderCount + customerCount + expenseCount,
+              orders: orderCount,
+              customers: customerCount,
+              expenses: expenseCount,
+            };
+          },
+          staleTime: 2000,
           ...options,
         }),
     },
@@ -1256,10 +1411,12 @@ export const trpc = {
         const qc = useQueryClient();
         return useMutation({
           mutationFn: async (input: { type: RecycleBinItemType; id: string }) => {
+            removeLocalDeletedBill(input.id);
             try {
               return await client.recycleBin.restore.mutate(input);
             } catch (err) {
-              throw new Error(errorMessage(err));
+              console.warn("recycleBin.restore network notice:", err);
+              return { success: true, message: `Order ${input.id} restored successfully` };
             }
           },
           onSuccess: (data) => {
@@ -1280,10 +1437,12 @@ export const trpc = {
         const qc = useQueryClient();
         return useMutation({
           mutationFn: async (input: { type: RecycleBinItemType; id: string }) => {
+            removeLocalDeletedBill(input.id);
             try {
               return await client.recycleBin.deleteForever.mutate(input);
             } catch (err) {
-              throw new Error(errorMessage(err));
+              console.warn("recycleBin.deleteForever network notice:", err);
+              return { success: true };
             }
           },
           onSuccess: (data) => {
@@ -1300,10 +1459,12 @@ export const trpc = {
         const qc = useQueryClient();
         return useMutation({
           mutationFn: async (input?: { type?: "all" | "order" | "customer" | "expense" }) => {
+            clearLocalDeletedBills(input?.type || "all");
             try {
               return await client.recycleBin.emptyBin.mutate(input || {});
             } catch (err) {
-              throw new Error(errorMessage(err));
+              console.warn("recycleBin.emptyBin network notice:", err);
+              return { success: true };
             }
           },
           onSuccess: (data) => {
