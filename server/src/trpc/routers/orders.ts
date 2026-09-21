@@ -179,7 +179,7 @@ export const ordersRouter = router({
         totalAmount: input.totalAmount,
         amountPaid: input.amountPaid,
         discount: input.discount,
-        items: input.items.map((it) => `${it.quantity}x ${it.name}`).join(", ") || "General laundry",
+        items: input.items,
       });
 
       return toApiOrder(order);
