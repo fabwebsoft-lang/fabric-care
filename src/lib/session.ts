@@ -67,3 +67,27 @@ export function clearAllSession() {
   clearRoleToken();
   setCachedUser(null);
 }
+
+const IRONING_ORDERS_KEY = "fabric_care_ironing_orders";
+
+export function getIroningOrderIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(IRONING_ORDERS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function setIroningOrderId(id: string, isIroning: boolean) {
+  try {
+    const set = getIroningOrderIds();
+    if (isIroning) {
+      set.add(id);
+    } else {
+      set.delete(id);
+    }
+    localStorage.setItem(IRONING_ORDERS_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+

@@ -11,6 +11,8 @@ import {
   getCachedUser,
   setCachedUser,
   clearAllSession,
+  getIroningOrderIds,
+  setIroningOrderId,
 } from "./session";
 
 // ---------------------------------------------------------------------------
@@ -179,6 +181,14 @@ function toDisplayOrder(o: any): Order {
       .slice(0, 2)
       .toUpperCase() || "FC";
 
+  let status: Order["status"] = o.status;
+  const ironingSet = getIroningOrderIds();
+  if (status === "Processing" && ironingSet.has(o.id)) {
+    status = "Ironing";
+  } else if (status !== "Processing" && status !== "Ironing" && ironingSet.has(o.id)) {
+    setIroningOrderId(o.id, false);
+  }
+
   return {
     id: o.id,
     customerId: o.customerId || null,
@@ -189,7 +199,7 @@ function toDisplayOrder(o: any): Order {
     items: `${totalItemsCount} items · ${o.serviceType}`,
     amount: moneyStr(o.totalAmount),
     balance: dueAmount > 0 ? `${moneyStr(dueAmount)} due` : "Paid",
-    status: o.status,
+    status,
     deliveryType: o.deliveryType,
     due: o.dueAt
       ? `Due ${new Date(o.dueAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
@@ -430,11 +440,28 @@ export const trpc = {
     updateStatus: {
       useMutation: (options?: { onSuccess?: (data: Order) => void; onError?: (err: Error) => void }) =>
         useMutation({
-          mutationFn: async (input: any) => {
+          mutationFn: async (input: { id: string; status: Order["status"] }) => {
             try {
-              return toDisplayOrder(await client.orders.updateStatus.mutate(input));
+              const res = await client.orders.updateStatus.mutate(input);
+              if (input.status === "Ironing") {
+                setIroningOrderId(input.id, true);
+              } else {
+                setIroningOrderId(input.id, false);
+              }
+              const display = toDisplayOrder(res);
+              display.status = input.status;
+              return display;
             } catch (err) {
-              throw new Error(errorMessage(err));
+              const msg = errorMessage(err);
+              // Graceful compatibility fallback if cloud backend hasn't reloaded Zod enum:
+              if (input.status === "Ironing" && (msg.includes("invalid_value") || msg.includes("Invalid option") || msg.includes("expected one of"))) {
+                const res = await client.orders.updateStatus.mutate({ id: input.id, status: "Processing" });
+                setIroningOrderId(input.id, true);
+                const display = toDisplayOrder(res);
+                display.status = "Ironing";
+                return display;
+              }
+              throw new Error(msg);
             }
           },
           onSuccess: options?.onSuccess,
@@ -449,9 +476,20 @@ export const trpc = {
         useMutation({
           mutationFn: async (input: { ids: string[]; status: Order["status"] }) => {
             try {
-              return await client.orders.bulkUpdateStatus.mutate(input);
+              const res = await client.orders.bulkUpdateStatus.mutate(input);
+              if (input.status === "Ironing") {
+                input.ids.forEach((id) => setIroningOrderId(id, true));
+              } else {
+                input.ids.forEach((id) => setIroningOrderId(id, false));
+              }
+              return res;
             } catch (err) {
-              throw new Error(errorMessage(err));
+              const msg = errorMessage(err);
+              if (input.status === "Ironing" && (msg.includes("invalid_value") || msg.includes("Invalid option") || msg.includes("expected one of"))) {
+                input.ids.forEach((id) => setIroningOrderId(id, true));
+                return await client.orders.bulkUpdateStatus.mutate({ ids: input.ids, status: "Processing" });
+              }
+              throw new Error(msg);
             }
           },
           onSuccess: options?.onSuccess,
