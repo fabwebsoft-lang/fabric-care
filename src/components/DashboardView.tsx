@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useAccessControl } from "@/contexts/AccessControlContext";
 import InvoiceModal from "./InvoiceModal";
+import { toast } from "sonner";
 import {
   IndianRupee,
   CircleDollarSign,
@@ -22,11 +24,30 @@ export default function DashboardView({
   onNavigate: (section: any) => void;
   onNewOrder: () => void;
 }) {
+  const { canDelete } = useAccessControl();
+  const utils = trpc.useUtils();
   const { data: stats } = trpc.dashboard.stats.useQuery();
   const { data: orders = [] } = trpc.orders.list.useQuery();
   const { data: statements } = trpc.reports.businessStatements.useQuery({ period: "7_days" });
 
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
+  const deleteOrderMutation = trpc.orders.delete.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.orders.list.invalidate(),
+        utils.dashboard.stats.invalidate(),
+        utils.recycleBin.counts.invalidate(),
+        utils.recycleBin.list.invalidate(),
+        utils.customers.list.invalidate(),
+      ]);
+      toast.success("Bill moved to Recycle Bin", {
+        description: "You can restore or permanently delete it from the Recycle Bin.",
+      });
+      setSelectedOrder(null);
+    },
+    onError: (err: Error) => toast.error("Failed to move bill to Recycle Bin", { description: err.message }),
+  });
 
   const metrics = stats || {
     todaysSales: 0,
@@ -266,6 +287,18 @@ export default function DashboardView({
         <InvoiceModal
           order={selectedOrder}
           onClose={() => setSelectedOrder(null)}
+          onDelete={() => {
+            if (!canDelete) {
+              toast.error("Permission Denied", {
+                description: "Staff role is restricted from deleting bills. Contact an Admin or Manager.",
+              });
+              return;
+            }
+            if (confirm(`Move Bill ${selectedOrder.id} to Recycle Bin?\n\nThis item will be moved to the Recycle Bin and can be restored later.`)) {
+              deleteOrderMutation.mutate({ id: selectedOrder.id });
+            }
+          }}
+          canDelete={canDelete}
         />
       )}
     </div>

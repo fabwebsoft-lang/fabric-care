@@ -40,7 +40,15 @@ export default function RecycleBinView() {
 
   // Mutations
   const restoreMutation = trpc.recycleBin.restore.useMutation({
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
+      await Promise.all([
+        utils.recycleBin.list.invalidate(),
+        utils.recycleBin.counts.invalidate(),
+        utils.orders.list.invalidate(),
+        utils.customers.list.invalidate(),
+        utils.expenses.list.invalidate(),
+        utils.dashboard.stats.invalidate(),
+      ]);
       toast.success(res.message || "Item restored successfully");
       setItemToRestore(null);
     },
@@ -50,7 +58,15 @@ export default function RecycleBinView() {
   });
 
   const deleteForeverMutation = trpc.recycleBin.deleteForever.useMutation({
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
+      await Promise.all([
+        utils.recycleBin.list.invalidate(),
+        utils.recycleBin.counts.invalidate(),
+        utils.orders.list.invalidate(),
+        utils.customers.list.invalidate(),
+        utils.expenses.list.invalidate(),
+        utils.dashboard.stats.invalidate(),
+      ]);
       toast.success(res.message || "Item permanently deleted");
       setItemToDeleteForever(null);
     },
@@ -60,7 +76,15 @@ export default function RecycleBinView() {
   });
 
   const emptyBinMutation = trpc.recycleBin.emptyBin.useMutation({
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
+      await Promise.all([
+        utils.recycleBin.list.invalidate(),
+        utils.recycleBin.counts.invalidate(),
+        utils.orders.list.invalidate(),
+        utils.customers.list.invalidate(),
+        utils.expenses.list.invalidate(),
+        utils.dashboard.stats.invalidate(),
+      ]);
       toast.success(res.message || "Recycle bin emptied");
       setShowEmptyBinModal(false);
     },

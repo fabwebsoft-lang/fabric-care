@@ -147,10 +147,13 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
 
   const deleteOrderMutation = trpc.orders.delete.useMutation({
     onSuccess: async () => {
-      await utils.orders.list.invalidate();
-      await utils.dashboard.stats.invalidate();
-      await utils.recycleBin.counts.invalidate();
-      await utils.recycleBin.list.invalidate();
+      await Promise.all([
+        utils.orders.list.invalidate(),
+        utils.dashboard.stats.invalidate(),
+        utils.recycleBin.counts.invalidate(),
+        utils.recycleBin.list.invalidate(),
+        utils.customers.list.invalidate(),
+      ]);
       toast.success("Bill moved to Recycle Bin", {
         description: "You can restore or permanently delete it from the Recycle Bin.",
       });

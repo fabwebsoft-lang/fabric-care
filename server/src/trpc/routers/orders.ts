@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { router, approvedProcedure, requirePermission } from "../trpc.js";
 import { Order } from "../../models/Order.js";
 import { Customer } from "../../models/Customer.js";
+import { DeletedBill } from "../../models/DeletedBill.js";
 import { normalizePhone } from "../../lib/phone.js";
 
 const orderItemInput = z.object({
@@ -252,21 +253,58 @@ export const ordersRouter = router({
     }),
 
   delete: requirePermission("canDeleteOrders")
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ id: z.string(), reason: z.string().optional() }))
     .mutation(async ({ input, ctx }) => {
-      const userLabel = (ctx.activeRole ? String(ctx.activeRole).charAt(0).toUpperCase() + String(ctx.activeRole).slice(1) : "Admin");
-      const updated = await Order.findByIdAndUpdate(
-        input.id,
-        {
-          isDeleted: true,
-          deletedAt: new Date(),
-          deletedBy: userLabel,
-        },
-        { new: true }
-      );
-      if (!updated) {
+      const userLabel = ctx.activeRole
+        ? String(ctx.activeRole).charAt(0).toUpperCase() + String(ctx.activeRole).slice(1)
+        : "Admin";
+      
+      let order = await Order.findById(input.id);
+      if (!order) {
+        order = await Order.findOne({ _id: input.id.trim() });
+      }
+
+      if (!order) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
       }
+
+      const now = new Date();
+      order.isDeleted = true;
+      order.deletedAt = now;
+      order.deletedBy = userLabel;
+      await order.save();
+
+      // Store deleted bill snapshot permanently in backend
+      try {
+        await DeletedBill.findOneAndUpdate(
+          { orderId: order._id },
+          {
+            orderId: order._id,
+            customerId: order.customerId,
+            customer: order.customer,
+            phone: order.phone,
+            customerType: order.customerType,
+            clothesCode: order.clothesCode,
+            serviceType: order.serviceType,
+            status: order.status,
+            deliveryType: order.deliveryType,
+            dueAt: order.dueAt,
+            totalAmount: order.totalAmount,
+            amountPaid: order.amountPaid,
+            discount: order.discount,
+            items: order.items,
+            originalCreatedAt: order.createdAt,
+            deletedAt: now,
+            deletedBy: userLabel,
+            reason: input.reason || "User deleted bill",
+            action: "moved_to_recycle_bin",
+          },
+          { upsert: true, new: true }
+        );
+      } catch (err) {
+        console.error("Failed to archive deleted bill snapshot:", err);
+      }
+
       return { success: true };
     }),
 });

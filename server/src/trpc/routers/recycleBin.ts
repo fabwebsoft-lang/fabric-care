@@ -5,6 +5,7 @@ import { router, approvedProcedure, requirePermission } from "../trpc.js";
 import { Order } from "../../models/Order.js";
 import { Customer } from "../../models/Customer.js";
 import { Expense } from "../../models/Expense.js";
+import { DeletedBill } from "../../models/DeletedBill.js";
 
 export type RecycleBinItemType = "order" | "customer" | "expense";
 
@@ -117,12 +118,30 @@ export const recycleBinRouter = router({
     )
     .mutation(async ({ input }) => {
       if (input.type === "order") {
-        const restored = await Order.findByIdAndUpdate(
+        let restored = await Order.findByIdAndUpdate(
           input.id,
           { isDeleted: false, deletedAt: null, deletedBy: null },
           { new: true }
         );
+        if (!restored) {
+          restored = await Order.findOneAndUpdate(
+            { _id: input.id.trim() },
+            { isDeleted: false, deletedAt: null, deletedBy: null },
+            { new: true }
+          );
+        }
         if (!restored) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+
+        // Update DeletedBill record if it exists
+        try {
+          await DeletedBill.findOneAndUpdate(
+            { orderId: restored._id },
+            { action: "restored" }
+          );
+        } catch (e) {
+          console.error("Failed to update DeletedBill status on restore:", e);
+        }
+
         return { success: true, message: `Order ${restored._id} restored successfully` };
       }
 
@@ -168,8 +187,50 @@ export const recycleBinRouter = router({
     )
     .mutation(async ({ input }) => {
       if (input.type === "order") {
-        const deleted = await Order.findByIdAndDelete(input.id);
-        if (!deleted) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+        let orderToPermanentlyDelete = await Order.findById(input.id);
+        if (!orderToPermanentlyDelete) {
+          orderToPermanentlyDelete = await Order.findOne({ _id: input.id.trim() });
+        }
+
+        if (orderToPermanentlyDelete) {
+          // Ensure DeletedBill has complete archive snapshot before removing from active table
+          try {
+            await DeletedBill.findOneAndUpdate(
+              { orderId: orderToPermanentlyDelete._id },
+              {
+                orderId: orderToPermanentlyDelete._id,
+                customerId: orderToPermanentlyDelete.customerId,
+                customer: orderToPermanentlyDelete.customer,
+                phone: orderToPermanentlyDelete.phone,
+                customerType: orderToPermanentlyDelete.customerType,
+                clothesCode: orderToPermanentlyDelete.clothesCode,
+                serviceType: orderToPermanentlyDelete.serviceType,
+                status: orderToPermanentlyDelete.status,
+                deliveryType: orderToPermanentlyDelete.deliveryType,
+                dueAt: orderToPermanentlyDelete.dueAt,
+                totalAmount: orderToPermanentlyDelete.totalAmount,
+                amountPaid: orderToPermanentlyDelete.amountPaid,
+                discount: orderToPermanentlyDelete.discount,
+                items: orderToPermanentlyDelete.items,
+                originalCreatedAt: orderToPermanentlyDelete.createdAt,
+                deletedAt: orderToPermanentlyDelete.deletedAt || new Date(),
+                deletedBy: orderToPermanentlyDelete.deletedBy || "Admin",
+                action: "permanently_deleted",
+              },
+              { upsert: true, new: true }
+            );
+          } catch (e) {
+            console.error("Failed to archive DeletedBill on deleteForever:", e);
+          }
+        }
+
+        let deleted = await Order.findByIdAndDelete(input.id);
+        if (!deleted) {
+          deleted = await Order.findOneAndDelete({ _id: input.id.trim() });
+        }
+        if (!deleted && !orderToPermanentlyDelete) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+        }
         return { success: true, message: `Order ${input.id} permanently deleted` };
       }
 
@@ -212,6 +273,37 @@ export const recycleBinRouter = router({
       let expensesDeleted = 0;
 
       if (type === "all" || type === "order") {
+        const deletedOrders = await Order.find({ isDeleted: true });
+        for (const o of deletedOrders) {
+          try {
+            await DeletedBill.findOneAndUpdate(
+              { orderId: o._id },
+              {
+                orderId: o._id,
+                customerId: o.customerId,
+                customer: o.customer,
+                phone: o.phone,
+                customerType: o.customerType,
+                clothesCode: o.clothesCode,
+                serviceType: o.serviceType,
+                status: o.status,
+                deliveryType: o.deliveryType,
+                dueAt: o.dueAt,
+                totalAmount: o.totalAmount,
+                amountPaid: o.amountPaid,
+                discount: o.discount,
+                items: o.items,
+                originalCreatedAt: o.createdAt,
+                deletedAt: o.deletedAt || new Date(),
+                deletedBy: o.deletedBy || "Admin",
+                action: "permanently_deleted",
+              },
+              { upsert: true, new: true }
+            );
+          } catch (e) {
+            console.error("Failed to archive DeletedBill on emptyBin:", e);
+          }
+        }
         const res = await Order.deleteMany({ isDeleted: true });
         ordersDeleted = res.deletedCount || 0;
       }
@@ -236,4 +328,23 @@ export const recycleBinRouter = router({
         message: `Permanently removed ${totalDeleted} item(s) from Recycle Bin`,
       };
     }),
+
+  archivedBills: approvedProcedure.query(async () => {
+    const records = await DeletedBill.find().sort({ deletedAt: -1 }).lean();
+    return records.map((r) => ({
+      orderId: r.orderId,
+      customerId: r.customerId,
+      customer: r.customer,
+      phone: r.phone,
+      serviceType: r.serviceType,
+      totalAmount: r.totalAmount,
+      amountPaid: r.amountPaid,
+      discount: r.discount,
+      items: r.items,
+      deletedAt: r.deletedAt?.toISOString(),
+      deletedBy: r.deletedBy,
+      reason: r.reason,
+      action: r.action,
+    }));
+  }),
 });
