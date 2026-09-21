@@ -6,6 +6,7 @@ export type PaperSize = "A4" | "Thermal80" | "Thermal58";
 
 export interface InvoiceOrderData {
   id: string;
+  customerId?: string | null;
   createdAt: string | Date;
   dueAt?: string | Date | null;
   due?: string;
@@ -687,7 +688,10 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
     <div class="bill-to-row">
       <div class="bill-to-left">
         <div class="bill-to-title">Billed To</div>
-        <div class="customer-name">${escapeHtml(order.customer)}</div>
+        <div class="customer-name">
+          ${escapeHtml(order.customer)}
+          ${order.customerId ? `<span style="font-size: 11px; color: #64748b; font-family: monospace; font-weight: 600; margin-left: 6px;">(ID: ${escapeHtml(order.customerId)})</span>` : ""}
+        </div>
         <div class="customer-phone">${escapeHtml(order.phone) || "No phone registered"}</div>
       </div>
       <div>
@@ -930,6 +934,7 @@ export function generateThermalReceiptHtml(
     <div class="row"><span>Date:</span><span>${escapeHtml(dateStr)}</span></div>
     ${deliveryDateStr ? `<div class="row"><span>Ready Date:</span><span>${escapeHtml(deliveryDateStr)}</span></div>` : ""}
     <div class="row"><span>Customer:</span><span class="bold">${escapeHtml(order.customer)}</span></div>
+    ${order.customerId ? `<div class="row"><span>Customer ID:</span><span class="bold">${escapeHtml(order.customerId)}</span></div>` : ""}
     <div class="row"><span>Phone:</span><span>${escapeHtml(order.phone) || "—"}</span></div>
 
     <div class="divider"></div>

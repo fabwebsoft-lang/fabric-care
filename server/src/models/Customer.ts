@@ -3,6 +3,7 @@ import { normalizePhone } from "../lib/phone.js";
 
 const customerSchema = new Schema(
   {
+    customerId: { type: String, default: null, trim: true, index: true },
     name: { type: String, required: true },
     phone: { type: String, required: true },
     normalizedPhone: { type: String, required: true, unique: true, index: true },

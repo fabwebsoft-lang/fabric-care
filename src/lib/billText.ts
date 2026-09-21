@@ -4,6 +4,7 @@
 
 export interface BillOrder {
   id: string;
+  customerId?: string | null;
   createdAt?: string | Date;
   customer: string;
   phone: string;
@@ -38,12 +39,13 @@ export function buildBillText(order: BillOrder): string {
   }
 
   const serviceType = order.serviceType || "Standard Laundry";
+  const customerDisplay = order.customerId ? `${order.customer} (ID: ${order.customerId})` : order.customer;
 
   return [
     "Fabric Care - You wear, we care",
     `Bill: ${order.id}`,
     `Date: ${dateStr}`,
-    `Customer: ${order.customer}`,
+    `Customer: ${customerDisplay}`,
     `Items: ${itemCount} items - ${serviceType}`,
     `Total: ₹${order.totalAmount}`,
     `Paid: ₹${order.amountPaid}`,

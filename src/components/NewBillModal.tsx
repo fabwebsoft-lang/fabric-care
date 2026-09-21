@@ -50,6 +50,22 @@ export default function NewBillModal({
   const utils = trpc.useUtils();
   const { data: customersData = [] } = trpc.customers.list.useQuery();
   const { data: dbProducts = [] } = trpc.products.list.useQuery();
+  const { data: orders = [] } = trpc.orders.list.useQuery();
+
+  const nextBillNumber = useMemo(() => {
+    let maxNum = 0;
+    for (const o of orders) {
+      const match = (o.id || "").match(/^FC-(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+    const nextNum = maxNum + 1;
+    return `FC-${nextNum < 10000 ? String(nextNum).padStart(4, "0") : nextNum}`;
+  }, [orders]);
 
   const [customerMode, setCustomerMode] = useState<"existing" | "new">(initialCustomer ? "existing" : "new");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(initialCustomer?.id || null);
@@ -63,8 +79,7 @@ export default function NewBillModal({
   // Form Fields
   const [customerName, setCustomerName] = useState(initialCustomer?.name || "");
   const [phone, setPhone] = useState(initialCustomer?.phone || "");
-  const [customerType, setCustomerType] = useState<"Normal" | "Premium">(initialCustomer?.customerType || "Normal");
-  const [clothesCode, setClothesCode] = useState(initialCustomer?.storedClothesCode || "");
+  const [customerId, setCustomerId] = useState(initialCustomer?.customerId || "");
   const [address, setAddress] = useState(initialCustomer?.address || "");
   const [alternatePhone, setAlternatePhone] = useState(initialCustomer?.alternatePhone || "");
   const [notes, setNotes] = useState(initialCustomer?.notes || "");
@@ -124,9 +139,9 @@ export default function NewBillModal({
       if (seenIds.has(c.id)) continue;
       const nameMatch = c.name.toLowerCase().includes(q);
       const phoneMatch = c.phone.toLowerCase().includes(q) || (qDigits && normalizePhone(c.phone).includes(qDigits));
-      const codeMatch = c.storedClothesCode && c.storedClothesCode.toLowerCase().includes(q);
+      const idMatch = c.customerId ? c.customerId.toLowerCase().includes(q) : false;
 
-      if (nameMatch || phoneMatch || codeMatch) {
+      if (nameMatch || phoneMatch || idMatch) {
         seenIds.add(c.id);
         filtered.push(c);
       }
@@ -137,9 +152,9 @@ export default function NewBillModal({
       if (seenIds.has(c.id)) continue;
       const nameMatch = c.name.toLowerCase().includes(q);
       const phoneMatch = c.phone.toLowerCase().includes(q) || (qDigits && normalizePhone(c.phone).includes(qDigits));
-      const codeMatch = c.storedClothesCode && c.storedClothesCode.toLowerCase().includes(q);
+      const idMatch = c.customerId ? c.customerId.toLowerCase().includes(q) : false;
 
-      if (nameMatch || phoneMatch || codeMatch) {
+      if (nameMatch || phoneMatch || idMatch) {
         seenIds.add(c.id);
         filtered.push(c);
       }
@@ -166,7 +181,7 @@ export default function NewBillModal({
       await utils.customers.search.invalidate();
       await utils.dashboard.stats.invalidate();
       toast.success(`Bill ${data.id} created successfully!`, {
-        description: `Customer: ${data.customer} · Clothes Tags generated`,
+        description: `Customer: ${data.customer} ${data.customerId ? `(ID: ${data.customerId})` : ""}`,
       });
       onSuccess();
     },
@@ -188,9 +203,7 @@ export default function NewBillModal({
     setSelectedCustomer(c);
     setCustomerName(c.name);
     setPhone(c.phone);
-    setCustomerType(c.customerType || "Normal");
-    const norm = normalizePhone(c.phone);
-    setClothesCode(c.storedClothesCode || `C-${norm.slice(-4) || "0000"}`);
+    setCustomerId(c.customerId || "");
     setAddress(c.address || "");
     setAlternatePhone(c.alternatePhone || "");
     setNotes(c.notes || "");
@@ -201,7 +214,7 @@ export default function NewBillModal({
     if (c.address || c.alternatePhone || c.notes) {
       setShowExtraDetails(true);
     }
-    toast.success(`Loaded customer: ${c.name}`, { description: `Phone: ${c.phone}` });
+    toast.success(`Loaded customer: ${c.name}`, { description: `Phone: ${c.phone}${c.customerId ? ` · ID: ${c.customerId}` : ""}` });
   };
 
   const handleClearCustomer = () => {
@@ -209,8 +222,7 @@ export default function NewBillModal({
     setSelectedCustomer(null);
     setCustomerName("");
     setPhone("");
-    setCustomerType("Normal");
-    setClothesCode("");
+    setCustomerId("");
     setAddress("");
     setAlternatePhone("");
     setNotes("");
@@ -221,10 +233,6 @@ export default function NewBillModal({
 
   const handlePhoneChange = (val: string) => {
     setPhone(val);
-    if (!clothesCode || clothesCode.startsWith("C-")) {
-      const cleanDigits = normalizePhone(val);
-      setClothesCode(`C-${cleanDigits.slice(-4) || "0000"}`);
-    }
   };
 
   const handleCreateNewFromSearch = (initialName?: string) => {
@@ -336,14 +344,34 @@ export default function NewBillModal({
       toast.error("Customer Name is required");
       return;
     }
+    if (!phone.trim()) {
+      toast.error("Mobile Number is required");
+      return;
+    }
+    if (!customerId.trim()) {
+      toast.error("Customer ID is required");
+      return;
+    }
     if (items.length === 0) {
       toast.error("Please add at least 1 cloth item to the bill");
       return;
     }
 
+    const cleanCustId = customerId.trim().toLowerCase();
+    // Check if Customer ID is already used by another customer (case-insensitive & trimmed)
+    const duplicateIdCust = customersData.find(
+      (c) => c.customerId && c.customerId.trim().toLowerCase() === cleanCustId && c.id !== selectedCustomerId
+    );
+    if (duplicateIdCust) {
+      toast.error("This Customer ID is already used", {
+        description: `Customer ID "${customerId.trim()}" is already assigned to ${duplicateIdCust.name} (${duplicateIdCust.phone}).`,
+      });
+      return;
+    }
+
     const normPhone = normalizePhone(phone);
 
-    // Front-end duplicate validation for New Customer mode
+    // Front-end duplicate validation for New Customer mode by phone
     if (!selectedCustomerId && normPhone) {
       const existingMatch = customersData.find((c) => normalizePhone(c.phone) === normPhone);
       if (existingMatch) {
@@ -354,16 +382,16 @@ export default function NewBillModal({
     }
 
     createOrderMutation.mutate({
-      customerId: selectedCustomerId || undefined,
+      customerRefId: selectedCustomerId || undefined,
+      customerId: customerId.trim(),
       customerName: customerName.trim(),
       phone: phone.trim() || "0000000000",
-      customerType,
+      customerType: "Normal",
       address: address.trim() || undefined,
       alternatePhone: alternatePhone.trim() || undefined,
       notes: notes.trim() || undefined,
-      storedClothesCode: clothesCode.trim() || `C-${normPhone.slice(-4) || "0000"}`,
       items,
-      serviceType: customerType === "Premium" ? "Premium Dry Clean" : "Standard Laundry",
+      serviceType: "Standard Laundry",
       orderDate: billDate ? new Date(`${billDate}T12:00:00`).toISOString() : undefined,
       totalAmount: grandTotal,
       discount,
@@ -393,7 +421,7 @@ export default function NewBillModal({
                   PENDING
                 </span>
               </div>
-              <p className="text-[10px] sm:text-[11px] text-white/80">Auto Bill #: WP-NEXT-FC01</p>
+              <p className="text-[10px] sm:text-[11px] text-white/80">Auto Bill #: {nextBillNumber}</p>
             </div>
           </div>
           <button
@@ -448,7 +476,7 @@ export default function NewBillModal({
                   <div className="truncate">
                     <span className="font-bold text-emerald-900">{customerName}</span>
                     <span className="text-emerald-700 ml-1.5">({phone || "No phone"})</span>
-                    {clothesCode && <span className="text-emerald-600 ml-1.5 font-mono">· {clothesCode}</span>}
+                    {customerId && <span className="text-emerald-800 ml-1.5 font-mono font-bold">· ID: {customerId}</span>}
                   </div>
                 </div>
                 <button
@@ -473,7 +501,7 @@ export default function NewBillModal({
                   required
                   placeholder={
                     customerMode === "existing"
-                      ? "Search customer by name (e.g. Rahul), phone, or tag code..."
+                      ? "Search customer by name (e.g. Rahul), mobile, or Customer ID..."
                       : "Search or type customer name (e.g. Rahul Kumar)..."
                   }
                   value={customerName}
@@ -535,20 +563,19 @@ export default function NewBillModal({
                         >
                           <div className="min-w-0 pr-2">
                             <p className="font-bold text-[#0F4C5C] truncate">{c.name}</p>
-                            <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
-                              <Phone className="size-2.5 text-slate-400" />
-                              <span>{formatPhoneDisplay(c.phone)}</span>
-                              {c.storedClothesCode && (
-                                <span className="font-mono font-semibold text-[#0F4C5C] ml-1.5">
-                                  Tag: {c.storedClothesCode}
+                            <p className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              <span className="flex items-center gap-1">
+                                <Phone className="size-2.5 text-slate-400" />
+                                <span>{formatPhoneDisplay(c.phone)}</span>
+                              </span>
+                              {c.customerId && (
+                                <span className="font-mono font-bold text-[#0F4C5C] bg-slate-100 px-1 py-0.2 rounded border border-slate-200">
+                                  ID: {c.customerId}
                                 </span>
                               )}
                             </p>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-[#0F4C5C] uppercase">
-                              {c.customerType || "Normal"}
-                            </span>
                             {selectedCustomerId === c.id && <Check className="size-3.5 text-emerald-600" />}
                           </div>
                         </button>
@@ -564,6 +591,7 @@ export default function NewBillModal({
                 <label className="mb-1 block text-[11px] font-semibold text-[#0F4C5C]">Mobile Number *</label>
                 <input
                   type="tel"
+                  required
                   placeholder="10-digit mobile"
                   value={phone}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handlePhoneChange(e.target.value)}
@@ -572,27 +600,25 @@ export default function NewBillModal({
               </div>
 
               <div>
-                <label className="mb-1 block text-[11px] font-semibold text-[#0F4C5C]">Pricing Tier</label>
-                <div className="flex rounded-xl border border-slate-300 bg-white p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setCustomerType("Normal")}
-                    className={`flex-1 rounded-lg py-1.5 text-[11px] font-bold transition ${
-                      customerType === "Normal" ? "bg-[#0F4C5C] text-white" : "text-[#0F4C5C]"
-                    }`}
-                  >
-                    Normal Tier
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCustomerType("Premium")}
-                    className={`flex-1 rounded-lg py-1.5 text-[11px] font-bold transition ${
-                      customerType === "Premium" ? "bg-[#0F4C5C] text-white" : "text-[#0F4C5C]"
-                    }`}
-                  >
-                    Premium Tier
-                  </button>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-semibold text-[#0F4C5C]">Customer ID *</label>
+                  {selectedCustomerId && selectedCustomer?.customerId && (
+                    <span className="text-[10px] text-slate-500 font-medium">Locked (Saved)</span>
+                  )}
                 </div>
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter unique customer ID"
+                  value={customerId}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerId(e.target.value)}
+                  readOnly={Boolean(selectedCustomerId && selectedCustomer?.customerId)}
+                  className={`w-full rounded-xl border px-3.5 py-2 text-xs font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-[#0F4C5C] ${
+                    selectedCustomerId && selectedCustomer?.customerId
+                      ? "border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed select-none"
+                      : "border-slate-300 bg-white text-slate-800"
+                  }`}
+                />
               </div>
 
               <div>
@@ -602,17 +628,6 @@ export default function NewBillModal({
                   value={billDate}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setBillDate(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-[#0F4C5C] focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold text-[#0F4C5C]">Clothes Tag Code</label>
-                <input
-                  type="text"
-                  value={clothesCode}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setClothesCode(e.target.value)}
-                  placeholder="e.g. C-4891"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-mono font-bold text-[#0F4C5C] focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
                 />
               </div>
 
@@ -932,22 +947,16 @@ export default function NewBillModal({
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-2 text-xs">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-[#0F4C5C] text-sm">{duplicateCustomer.name}</span>
-                  <span className="rounded-md bg-[#0F4C5C]/10 px-2 py-0.5 text-[10px] font-bold text-[#0F4C5C]">
-                    {duplicateCustomer.customerType || "Normal"}
-                  </span>
+                  {duplicateCustomer.customerId && (
+                    <span className="rounded-md bg-slate-200 px-2 py-0.5 text-[10px] font-mono font-bold text-slate-700">
+                      ID: {duplicateCustomer.customerId}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-slate-600">
                   <Phone className="size-3 text-slate-400" />
                   <span>{duplicateCustomer.phone}</span>
                 </div>
-                {duplicateCustomer.storedClothesCode && (
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Tag className="size-3 text-slate-400" />
-                    <span className="font-mono font-bold text-[#0F4C5C]">
-                      Tag Code: {duplicateCustomer.storedClothesCode}
-                    </span>
-                  </div>
-                )}
                 {duplicateCustomer.address && (
                   <div className="flex items-center gap-2 text-slate-600">
                     <MapPin className="size-3 text-slate-400" />

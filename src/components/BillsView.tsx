@@ -185,6 +185,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
         const matchesQuery =
           o.id.toLowerCase().includes(q) ||
           o.customer.toLowerCase().includes(q) ||
+          (o.customerId && o.customerId.toLowerCase().includes(q)) ||
           o.phone.toLowerCase().includes(q) ||
           (o.items && o.items.toLowerCase().includes(q));
         if (!matchesQuery) return false;
@@ -216,6 +217,19 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
       }
 
       return true;
+    }).sort((a, b) => {
+      const aIsCollected = a.status === "Collected";
+      const bIsCollected = b.status === "Collected";
+
+      // Active orders on top (non-Collected before Collected)
+      if (aIsCollected !== bIsCollected) {
+        return aIsCollected ? 1 : -1;
+      }
+
+      // Real created date and time: newest first (latest timestamp on top)
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
     });
   }, [orders, statusFilter, searchQuery, dateFilter, customFromDate, customToDate]);
 
@@ -631,8 +645,13 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                           </span>
                           <span className="text-[10px] text-slate-400">{orderDateIST}</span>
                         </div>
-                        <h3 className="font-bold text-slate-800 text-xs sm:text-sm truncate mt-0.5">
-                          {order.customer}
+                        <h3 className="font-bold text-slate-800 text-xs sm:text-sm truncate mt-0.5 flex items-center gap-1.5 flex-wrap">
+                          <span>{order.customer}</span>
+                          {order.customerId && (
+                            <span className="text-[10px] font-mono font-medium text-[#0F4C5C] bg-[#0F4C5C]/10 px-1.5 py-0.5 rounded">
+                              ID: {order.customerId}
+                            </span>
+                          )}
                         </h3>
                       </div>
                     </div>
@@ -803,7 +822,14 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                           <span className="text-[10px] text-slate-400 block">{orderDateIST}</span>
                         </td>
                         <td className="py-3.5 px-4">
-                          <p className="font-bold text-slate-800">{order.customer}</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-bold text-slate-800">{order.customer}</p>
+                            {order.customerId && (
+                              <span className="text-[10px] font-mono font-medium text-[#0F4C5C] bg-[#0F4C5C]/10 px-1.5 py-0.5 rounded">
+                                ID: {order.customerId}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-slate-400 text-[10px]">{order.phone}</p>
                         </td>
                         <td className="py-3.5 px-4 text-slate-600 max-w-[220px] truncate">

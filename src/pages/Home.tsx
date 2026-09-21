@@ -530,15 +530,19 @@ export default function Home() {
         </aside>
       </div>}
 
-      {/* Mobile Floating Action Button (FAB) for New Bill */}
+      {/* Mobile Floating Action Button (FAB) */}
       {!showNewOrder && (
         <button
           onClick={() => {
-            setNewOrderCustomer(null);
-            setShowNewOrder(true);
+            if (activeSection === "Customers") {
+              window.dispatchEvent(new CustomEvent("open-add-customer"));
+            } else {
+              setNewOrderCustomer(null);
+              setShowNewOrder(true);
+            }
           }}
-          aria-label="New Bill"
-          title="New Bill"
+          aria-label={activeSection === "Customers" ? "Add Customer" : "New Bill"}
+          title={activeSection === "Customers" ? "Add Customer" : "New Bill"}
           className="fixed right-5 bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] z-30 flex size-14 items-center justify-center rounded-full bg-[#0F4C5C] text-white shadow-[0_8px_25px_rgba(15,76,92,0.38)] transition-all hover:scale-105 active:scale-95 lg:hidden border-2 border-white/25 focus:outline-none focus:ring-4 focus:ring-[#0F4C5C]/30 cursor-pointer"
         >
           <Plus className="size-7" strokeWidth={2.5} />

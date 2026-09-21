@@ -33,12 +33,32 @@ function toApiOrder(o: any) {
   };
 }
 
-async function nextOrderId(shopCode: string, orderDate?: Date) {
-  const d = orderDate || new Date();
-  const dateStr = d.toISOString().slice(0, 10).replace(/-/g, "");
-  const countToday = await Order.countDocuments({ _id: { $regex: `^WP-${dateStr}-` } });
-  const seq = String(countToday + 1).padStart(3, "0");
-  return `WP-${dateStr}-${seq}-${shopCode}`;
+async function nextOrderId(): Promise<string> {
+  const fcOrders = await Order.find(
+    { _id: { $regex: /^FC-\d+$/ } },
+    { _id: 1 }
+  ).lean();
+
+  let maxNum = 0;
+  for (const o of fcOrders) {
+    const match = (o._id as string).match(/^FC-(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+
+  let nextNum = maxNum + 1;
+  let candidateId = `FC-${nextNum < 10000 ? String(nextNum).padStart(4, "0") : nextNum}`;
+
+  while (await Order.exists({ _id: candidateId })) {
+    nextNum++;
+    candidateId = `FC-${nextNum < 10000 ? String(nextNum).padStart(4, "0") : nextNum}`;
+  }
+
+  return candidateId;
 }
 
 export const ordersRouter = router({
@@ -50,7 +70,8 @@ export const ordersRouter = router({
   create: requirePermission("canCreateOrders")
     .input(
       z.object({
-        customerId: z.string().optional(),
+        customerRefId: z.string().optional(),
+        customerId: z.string().trim().min(1, "Customer ID is required"),
         customerName: z.string().trim().min(1, "Customer name is required"),
         phone: z.string().trim().min(1, "Phone number is required"),
         customerType: z.enum(["Normal", "Premium"]).default("Normal"),
@@ -70,40 +91,48 @@ export const ordersRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const creationDate = input.orderDate ? new Date(input.orderDate) : new Date();
-      const id = await nextOrderId("FC01", creationDate);
+      const id = await nextOrderId();
       const normPhone = normalizePhone(input.phone);
-      const clothesCode = input.storedClothesCode?.trim() || `C-${normPhone.slice(-4) || "0000"}`;
+      const cleanCustomerId = input.customerId.trim();
 
-      let linkedCustomerId: string | null = null;
+      let orderCustomerId: string = cleanCustomerId;
 
-      if (input.customerId) {
+      if (input.customerRefId) {
         // Link to existing customer
-        const existingCustomer = await Customer.findById(input.customerId);
+        const existingCustomer = await Customer.findById(input.customerRefId);
         if (existingCustomer) {
-          linkedCustomerId = existingCustomer._id.toString();
+          if (!existingCustomer.customerId) {
+            existingCustomer.customerId = cleanCustomerId;
+          }
+          orderCustomerId = existingCustomer.customerId || cleanCustomerId;
           if (input.updateCustomerMaster) {
             existingCustomer.name = input.customerName;
             existingCustomer.phone = input.phone;
             existingCustomer.normalizedPhone = normPhone;
-            existingCustomer.customerType = input.customerType;
             if (input.address !== undefined) existingCustomer.address = input.address || null;
             if (input.alternatePhone !== undefined) existingCustomer.alternatePhone = input.alternatePhone || null;
             if (input.notes !== undefined) existingCustomer.notes = input.notes || null;
-            if (input.storedClothesCode !== undefined) existingCustomer.storedClothesCode = clothesCode;
             await existingCustomer.save();
           }
         }
-      }
+      } else {
+        // Check Customer ID duplicate for new customer (case-insensitive)
+        const existingId = await Customer.findOne({
+          customerId: { $regex: `^${cleanCustomerId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
+        });
+        if (existingId) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This Customer ID is already used",
+          });
+        }
 
-      if (!linkedCustomerId) {
-        // Check if customer already exists by phone (duplicate prevention on creation)
+        // Check Phone duplicate for new customer
         const duplicate = await Customer.findOne({
           $or: [{ normalizedPhone: normPhone }, { phone: input.phone.trim() }],
         });
 
         if (duplicate) {
-          // If in new customer mode and duplicate phone is found, reject
           throw new TRPCError({
             code: "CONFLICT",
             message: `A customer with this mobile number already exists: ${duplicate.name} (${duplicate.phone}). Please select the existing customer.`,
@@ -111,7 +140,8 @@ export const ordersRouter = router({
         }
 
         // Create new customer record
-        const newCustomer = await Customer.create({
+        await Customer.create({
+          customerId: cleanCustomerId,
           name: input.customerName,
           phone: input.phone.trim(),
           normalizedPhone: normPhone,
@@ -119,18 +149,15 @@ export const ordersRouter = router({
           address: input.address?.trim() || null,
           alternatePhone: input.alternatePhone?.trim() || null,
           notes: input.notes?.trim() || null,
-          storedClothesCode: clothesCode,
         });
-        linkedCustomerId = newCustomer._id.toString();
       }
 
       const order = await Order.create({
         _id: id,
-        customerId: linkedCustomerId,
+        customerId: orderCustomerId,
         customer: input.customerName,
         phone: input.phone.trim(),
         customerType: input.customerType,
-        clothesCode,
         serviceType: input.serviceType,
         status: "Received",
         deliveryType: input.deliveryType,

@@ -51,6 +51,7 @@ export default function InvoiceModal({
   // Normalize order data
   const normalizedOrder: InvoiceOrderData = {
     id: order.id,
+    customerId: order.customerId,
     createdAt: order.createdAt,
     dueAt: order.dueAt,
     due: order.due,
@@ -300,7 +301,14 @@ export default function InvoiceModal({
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50/90 border border-slate-200/80 rounded-xl p-3 gap-2.5">
                 <div className="min-w-0">
                   <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400 block">Billed To</span>
-                  <p className="text-xs sm:text-sm font-bold text-[#0F4C5C] mt-0.5 truncate">{normalizedOrder.customer}</p>
+                  <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                    <p className="text-xs sm:text-sm font-bold text-[#0F4C5C] truncate">{normalizedOrder.customer}</p>
+                    {normalizedOrder.customerId && (
+                      <span className="text-[10px] sm:text-[11px] font-mono font-bold text-slate-600 bg-slate-200/80 px-1.5 py-0.5 rounded">
+                        ID: {normalizedOrder.customerId}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[11px] sm:text-xs text-slate-600 font-mono font-medium">{normalizedOrder.phone || "No phone registered"}</p>
                 </div>
                 <div className="w-full sm:w-auto flex justify-start sm:justify-end">
@@ -451,6 +459,9 @@ export default function InvoiceModal({
                 <div className="flex justify-between"><span>Date:</span><span>{dateStr}</span></div>
                 {deliveryDateStr && <div className="flex justify-between"><span>Ready:</span><span>{deliveryDateStr}</span></div>}
                 <div className="flex justify-between"><span>Customer:</span><span className="font-bold">{normalizedOrder.customer}</span></div>
+                {normalizedOrder.customerId && (
+                  <div className="flex justify-between"><span>Customer ID:</span><span className="font-mono font-bold">{normalizedOrder.customerId}</span></div>
+                )}
                 <div className="flex justify-between"><span>Phone:</span><span>{normalizedOrder.phone || "—"}</span></div>
               </div>
 

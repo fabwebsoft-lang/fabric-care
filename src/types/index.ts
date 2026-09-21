@@ -12,10 +12,11 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  customerId?: string | null;
   customer: string;
   phone: string;
-  customerType: CustomerType;
-  clothesCode: string | null;
+  customerType?: CustomerType;
+  clothesCode?: string | null;
   items: string;
   amount: string;
   balance: string;
@@ -35,13 +36,14 @@ export interface Order {
 
 export interface Customer {
   id: string;
+  customerId?: string | null;
   name: string;
   phone: string;
-  customerType: CustomerType;
+  customerType?: CustomerType;
   address: string | null;
   alternatePhone: string | null;
   notes: string | null;
-  storedClothesCode: string | null;
+  storedClothesCode?: string | null;
   orderCount: number;
   totalSpent: string;
   pendingBalance: string;

@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { trpc } from "@/lib/trpc";
+import { useState, useEffect } from "react";
+import { trpc, type Customer } from "@/lib/trpc";
+import { normalizePhone } from "@/lib/phone";
 import InvoiceModal from "./InvoiceModal";
-import { Users, Search, Phone, Tag, CreditCard, ChevronRight, History, X, FileText } from "lucide-react";
+import { Users, Search, Phone, History, X, FileText, Pencil, Plus, Check } from "lucide-react";
 import { toast } from "sonner";
 
 export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?: any) => void }) {
@@ -9,7 +10,19 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
   const { data: orders = [] } = trpc.orders.list.useQuery();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
+
+  // Listen for mobile floating "+" button trigger on Customers page
+  useEffect(() => {
+    const handleOpenAdd = () => {
+      setEditingCustomer(null);
+      setShowAddCustomer(true);
+    };
+    window.addEventListener("open-add-customer", handleOpenAdd);
+    return () => window.removeEventListener("open-add-customer", handleOpenAdd);
+  }, []);
 
   const customerStats = customers.map((c) => {
     const customerOrders = orders.filter((o) => o.phone === c.phone || o.customer === c.name);
@@ -27,7 +40,7 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
   });
 
   const filteredCustomers = customerStats.filter((c) =>
-    `${c.name} ${c.phone} ${c.storedClothesCode || ""}`
+    `${c.name} ${c.phone} ${c.customerId || ""}`
       .toLowerCase()
       .includes(searchQuery.toLowerCase())
   );
@@ -42,7 +55,7 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
             Customer Directory
           </h2>
           <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-            Manage customer accounts, saved garment codes, and running balances
+            Manage customer accounts, Customer IDs, and running balances
           </p>
         </div>
 
@@ -51,20 +64,22 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search name, phone, code..."
+              placeholder="Search name, phone, ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 focus:border-[#0F4C5C]"
             />
           </div>
-          {onNewOrder && (
-            <button
-              onClick={() => onNewOrder()}
-              className="px-4 py-2 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95"
-            >
-              + New Bill
-            </button>
-          )}
+
+          <button
+            onClick={() => {
+              setEditingCustomer(null);
+              setShowAddCustomer(true);
+            }}
+            className="px-4 py-2 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 min-h-[40px]"
+          >
+            <Plus className="size-4" /> Add Customer
+          </button>
         </div>
       </div>
 
@@ -85,30 +100,36 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
               <div>
                 <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
                   <div>
-                    <h3 className="font-bold text-slate-800 text-sm">{c.name}</h3>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h3 className="font-bold text-slate-800 text-sm">{c.name}</h3>
+                      {c.customerId ? (
+                        <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-[#0F4C5C]/10 text-[#0F4C5C]">
+                          ID: {c.customerId}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                          No ID
+                        </span>
+                      )}
+                    </div>
                     <a
                       href={`tel:${c.phone}`}
-                      className="text-xs text-[#0F4C5C] hover:underline flex items-center gap-1 mt-0.5"
+                      className="text-xs text-[#0F4C5C] hover:underline flex items-center gap-1 mt-1"
                       title="Tap to call"
                     >
                       <Phone className="size-3" /> {c.phone}
                     </a>
                   </div>
-                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-[#0F4C5C]/10 text-[#0F4C5C]">
-                    {c.customerType || "Normal"}
-                  </span>
+                  <button
+                    onClick={() => setEditingCustomer(c)}
+                    className="p-1.5 text-slate-400 hover:text-[#0F4C5C] hover:bg-slate-100 rounded-lg transition"
+                    title="Edit Customer"
+                  >
+                    <Pencil className="size-3.5" />
+                  </button>
                 </div>
 
                 <div className="mt-3 space-y-2 text-xs">
-                  {c.storedClothesCode && (
-                    <div className="flex justify-between items-center text-slate-600 bg-slate-50 p-2 rounded-xl">
-                      <span className="text-[11px] text-slate-500">Clothes Tag Code:</span>
-                      <span className="font-mono font-bold text-[#0F4C5C]">
-                        {c.storedClothesCode}
-                      </span>
-                    </div>
-                  )}
-
                   <div className="flex justify-between items-center text-slate-600">
                     <span>Total Orders:</span>
                     <span className="font-bold text-slate-800">
@@ -162,6 +183,18 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
         />
       )}
 
+      {/* Add or Edit Customer Modal */}
+      {(showAddCustomer || editingCustomer) && (
+        <CustomerFormModal
+          customer={editingCustomer}
+          existingCustomers={customers}
+          onClose={() => {
+            setShowAddCustomer(false);
+            setEditingCustomer(null);
+          }}
+        />
+      )}
+
       {/* Invoice Modal for selected order */}
       {selectedInvoiceOrder && (
         <InvoiceModal
@@ -169,6 +202,260 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
           onClose={() => setSelectedInvoiceOrder(null)}
         />
       )}
+    </div>
+  );
+}
+
+function CustomerFormModal({
+  customer,
+  existingCustomers,
+  onClose,
+}: {
+  customer?: Customer | null;
+  existingCustomers: Customer[];
+  onClose: () => void;
+}) {
+  const isEditing = Boolean(customer);
+  const utils = trpc.useUtils();
+  const [name, setName] = useState(customer?.name || "");
+  const [phone, setPhone] = useState(customer?.phone || "");
+  const [customerId, setCustomerId] = useState(customer?.customerId || "");
+  const [address, setAddress] = useState(customer?.address || "");
+  const [alternatePhone, setAlternatePhone] = useState(customer?.alternatePhone || "");
+  const [notes, setNotes] = useState(customer?.notes || "");
+  const [error, setError] = useState<string | null>(null);
+
+  const createMutation = trpc.customers.create.useMutation({
+    onSuccess: async () => {
+      await utils.customers.list.invalidate();
+      await utils.customers.search.invalidate();
+      toast.success("Customer added successfully");
+      onClose();
+    },
+    onError: (err: any) => {
+      setError(err.message || "Failed to create customer");
+    },
+  });
+
+  const updateMutation = trpc.customers.update.useMutation({
+    onSuccess: async () => {
+      await utils.customers.list.invalidate();
+      await utils.customers.search.invalidate();
+      await utils.orders.list.invalidate();
+      toast.success("Customer details updated successfully");
+      onClose();
+    },
+    onError: (err: any) => {
+      setError(err.message || "Failed to update customer");
+    },
+  });
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+    const trimmedCustomerId = customerId.trim();
+    const normPhone = normalizePhone(trimmedPhone);
+
+    if (!trimmedName) {
+      setError("Customer name is required");
+      return;
+    }
+    if (!trimmedPhone) {
+      setError("Mobile number is required");
+      return;
+    }
+    if (normPhone.length !== 10) {
+      setError("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    if (!trimmedCustomerId) {
+      setError("Customer ID is required");
+      return;
+    }
+
+    // 1. Check duplicate Customer ID (case-insensitive)
+    const duplicateId = existingCustomers.find((c) => {
+      if (isEditing && c.id === customer?.id) return false;
+      return (
+        c.customerId &&
+        c.customerId.trim().toLowerCase() === trimmedCustomerId.toLowerCase()
+      );
+    });
+    if (duplicateId) {
+      setError("This Customer ID is already used");
+      return;
+    }
+
+    // 2. Check duplicate Mobile Number
+    const duplicatePhone = existingCustomers.find((c) => {
+      if (isEditing && c.id === customer?.id) return false;
+      const cNorm = normalizePhone(c.phone || "");
+      return cNorm === normPhone || c.phone.trim() === trimmedPhone;
+    });
+    if (duplicatePhone) {
+      setError("A customer with this mobile number already exists");
+      return;
+    }
+
+    if (isEditing && customer) {
+      updateMutation.mutate({
+        id: customer.id,
+        name: trimmedName,
+        phone: trimmedPhone,
+        customerId: trimmedCustomerId,
+        address: address.trim() || undefined,
+        alternatePhone: alternatePhone.trim() || undefined,
+        notes: notes.trim() || undefined,
+      });
+    } else {
+      createMutation.mutate({
+        name: trimmedName,
+        phone: trimmedPhone,
+        customerId: trimmedCustomerId,
+        customerType: "Normal",
+        address: address.trim() || undefined,
+        alternatePhone: alternatePhone.trim() || undefined,
+        notes: notes.trim() || undefined,
+      });
+    }
+  };
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+      <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+        <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-base sm:text-lg font-bold text-[#0F4C5C]">
+              {isEditing ? "Edit Customer" : "Add Customer"}
+            </h3>
+            <p className="text-[11px] sm:text-xs text-slate-500">
+              {isEditing
+                ? "Update customer details or assign a Customer ID"
+                : "Create a new customer profile for directory and billing"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-8 place-items-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+            aria-label="Close"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSave} className="space-y-3.5 text-xs">
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              Customer Name <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              placeholder="Full name"
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 focus:border-[#0F4C5C]"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              Mobile Number <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              placeholder="10-digit mobile number"
+              onChange={(e) => setPhone(e.target.value)}
+              maxLength={10}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 focus:border-[#0F4C5C]"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              Customer ID <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={customerId}
+              placeholder="Enter unique customer ID"
+              onChange={(e) => setCustomerId(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 focus:border-[#0F4C5C]"
+              required
+            />
+            <p className="text-[10px] text-slate-400 mt-1">Unique identifier (e.g. CUST-001)</p>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              Address <span className="font-normal text-slate-400">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={address}
+              placeholder="House, street, landmark"
+              onChange={(e) => setAddress(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 focus:border-[#0F4C5C]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              Alternate Phone <span className="font-normal text-slate-400">(optional)</span>
+            </label>
+            <input
+              type="tel"
+              value={alternatePhone}
+              placeholder="Secondary mobile number"
+              onChange={(e) => setAlternatePhone(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 focus:border-[#0F4C5C]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              Notes <span className="font-normal text-slate-400">(optional)</span>
+            </label>
+            <textarea
+              value={notes}
+              placeholder="Preferences, directions, notes..."
+              onChange={(e) => setNotes(e.target.value)}
+              className="min-h-[50px] w-full resize-none px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]/20 focus:border-[#0F4C5C]"
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-200 transition min-h-[44px]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="flex-1 py-2.5 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center justify-center gap-1.5 min-h-[44px]"
+            >
+              <Check className="size-4" /> {isPending ? "Saving..." : isEditing ? "Save Changes" : "Save Customer"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -187,8 +474,15 @@ function CustomerHistoryModal({
       <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-start border-b border-slate-100 pb-3 sm:pb-4 shrink-0">
           <div>
-            <h3 className="text-base sm:text-lg font-bold text-[#0F4C5C]">{customer.name}</h3>
-            <p className="text-[11px] sm:text-xs text-slate-500">{customer.phone} · Tag Code: {customer.storedClothesCode || "N/A"}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base sm:text-lg font-bold text-[#0F4C5C]">{customer.name}</h3>
+              {customer.customerId && (
+                <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-[#0F4C5C]/10 text-[#0F4C5C]">
+                  ID: {customer.customerId}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">{customer.phone}</p>
           </div>
           <button onClick={onClose} className="grid size-8 place-items-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition">
             <X className="size-4" />
@@ -237,7 +531,7 @@ function CustomerHistoryModal({
 
         <button
           onClick={onClose}
-          className="w-full py-2.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-200 transition shrink-0"
+          className="w-full py-2.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-200 transition shrink-0 min-h-[44px]"
         >
           Close
         </button>

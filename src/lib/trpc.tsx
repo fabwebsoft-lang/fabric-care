@@ -48,14 +48,15 @@ export type Order = {
 
 export type Customer = {
   id: string;
+  customerId?: string | null;
   name: string;
   phone: string;
   normalizedPhone?: string;
-  customerType: "Normal" | "Premium";
+  customerType?: "Normal" | "Premium";
   address: string | null;
   alternatePhone: string | null;
   notes: string | null;
-  storedClothesCode: string | null;
+  storedClothesCode?: string | null;
   orderCount: number;
   totalSpent: number;
   pendingBalance: number;
@@ -558,6 +559,20 @@ export const trpc = {
           mutationFn: async (input: any) => {
             try {
               return await client.expenses.create.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: options?.onSuccess,
+          onError: options?.onError,
+        }),
+    },
+    update: {
+      useMutation: (options?: { onSuccess?: (data: Expense) => void; onError?: (err: Error) => void }) =>
+        useMutation({
+          mutationFn: async (input: any) => {
+            try {
+              return await client.expenses.update.mutate(input);
             } catch (err) {
               throw new Error(errorMessage(err));
             }

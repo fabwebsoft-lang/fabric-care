@@ -13,6 +13,7 @@ function toApiCustomer(c: any, statsByPhone?: Map<string, any>) {
 
   return {
     id: c._id.toString(),
+    customerId: c.customerId ?? null,
     name: c.name,
     phone: c.phone,
     normalizedPhone: normPhone,
@@ -62,6 +63,7 @@ export const customersRouter = router({
         const escapedQuery = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const conditions: any[] = [
           { name: { $regex: escapedQuery, $options: "i" } },
+          { customerId: { $regex: escapedQuery, $options: "i" } },
           { storedClothesCode: { $regex: escapedQuery, $options: "i" } },
           { phone: { $regex: escapedQuery, $options: "i" } },
         ];
@@ -81,24 +83,35 @@ export const customersRouter = router({
   checkDuplicate: approvedProcedure
     .input(
       z.object({
-        phone: z.string().min(1),
+        phone: z.string().optional(),
+        customerId: z.string().optional(),
         excludeId: z.string().optional(),
       })
     )
     .query(async ({ input }) => {
-      const normPhone = normalizePhone(input.phone);
-      if (!normPhone) {
+      const conditions: any[] = [];
+
+      if (input.phone) {
+        const normPhone = normalizePhone(input.phone);
+        if (normPhone) {
+          conditions.push(
+            { normalizedPhone: normPhone },
+            { phone: input.phone.trim() },
+            { phone: normPhone }
+          );
+        }
+      }
+
+      if (input.customerId && input.customerId.trim()) {
+        const cleanId = input.customerId.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        conditions.push({ customerId: { $regex: `^${cleanId}$`, $options: "i" } });
+      }
+
+      if (conditions.length === 0) {
         return { exists: false, customer: null };
       }
 
-      const filter: Record<string, any> = {
-        $or: [
-          { normalizedPhone: normPhone },
-          { phone: input.phone.trim() },
-          { phone: normPhone },
-        ],
-      };
-
+      const filter: Record<string, any> = { $or: conditions };
       if (input.excludeId) {
         filter._id = { $ne: input.excludeId };
       }
@@ -117,6 +130,7 @@ export const customersRouter = router({
   create: approvedProcedure
     .input(
       z.object({
+        customerId: z.string().trim().min(1, "Customer ID is required"),
         name: z.string().trim().min(1, "Customer name is required"),
         phone: z.string().trim().min(1, "Phone number is required"),
         customerType: z.enum(["Normal", "Premium"]).default("Normal"),
@@ -127,27 +141,41 @@ export const customersRouter = router({
       })
     )
     .mutation(async ({ input }) => {
+      const cleanCustomerId = input.customerId.trim();
       const normPhone = normalizePhone(input.phone);
       if (!normPhone) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Valid phone number is required" });
       }
 
-      const existing = await Customer.findOne({
+      // Check Customer ID uniqueness (case-insensitive)
+      const existingId = await Customer.findOne({
+        customerId: { $regex: `^${cleanCustomerId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
+      });
+      if (existingId) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This Customer ID is already used",
+        });
+      }
+
+      // Check Phone uniqueness
+      const existingPhone = await Customer.findOne({
         $or: [{ normalizedPhone: normPhone }, { phone: input.phone.trim() }],
       });
 
-      if (existing) {
+      if (existingPhone) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: `A customer with this phone number (${existing.phone}) already exists: ${existing.name}`,
+          message: "A customer with this mobile number already exists",
         });
       }
 
       const customer = await Customer.create({
         ...input,
+        customerId: cleanCustomerId,
         phone: input.phone.trim(),
         normalizedPhone: normPhone,
-        storedClothesCode: input.storedClothesCode?.trim() || `C-${normPhone.slice(-4) || "0000"}`,
+        storedClothesCode: input.storedClothesCode?.trim() || null,
       });
 
       return toApiCustomer(customer);
@@ -157,6 +185,7 @@ export const customersRouter = router({
     .input(
       z.object({
         id: z.string(),
+        customerId: z.string().trim().min(1).optional(),
         name: z.string().trim().min(1).optional(),
         phone: z.string().trim().min(1).optional(),
         customerType: z.enum(["Normal", "Premium"]).optional(),
@@ -168,6 +197,23 @@ export const customersRouter = router({
     )
     .mutation(async ({ input: { id, ...patch } }) => {
       const updateData: Record<string, any> = { ...patch };
+
+      if (patch.customerId) {
+        const cleanCustomerId = patch.customerId.trim();
+        // Check for duplicate Customer ID
+        const duplicateId = await Customer.findOne({
+          _id: { $ne: id },
+          customerId: { $regex: `^${cleanCustomerId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
+        });
+        if (duplicateId) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This Customer ID is already used",
+          });
+        }
+        updateData.customerId = cleanCustomerId;
+      }
+
       if (patch.phone) {
         const normPhone = normalizePhone(patch.phone);
         updateData.normalizedPhone = normPhone;
