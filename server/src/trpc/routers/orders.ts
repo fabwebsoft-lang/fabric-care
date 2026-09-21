@@ -30,6 +30,8 @@ function toApiOrder(o: any) {
     amountPaid: o.amountPaid,
     discount: o.discount,
     items: o.items,
+    branch: o.branch || "Pandian Nagar",
+    branchAddress: o.branchAddress || (o.branch?.includes("SKT") ? "SKT Dindigul" : "17/B3, 1st street, Pandian Nagar, Dindigul"),
     createdAt: o.createdAt!.toISOString(),
     updatedAt: o.updatedAt!.toISOString(),
   };
@@ -88,6 +90,8 @@ export const ordersRouter = router({
         address: z.string().optional(),
         alternatePhone: z.string().optional(),
         notes: z.string().optional(),
+        branch: z.string().optional(),
+        branchAddress: z.string().optional(),
         updateCustomerMaster: z.boolean().optional(),
         items: z.array(orderItemInput).default([]),
       })
@@ -167,6 +171,11 @@ export const ordersRouter = router({
         });
       }
 
+      const branchName = input.branch || (input.branchAddress?.includes("SKT") ? "SKT Dindigul" : "Pandian Nagar");
+      const branchAddr =
+        input.branchAddress ||
+        (branchName.includes("SKT") ? "SKT Dindigul" : "17/B3, 1st street, Pandian Nagar, Dindigul");
+
       const order = await Order.create({
         _id: id,
         customerId: orderCustomerId,
@@ -181,6 +190,8 @@ export const ordersRouter = router({
         amountPaid: input.amountPaid,
         discount: input.discount,
         items: input.items,
+        branch: branchName,
+        branchAddress: branchAddr,
       });
 
       return toApiOrder(order);

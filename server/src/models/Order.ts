@@ -30,6 +30,8 @@ const orderSchema = new Schema(
     amountPaid: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
     items: { type: [orderItemSchema], default: [] },
+    branch: { type: String, default: "Pandian Nagar" },
+    branchAddress: { type: String, default: "17/B3, 1st street, Pandian Nagar, Dindigul" },
     isDeleted: { type: Boolean, default: false, index: true },
     deletedAt: { type: Date, default: null },
     deletedBy: { type: String, default: null },

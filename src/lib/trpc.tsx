@@ -44,6 +44,8 @@ export type Order = {
   discount: number;
   clothTags?: string[];
   structuredItems: OrderItem[];
+  branch?: string;
+  branchAddress?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -332,6 +334,8 @@ function toDisplayOrder(o: any): Order {
     discount: o.discount,
     clothTags: items.flatMap((i) => i.clothTags || []),
     structuredItems: items,
+    branch: o.branch || "Pandian Nagar",
+    branchAddress: o.branchAddress || (o.branch?.includes("SKT") ? "SKT Dindigul" : "17/B3, 1st street, Pandian Nagar, Dindigul"),
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
   };

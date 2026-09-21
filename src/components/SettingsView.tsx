@@ -230,7 +230,7 @@ export default function SettingsView({
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Shop Address</label>
+                  <label className="block text-slate-600 font-semibold mb-1">Primary Shop Address</label>
                   <input
                     type="text"
                     value={invForm.address}
@@ -238,6 +238,23 @@ export default function SettingsView({
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C] text-xs"
                     placeholder="17/B3, 1st street, Pandian Nagar, Dindigul"
                   />
+                </div>
+
+                {/* Branch Network Summary */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2">
+                  <span className="text-[11px] font-bold text-[#0F4C5C] uppercase tracking-wider block">
+                    Active Shop Branches (Auto-selectable on billing)
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="p-2.5 bg-white rounded-lg border border-slate-200/80 shadow-2xs">
+                      <p className="font-bold text-slate-800">Branch 1: Pandian Nagar</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">17/B3, 1st street, Pandian Nagar, Dindigul</p>
+                    </div>
+                    <div className="p-2.5 bg-white rounded-lg border border-slate-200/80 shadow-2xs">
+                      <p className="font-bold text-slate-800">Branch 2: SKT Dindigul</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">SKT Dindigul</p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5">

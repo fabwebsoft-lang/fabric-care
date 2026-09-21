@@ -29,6 +29,12 @@ import { numberToIndianWords } from "@/lib/numberToWords";
 import { generateQrDataUrl } from "@/lib/qrcode";
 import { buildBillText, getSmsUri, getWhatsAppUri } from "@/lib/billText";
 
+import {
+  SHOP_BRANCHES,
+  getBranchByAddressOrName,
+  getBranchById,
+} from "@/lib/branches";
+
 interface InvoiceModalProps {
   order: any;
   onClose: () => void;
@@ -48,6 +54,11 @@ export default function InvoiceModal({
   const [format, setFormat] = useState<PaperSize>(settings.defaultPaperSize || "A4");
   const [showShareMenu, setShowShareMenu] = useState(false);
 
+  // Branch state for invoice
+  const initialBranch = getBranchByAddressOrName(order.branchAddress || order.branch);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>(initialBranch.id);
+  const selectedBranch = useMemo(() => getBranchById(selectedBranchId), [selectedBranchId]);
+
   // Normalize order data
   const normalizedOrder: InvoiceOrderData = {
     id: order.id,
@@ -65,6 +76,8 @@ export default function InvoiceModal({
     discount: order.discount,
     items: order.items,
     structuredItems: order.structuredItems,
+    branch: selectedBranch.shortName,
+    branchAddress: selectedBranch.address,
   };
 
   const items = getOrderItemsList(normalizedOrder);
@@ -193,8 +206,25 @@ export default function InvoiceModal({
             </button>
           </div>
 
-          {/* Format Switcher & Actions */}
+          {/* Format Switcher, Branch Selector & Actions */}
           <div className="flex items-center justify-between sm:justify-end flex-wrap gap-1.5 sm:gap-2">
+            {/* Branch Selector Dropdown */}
+            <div className="flex items-center bg-slate-100 px-2 py-1 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700">
+              <span className="text-[10px] text-slate-400 font-bold uppercase mr-1 hidden sm:inline">Branch:</span>
+              <select
+                value={selectedBranchId}
+                onChange={(e) => setSelectedBranchId(e.target.value)}
+                className="bg-transparent text-xs font-bold text-[#0F4C5C] focus:outline-none cursor-pointer pr-1"
+                aria-label="Select Billing Branch"
+              >
+                {SHOP_BRANCHES.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.shortName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Format toggle */}
             <div className="flex items-center bg-slate-100 p-0.5 sm:p-1 rounded-xl border border-slate-200 text-[11px] sm:text-xs font-semibold">
               <button
@@ -271,10 +301,19 @@ export default function InvoiceModal({
                     className="h-10 sm:h-12 w-auto max-w-[140px] sm:max-w-[160px] object-contain rounded-xl bg-slate-50 p-1 border border-slate-200 shadow-2xs shrink-0"
                   />
                   <div className="min-w-0">
-                    <h2 className="text-base sm:text-xl font-black text-[#0F4C5C] tracking-tight truncate sm:whitespace-normal">{settings.shopName}</h2>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h2 className="text-base sm:text-xl font-black text-[#0F4C5C] tracking-tight truncate sm:whitespace-normal">
+                        {settings.shopName}
+                      </h2>
+                      <span className="text-[10px] sm:text-[11px] font-bold bg-[#0F4C5C]/10 text-[#0F4C5C] px-2 py-0.5 rounded-md">
+                        {selectedBranch.shortName}
+                      </span>
+                    </div>
                     <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500">{settings.tagline}</p>
                     <div className="text-[10px] sm:text-[11px] text-slate-600 mt-0.5 space-y-0.5">
-                      {settings.address && <p className="line-clamp-2 sm:line-clamp-none">{settings.address}</p>}
+                      <p className="font-semibold text-slate-700 line-clamp-2 sm:line-clamp-none">
+                        {selectedBranch.address}
+                      </p>
                       <p className="text-[10px] sm:text-[11px]">
                         {settings.phone && <span>Phone: <strong>{settings.phone}</strong></span>}
                         {settings.phone && settings.email && " · "}
@@ -445,9 +484,9 @@ export default function InvoiceModal({
               }`}
             >
               <div className="text-center space-y-0.5">
-                <p className="font-extrabold text-sm">{settings.shopName}</p>
+                <p className="font-extrabold text-sm">{settings.shopName} ({selectedBranch.shortName})</p>
                 <p className="text-[10px] uppercase text-slate-600">{settings.tagline}</p>
-                {settings.address && <p className="text-[10px] text-slate-600">{settings.address}</p>}
+                <p className="text-[10px] text-slate-800 font-bold">{selectedBranch.address}</p>
                 {settings.phone && <p className="text-[10px] text-slate-600">Tel: {settings.phone}</p>}
                 {settings.gstin && <p className="text-[10px] text-slate-600">GSTIN: {settings.gstin}</p>}
               </div>

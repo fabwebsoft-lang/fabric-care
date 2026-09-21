@@ -24,11 +24,12 @@ import {
   ExternalLink,
   RotateCcw,
   Sparkles,
-  ArrowRight,
   Clock,
   Layers,
+  Building2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { SHOP_BRANCHES } from "@/lib/branches";
 
 const statusStyles: Record<string, string> = {
   Received: "bg-amber-100 text-amber-800 border-amber-200",
@@ -85,6 +86,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [branchFilter, setBranchFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState<DateFilterOption>("all");
   const [customFromDate, setCustomFromDate] = useState("");
   const [customToDate, setCustomToDate] = useState("");
@@ -130,7 +132,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
   // Clear selection when filters change
   useEffect(() => {
     setSelectedIds([]);
-  }, [statusFilter, searchQuery, dateFilter, customFromDate, customToDate]);
+  }, [statusFilter, branchFilter, searchQuery, dateFilter, customFromDate, customToDate]);
 
   // Mutations
 
@@ -188,7 +190,16 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
         return false;
       }
 
-      // 2. Search Query
+      // 2. Branch Filter
+      if (branchFilter !== "All") {
+        const orderBranch = (o.branch || (o.branchAddress?.includes("SKT") ? "SKT Dindigul" : "Pandian Nagar")).toLowerCase();
+        const target = branchFilter.toLowerCase();
+        if (!orderBranch.includes(target) && !target.includes(orderBranch)) {
+          return false;
+        }
+      }
+
+      // 3. Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesQuery =
@@ -196,7 +207,8 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
           o.customer.toLowerCase().includes(q) ||
           (o.customerId && o.customerId.toLowerCase().includes(q)) ||
           o.phone.toLowerCase().includes(q) ||
-          (o.items && o.items.toLowerCase().includes(q));
+          (o.items && o.items.toLowerCase().includes(q)) ||
+          (o.branch && o.branch.toLowerCase().includes(q));
         if (!matchesQuery) return false;
       }
 
@@ -490,21 +502,53 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
 
       {/* Filter Tabs & Summary Row */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        {/* Status Pills */}
-        <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
-          {["All", "Received", "Processing", "Ironing", "Ready", "Collected"].map((st) => (
+        {/* Status & Branch Pills */}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* Status Pills */}
+          <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0 max-w-full">
+            {["All", "Received", "Processing", "Ironing", "Ready", "Collected"].map((st) => (
+              <button
+                key={st}
+                onClick={() => setStatusFilter(st)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap ${
+                  statusFilter === st
+                    ? "bg-[#0F4C5C] text-white shadow-xs"
+                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {st}
+              </button>
+            ))}
+          </div>
+
+          {/* Branch Filter Selector */}
+          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200/80 text-[11px] font-semibold shrink-0">
             <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap ${
-                statusFilter === st
-                  ? "bg-[#0F4C5C] text-white shadow-xs"
-                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+              type="button"
+              onClick={() => setBranchFilter("All")}
+              className={`px-2.5 py-1 rounded-lg transition ${
+                branchFilter === "All"
+                  ? "bg-[#0F4C5C] text-white shadow-xs font-bold"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              {st}
+              All Branches
             </button>
-          ))}
+            {SHOP_BRANCHES.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setBranchFilter(b.shortName)}
+                className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap ${
+                  branchFilter === b.shortName
+                    ? "bg-[#0F4C5C] text-white shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {b.shortName}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Filter Summary Badge */}
@@ -653,6 +697,11 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                             {order.id}
                           </span>
                           <span className="text-[10px] text-slate-400">{orderDateIST}</span>
+                          <span className="text-[10px] text-slate-300">·</span>
+                          <span className="text-[9.5px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <Building2 className="size-2.5 text-[#0F4C5C]" />
+                            {order.branch || (order.branchAddress?.includes("SKT") ? "SKT Dindigul" : "Pandian Nagar")}
+                          </span>
                         </div>
                         <h3 className="font-bold text-slate-800 text-xs sm:text-sm truncate mt-0.5 flex items-center gap-1.5 flex-wrap">
                           <span>{order.customer}</span>

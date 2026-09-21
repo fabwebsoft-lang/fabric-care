@@ -2,6 +2,13 @@ import { useState, useMemo, useRef, useEffect, type FormEvent, type ChangeEvent 
 import { trpc, type Customer } from "@/lib/trpc";
 import { normalizePhone, formatPhoneDisplay } from "@/lib/phone";
 import {
+  SHOP_BRANCHES,
+  getStoredBranchId,
+  saveStoredBranchId,
+  getBranchById,
+  type ShopBranch,
+} from "@/lib/branches";
+import {
   ArrowLeft,
   Plus,
   Trash2,
@@ -19,6 +26,8 @@ import {
   FileText,
   UserCheck,
   RefreshCw,
+  Building2,
+  Store,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -97,6 +106,15 @@ export default function NewBillModal({
   const [customItemName, setCustomItemName] = useState("");
   const [customItemPrice, setCustomItemPrice] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
+
+  // Branch Selection State
+  const [selectedBranchId, setSelectedBranchId] = useState<string>(() => getStoredBranchId());
+  const selectedBranch = useMemo(() => getBranchById(selectedBranchId), [selectedBranchId]);
+
+  const handleBranchSelect = (branchId: string) => {
+    setSelectedBranchId(branchId);
+    saveStoredBranchId(branchId);
+  };
 
   // Bill Date State
   const [billDate, setBillDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
@@ -394,6 +412,8 @@ export default function NewBillModal({
       notes: notes.trim() || undefined,
       items,
       serviceType: "Standard Laundry",
+      branch: selectedBranch.shortName,
+      branchAddress: selectedBranch.address,
       orderDate: billDate ? new Date(`${billDate}T12:00:00`).toISOString() : undefined,
       totalAmount: grandTotal,
       discount,
@@ -436,6 +456,70 @@ export default function NewBillModal({
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6">
+          {/* Shop Branch Selection */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 sm:p-4 space-y-2.5 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <label className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-[#0F4C5C] flex items-center gap-1.5">
+                <Building2 className="size-3.5 sm:size-4 text-[#0F4C5C]" /> Billing Branch
+              </label>
+              <span className="text-[10px] text-slate-500 font-medium">
+                Choose branch address for bill & receipt
+              </span>
+            </div>
+
+            {/* Responsive Branch Selector Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {SHOP_BRANCHES.map((b) => {
+                const isSelected = selectedBranchId === b.id;
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => handleBranchSelect(b.id)}
+                    className={`relative flex items-start text-left p-3 rounded-xl border transition-all duration-150 active:scale-[0.99] ${
+                      isSelected
+                        ? "border-[#0F4C5C] bg-[#0F4C5C]/5 ring-1 ring-[#0F4C5C] shadow-xs"
+                        : "border-slate-200 bg-slate-50/50 hover:bg-slate-100/70 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5 w-full min-w-0">
+                      <div
+                        className={`mt-0.5 size-4 rounded-full border flex items-center justify-center shrink-0 transition ${
+                          isSelected ? "border-[#0F4C5C] bg-[#0F4C5C]" : "border-slate-300 bg-white"
+                        }`}
+                      >
+                        {isSelected && <span className="size-1.5 rounded-full bg-white" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span
+                            className={`text-xs font-bold truncate ${
+                              isSelected ? "text-[#0F4C5C]" : "text-slate-800"
+                            }`}
+                          >
+                            {b.name}
+                          </span>
+                          {isSelected && (
+                            <span className="text-[9px] font-extrabold bg-[#0F4C5C] text-white px-1.5 py-0.5 rounded shrink-0">
+                              ACTIVE
+                            </span>
+                          )}
+                        </div>
+                        <p
+                          className="text-[11px] text-slate-500 font-normal leading-tight mt-1 line-clamp-2"
+                          title={b.address}
+                        >
+                          <MapPin className="size-2.5 inline mr-1 text-slate-400 shrink-0" />
+                          {b.address}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Customer Information */}
           <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 sm:p-4 space-y-3.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">

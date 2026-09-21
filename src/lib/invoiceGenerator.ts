@@ -19,6 +19,8 @@ export interface InvoiceOrderData {
   amountPaid: number;
   discount?: number;
   items?: string;
+  branch?: string;
+  branchAddress?: string;
   structuredItems?: { name: string; quantity: number; price?: number; service?: string }[];
 }
 
@@ -647,10 +649,10 @@ export function generateA4InvoiceHtml(order: InvoiceOrderData, settings: Invoice
       <div class="shop-brand">
         <img src="${escapeHtml(settings.logoUrl) || "/fabric-care-logo.png"}" alt="${escapeHtml(settings.shopName)}" class="shop-logo" />
         <div class="shop-details">
-          <h1>${escapeHtml(settings.shopName)}</h1>
+          <h1>${escapeHtml(settings.shopName)}${order.branch ? ` <span style="font-size:12px; font-weight:700; color:#0F4C5C; background:#E0F2FE; padding:2px 8px; border-radius:6px; vertical-align:middle;">${escapeHtml(order.branch)}</span>` : ""}</h1>
           <div class="shop-tagline">${escapeHtml(settings.tagline)}</div>
           <div class="shop-meta">
-            ${settings.address ? `<div>${escapeHtml(settings.address)}</div>` : ""}
+            ${order.branchAddress ? `<div><strong>${escapeHtml(order.branchAddress)}</strong></div>` : settings.address ? `<div>${escapeHtml(settings.address)}</div>` : ""}
             <div>
               ${settings.phone ? `Phone: <strong>${escapeHtml(settings.phone)}</strong>` : ""}
               ${settings.phone && settings.email ? " · " : ""}
@@ -921,9 +923,9 @@ export function generateThermalReceiptHtml(
 <body>
   <div class="thermal-container">
     <div class="center">
-      <div class="title bold">${escapeHtml(settings.shopName)}</div>
+      <div class="title bold">${escapeHtml(settings.shopName)}${order.branch ? ` (${escapeHtml(order.branch)})` : ""}</div>
       <div>${escapeHtml(settings.tagline)}</div>
-      ${settings.address ? `<div>${escapeHtml(settings.address)}</div>` : ""}
+      ${order.branchAddress ? `<div class="bold">${escapeHtml(order.branchAddress)}</div>` : settings.address ? `<div>${escapeHtml(settings.address)}</div>` : ""}
       ${settings.phone ? `<div>Tel: ${escapeHtml(settings.phone)}</div>` : ""}
       ${settings.gstin ? `<div>GSTIN: ${escapeHtml(settings.gstin)}</div>` : ""}
     </div>

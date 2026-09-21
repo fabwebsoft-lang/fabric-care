@@ -13,6 +13,8 @@ export interface BillOrder {
   totalAmount: number;
   amountPaid: number;
   status: string;
+  branch?: string;
+  branchAddress?: string;
   structuredItems?: { name: string; quantity: number; price?: number }[];
 }
 
@@ -40,10 +42,14 @@ export function buildBillText(order: BillOrder): string {
 
   const serviceType = order.serviceType || "Standard Laundry";
   const customerDisplay = order.customerId ? `${order.customer} (ID: ${order.customerId})` : order.customer;
+  const branchAddress =
+    order.branchAddress ||
+    (order.branch?.includes("SKT") ? "SKT Dindigul" : "17/B3, 1st street, Pandian Nagar, Dindigul");
+  const branchHeader = order.branch ? `Fabric Care (${order.branch})` : "Fabric Care (Associated with Dindigul Express)";
 
   return [
-    "Fabric Care (Associated with Dindigul Express)",
-    "17/B3, 1st street, Pandian Nagar, Dindigul",
+    branchHeader,
+    branchAddress,
     `Bill: ${order.id}`,
     `Date: ${dateStr}`,
     `Customer: ${customerDisplay}`,
