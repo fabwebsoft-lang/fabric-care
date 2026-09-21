@@ -9,23 +9,22 @@ interface TimelineStage {
 }
 
 const TIMELINE_STAGES: TimelineStage[] = [
-  { id: "Received", label: "Received", shortLabel: "Received" },
-  { id: "Washing", label: "Washing", shortLabel: "Washing" },
-  { id: "Processing", label: "Processing", shortLabel: "Processing" },
-  { id: "Ready", label: "Ready", shortLabel: "Ready" },
-  { id: "Collected", label: "Collected", shortLabel: "Collected" },
+  { id: "Received", label: "Collect from Customer", shortLabel: "1. Collect" },
+  { id: "Processing", label: "Wash / Dry Clean", shortLabel: "2. Wash" },
+  { id: "Ironing", label: "Ironing & Pressing", shortLabel: "3. Ironing" },
+  { id: "Ready", label: "Shop Collection / Delivery", shortLabel: "4. Ready" },
+  { id: "Collected", label: "Payment Settled & Delivered", shortLabel: "5. Delivered" },
 ];
 
 function getStageIndex(status: string): number {
   switch (status) {
     case "Received":
       return 0;
+    case "Processing":
     case "Washing":
       return 1;
-    case "Processing":
-      return 2;
     case "Ironing":
-      return 2; // Ironing maps to the 3rd stage (Processing/Ironing)
+      return 2;
     case "Ready":
       return 3;
     case "Collected":
@@ -74,7 +73,7 @@ export function OrderProcessTimeline({
     >
       <div className="relative flex items-start justify-between">
         {/* Continuous Connecting Line Behind Nodes */}
-        <div className="absolute top-2.5 sm:top-3 left-3 right-3 h-0.5 bg-slate-200 -z-0">
+        <div className="absolute top-2.5 sm:top-3 left-4 right-4 h-0.5 bg-slate-200 -z-0">
           <div
             className="h-full bg-emerald-600 transition-all duration-300 ease-in-out"
             style={{

@@ -257,17 +257,13 @@ export const ironingRouter = router({
         productRateMap.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
       }
 
-      // Build task items & check missing rates
-      const missingRateItems: string[] = [];
+      // Build task items
       const completedItems = (order.items || []).map((item) => {
         let rate = input.ratesOverride?.[item.name];
         if (rate === undefined) {
           rate = productRateMap.get(item.name.toLowerCase().trim()) ?? 0;
         }
-
-        if (rate <= 0) {
-          missingRateItems.push(item.name);
-        }
+        rate = Math.max(0, rate);
 
         return {
           name: item.name,
@@ -277,42 +273,35 @@ export const ironingRouter = router({
         };
       });
 
-      if (missingRateItems.length > 0) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Staff Ironing Rate is not configured for: ${missingRateItems.join(
-            ", "
-          )}. Please configure the Staff Ironing Rate in Products / Items setup before completing.`,
-        });
-      }
-
       const totalPieces = completedItems.reduce((acc, i) => acc + i.quantity, 0);
       const totalEarning = completedItems.reduce((acc, i) => acc + i.staffEarning, 0);
 
       const reference = `IRONING-PAYMENT-${task.orderId}-${task.staffId.toString()}-${task._id.toString()}`;
 
-      // Create or update linked internal Expense
+      // Create or update linked internal Expense if earning > 0
       let linkedExpense = await Expense.findOne({ reference });
 
-      if (!linkedExpense) {
-        linkedExpense = await Expense.create({
-          title: `Ironing Labour - ${task.staffName}`,
-          category: "Staff / Ironing Labour",
-          amount: totalEarning,
-          paymentMethod: "Cash",
-          expenseDate: new Date(),
-          notes: `Ironing labour for Order #${order._id} (${totalPieces} pcs @ ₹${totalEarning})`,
-          reference,
-          staffId: task.staffId,
-          taskId: task._id,
-          deletedBy: null,
-          isDeleted: false,
-        });
-      } else {
-        linkedExpense.amount = totalEarning;
-        linkedExpense.notes = `Ironing labour for Order #${order._id} (${totalPieces} pcs @ ₹${totalEarning})`;
-        linkedExpense.isDeleted = false;
-        await linkedExpense.save();
+      if (totalEarning > 0) {
+        if (!linkedExpense) {
+          linkedExpense = await Expense.create({
+            title: `Ironing Labour - ${task.staffName}`,
+            category: "Staff / Ironing Labour",
+            amount: totalEarning,
+            paymentMethod: "Cash",
+            expenseDate: new Date(),
+            notes: `Ironing labour for Order #${order._id} (${totalPieces} pcs @ ₹${totalEarning})`,
+            reference,
+            staffId: task.staffId,
+            taskId: task._id,
+            deletedBy: null,
+            isDeleted: false,
+          });
+        } else {
+          linkedExpense.amount = totalEarning;
+          linkedExpense.notes = `Ironing labour for Order #${order._id} (${totalPieces} pcs @ ₹${totalEarning})`;
+          linkedExpense.isDeleted = false;
+          await linkedExpense.save();
+        }
       }
 
       task.items = completedItems as any;
@@ -320,7 +309,9 @@ export const ironingRouter = router({
       task.totalEarning = totalEarning;
       task.status = "Completed";
       task.completedAt = new Date();
-      task.expenseId = linkedExpense._id as mongoose.Types.ObjectId;
+      if (linkedExpense) {
+        task.expenseId = linkedExpense._id as mongoose.Types.ObjectId;
+      }
       task.reference = reference;
       await task.save();
 
@@ -330,7 +321,9 @@ export const ironingRouter = router({
 
       return {
         success: true,
-        message: `Ironing completed! ₹${totalEarning} labour expense credited for ${task.staffName}.`,
+        message: totalEarning > 0
+          ? `Ironing completed! ₹${totalEarning} labour expense credited for ${task.staffName}.`
+          : `Ironing completed for ${task.staffName}. Order is now Ready for delivery.`,
         task: {
           id: task._id.toString(),
           orderId: task.orderId,
@@ -338,7 +331,7 @@ export const ironingRouter = router({
           totalPieces: task.totalPieces,
           totalEarning: task.totalEarning,
         },
-        expenseId: linkedExpense._id.toString(),
+        expenseId: linkedExpense ? linkedExpense._id.toString() : null,
       };
     }),
 

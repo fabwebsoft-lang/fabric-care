@@ -650,8 +650,8 @@ export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => vo
         <CompleteIroningModal
           order={completeIroningOrder}
           onClose={() => setCompleteIroningOrder(null)}
-          onComplete={(orderId, staffId) =>
-            completeIroningMutation.mutate({ orderId, staffId })
+          onComplete={(orderId, staffId, ratesOverride) =>
+            completeIroningMutation.mutate({ orderId, staffId, ratesOverride })
           }
           isPending={completeIroningMutation.isPending}
         />
@@ -845,53 +845,97 @@ function CompleteIroningModal({
 }: {
   order: Order;
   onClose: () => void;
-  onComplete: (orderId: string, staffId?: string) => void;
+  onComplete: (orderId: string, staffId?: string, ratesOverride?: Record<string, number>) => void;
   isPending: boolean;
 }) {
-  const { data: activeTask, isLoading: isLoadingTask } = trpc.ironing.getActiveTask.useQuery({
+  const { data: activeTask } = trpc.ironing.getActiveTask.useQuery({
     orderId: order.id,
   });
   const { data: staffList = [] } = trpc.workers.activeStaffList.useQuery();
   const { data: products = [] } = trpc.products.list.useQuery();
 
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+  const [customRates, setCustomRates] = useState<Record<string, number>>({});
 
   // Product staffIroningRate mapping
-  const productRateMap = new Map<string, number>();
-  for (const p of products) {
-    productRateMap.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
-  }
+  const productRateMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of products) {
+      map.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
+    }
+    return map;
+  }, [products]);
 
-  // Parse items from order
-  const orderItemsList = Array.isArray(order.items)
-    ? order.items
-    : typeof order.items === "string"
-    ? order.items.split(",").map((s) => {
+  // Robust parsing: First check structuredItems, then fallback to parsing order.items
+  const parsedGarmentItems = useMemo(() => {
+    if (order.structuredItems && order.structuredItems.length > 0) {
+      return order.structuredItems.map((i) => ({
+        name: i.name.trim(),
+        quantity: i.quantity || 1,
+      }));
+    }
+    if (Array.isArray(order.items)) {
+      return (order.items as any[]).map((i: any) => ({
+        name: typeof i === "string" ? i.trim() : (i.name || "Item").trim(),
+        quantity: typeof i === "object" ? i.quantity || 1 : 1,
+      }));
+    }
+    if (typeof order.items === "string") {
+      const cleaned = order.items.replace(/\s*·\s*[^,]+$/, "").trim();
+      return cleaned.split(",").map((s) => {
         const trimmed = s.trim();
         const match = trimmed.match(/^(\d+)\s*x\s*(.+)$/i) || trimmed.match(/^(.+)\s*x\s*(\d+)$/i);
         if (match) {
-          return { name: match[2]?.trim() || trimmed, quantity: Number(match[1]) || 1 };
+          const qty = Number(match[1]) || 1;
+          const name = match[2]?.trim() || trimmed;
+          return { name, quantity: qty };
         }
         return { name: trimmed, quantity: 1 };
-      })
-    : [];
+      });
+    }
+    return [];
+  }, [order]);
 
-  const calculatedItems = orderItemsList.map((item) => {
-    const rate = productRateMap.get(item.name.toLowerCase().trim()) ?? 0;
+  const getItemDefaultRate = (itemName: string): number => {
+    const cleanName = itemName.toLowerCase().trim();
+    if (productRateMap.has(cleanName)) {
+      return productRateMap.get(cleanName)!;
+    }
+    for (const [pName, pRate] of productRateMap.entries()) {
+      if (cleanName.includes(pName) || pName.includes(cleanName)) {
+        return pRate;
+      }
+    }
+    return 0;
+  };
+
+  const calculatedItems = parsedGarmentItems.map((item) => {
+    const rate =
+      customRates[item.name] !== undefined
+        ? customRates[item.name]
+        : getItemDefaultRate(item.name);
     return {
       name: item.name,
-      quantity: item.quantity || 1,
+      quantity: item.quantity,
       staffRate: rate,
-      staffEarning: (item.quantity || 1) * rate,
+      staffEarning: item.quantity * rate,
     };
   });
 
   const totalPieces = calculatedItems.reduce((acc, i) => acc + i.quantity, 0);
   const totalEarnings = calculatedItems.reduce((acc, i) => acc + i.staffEarning, 0);
-  const missingRateItems = calculatedItems.filter((i) => i.staffRate <= 0);
 
   const effectiveStaffId = activeTask?.staffId || selectedStaffId;
-  const effectiveStaffName = activeTask?.staffName || staffList.find((s) => s.id === selectedStaffId)?.name;
+  const effectiveStaffName =
+    activeTask?.staffName || staffList.find((s) => s.id === selectedStaffId)?.name;
+
+  const handleRateChange = (itemName: string, val: string) => {
+    const num = Math.max(0, Number(val) || 0);
+    setCustomRates((prev) => ({
+      ...prev,
+      [itemName]: num,
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -899,13 +943,13 @@ function CompleteIroningModal({
       toast.error("Please select the staff member who did the ironing");
       return;
     }
-    if (missingRateItems.length > 0) {
-      toast.error(
-        `Staff Ironing Rate missing for: ${missingRateItems.map((i) => i.name).join(", ")}. Please set it in Products setup.`
-      );
-      return;
-    }
-    onComplete(order.id, activeTask ? undefined : effectiveStaffId);
+
+    const ratesOverride: Record<string, number> = {};
+    calculatedItems.forEach((i) => {
+      ratesOverride[i.name] = i.staffRate;
+    });
+
+    onComplete(order.id, activeTask ? undefined : effectiveStaffId, ratesOverride);
   };
 
   return (
@@ -976,61 +1020,65 @@ function CompleteIroningModal({
         <div className="space-y-2">
           <div className="flex justify-between items-center text-xs font-bold text-slate-700">
             <span>Garment Breakdown</span>
-            <span className="text-[11px] font-normal text-slate-500">Staff Labour Rates</span>
+            <span className="text-[11px] font-normal text-slate-500">Edit rates per piece if needed</span>
           </div>
 
           <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
             <div className="grid grid-cols-12 bg-slate-100/80 px-3 py-2 font-bold text-slate-600 text-[11px] border-b border-slate-200">
               <div className="col-span-5">Garment</div>
               <div className="col-span-2 text-center">Qty</div>
-              <div className="col-span-2 text-right">Rate</div>
+              <div className="col-span-2 text-right">Rate/pc</div>
               <div className="col-span-3 text-right">Labour Earning</div>
             </div>
 
             <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
-              {calculatedItems.map((item, idx) => (
-                <div key={idx} className="grid grid-cols-12 px-3 py-2 items-center text-slate-700">
-                  <div className="col-span-5 font-semibold truncate">{item.name}</div>
-                  <div className="col-span-2 text-center font-mono">{item.quantity}</div>
-                  <div className="col-span-2 text-right font-mono">
-                    {item.staffRate > 0 ? (
-                      `₹${item.staffRate}`
-                    ) : (
-                      <span className="text-rose-600 font-bold">₹0</span>
-                    )}
-                  </div>
-                  <div className="col-span-3 text-right font-mono font-bold text-emerald-700">
-                    ₹{item.staffEarning}
-                  </div>
+              {calculatedItems.length === 0 ? (
+                <div className="p-4 text-center text-slate-400 text-xs">
+                  {order.items || "Standard Laundry items"}
                 </div>
-              ))}
+              ) : (
+                calculatedItems.map((item, idx) => (
+                  <div key={idx} className="grid grid-cols-12 px-3 py-2 items-center text-slate-700 gap-1">
+                    <div className="col-span-5 font-semibold truncate" title={item.name}>
+                      {item.name}
+                    </div>
+                    <div className="col-span-2 text-center font-mono font-bold">
+                      {item.quantity}
+                    </div>
+                    <div className="col-span-2 flex justify-end">
+                      <div className="relative w-16">
+                        <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">
+                          ₹
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.staffRate}
+                          onChange={(e) => handleRateChange(item.name, e.target.value)}
+                          className="w-full pl-4 pr-1 py-1 text-xs text-right font-mono font-bold bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="col-span-3 text-right font-mono font-bold text-emerald-700">
+                      ₹{item.staffEarning}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="grid grid-cols-12 bg-slate-50 px-3 py-2.5 font-bold text-slate-800 border-t border-slate-200">
               <div className="col-span-5">Total Pieces & Labour:</div>
               <div className="col-span-2 text-center text-slate-900">{totalPieces} pcs</div>
               <div className="col-span-2 text-right text-slate-400">-</div>
-              <div className="col-span-3 text-right text-emerald-700 text-sm">₹{totalEarnings}</div>
+              <div className="col-span-3 text-right text-emerald-700 text-sm font-bold">
+                ₹{totalEarnings}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Missing Rate Alert */}
-        {missingRateItems.length > 0 && (
-          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 space-y-1">
-            <p className="font-bold flex items-center gap-1.5 text-rose-700">
-              <AlertCircle className="size-4 shrink-0" />
-              Missing Staff Ironing Rate
-            </p>
-            <p className="text-[11px] leading-relaxed">
-              The following item(s) do not have a configured Staff Ironing Rate:{" "}
-              <strong>{missingRateItems.map((i) => i.name).join(", ")}</strong>. Please configure
-              their rates in <strong>Items / Services</strong> setup before completing.
-            </p>
-          </div>
-        )}
-
-        {/* Separate Billing / Accounting Notice */}
+        {/* Accounting & Financial Clarification Notice */}
         <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-1.5 text-slate-600">
           <div className="flex justify-between items-center text-[11px]">
             <span>Customer Bill Amount (Unchanged):</span>
@@ -1038,7 +1086,11 @@ function CompleteIroningModal({
           </div>
           <div className="flex justify-between items-center text-[11px] text-emerald-700 font-semibold border-t border-slate-200/60 pt-1">
             <span>Automatic Internal Expense:</span>
-            <span>₹{totalEarnings} under "Staff / Ironing Labour"</span>
+            <span>
+              {totalEarnings > 0
+                ? `₹${totalEarnings} under "Staff / Ironing Labour"`
+                : `₹0 (No internal expense)`}
+            </span>
           </div>
         </div>
 
@@ -1052,11 +1104,15 @@ function CompleteIroningModal({
           </button>
           <button
             type="submit"
-            disabled={isPending || missingRateItems.length > 0 || !effectiveStaffId}
+            disabled={isPending || !effectiveStaffId}
             className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
           >
             <Check className="size-4" />
-            {isPending ? "Recording..." : `Complete & Credit ₹${totalEarnings}`}
+            {isPending
+              ? "Recording..."
+              : totalEarnings > 0
+              ? `Complete & Credit ₹${totalEarnings}`
+              : "Complete Ironing (₹0 Labour)"}
           </button>
         </form>
       </div>
