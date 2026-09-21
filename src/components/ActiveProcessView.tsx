@@ -19,6 +19,10 @@ import {
   Phone,
   Tag,
   X,
+  User,
+  AlertCircle,
+  IndianRupee,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Order, OrderStatus } from "@/types";
@@ -109,6 +113,48 @@ export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => vo
   const [activeTab, setActiveTab] = useState<TabType>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrderForPickup, setSelectedOrderForPickup] = useState<Order | null>(null);
+  const [startIroningOrder, setStartIroningOrder] = useState<Order | null>(null);
+  const [completeIroningOrder, setCompleteIroningOrder] = useState<Order | null>(null);
+
+  const startIroningMutation = trpc.ironing.startIroning.useMutation({
+    onSuccess: async (data) => {
+      await utils.orders.list.invalidate();
+      await utils.ironing.todayStats.invalidate();
+      await utils.dashboard.stats.invalidate();
+      toast.success(data.message || "Ironing started", {
+        description: `Assigned to ${data.task?.staffName} · No expense created until completion.`,
+      });
+      setStartIroningOrder(null);
+    },
+    onError: (err) => {
+      toast.error("Could not start ironing", { description: err.message });
+    },
+  });
+
+  const completeIroningMutation = trpc.ironing.completeIroning.useMutation({
+    onSuccess: async (data) => {
+      await utils.orders.list.invalidate();
+      await utils.ironing.getActiveTask.invalidate();
+      await utils.ironing.reports.invalidate();
+      await utils.ironing.todayStats.invalidate();
+      await utils.expenses.list.invalidate();
+      await utils.dashboard.stats.invalidate();
+      toast.success("Ironing Completed & Labour Expense Created", {
+        description: `${data.message}`,
+      });
+      setCompleteIroningOrder(null);
+    },
+    onError: (err) => {
+      toast.error("Cannot complete ironing", { description: err.message });
+    },
+  });
+
+  const voidTaskMutation = trpc.ironing.voidTask.useMutation({
+    onSuccess: async () => {
+      await utils.ironing.todayStats.invalidate();
+      await utils.orders.list.invalidate();
+    },
+  });
 
   const updateStatusMutation = trpc.orders.updateStatus.useMutation({
     onSuccess: async (data) => {
@@ -497,14 +543,11 @@ export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => vo
                   {order.status === "Processing" && (
                     <div className="space-y-1">
                       <button
-                        disabled={updateStatusMutation.isPending}
-                        onClick={() =>
-                          updateStatusMutation.mutate({ id: order.id, status: "Ironing" })
-                        }
+                        onClick={() => setStartIroningOrder(order)}
                         className="w-full py-2.5 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-700 transition flex items-center justify-center gap-1.5 active:scale-95 shadow-2xs"
                       >
                         <Sparkles className="size-3.5" />
-                        Step 3: Send to Ironing <ArrowRight className="size-3.5" />
+                        Step 3: Start Ironing & Assign Staff <ArrowRight className="size-3.5" />
                       </button>
                       <button
                         disabled={updateStatusMutation.isPending}
@@ -521,21 +564,20 @@ export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => vo
                   {/* STEP 3 -> STEP 4 */}
                   {order.status === "Ironing" && (
                     <div className="space-y-1">
+                      <IroningStaffBadge orderId={order.id} />
                       <button
-                        disabled={updateStatusMutation.isPending}
-                        onClick={() =>
-                          updateStatusMutation.mutate({ id: order.id, status: "Ready" })
-                        }
+                        onClick={() => setCompleteIroningOrder(order)}
                         className="w-full py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition flex items-center justify-center gap-1.5 active:scale-95 shadow-2xs"
                       >
                         <PackageCheck className="size-3.5" />
-                        Step 4: Mark Ready for Delivery / Pickup <ArrowRight className="size-3.5" />
+                        Step 4: Complete Ironing & Record Labour <ArrowRight className="size-3.5" />
                       </button>
                       <button
-                        disabled={updateStatusMutation.isPending}
-                        onClick={() =>
-                          updateStatusMutation.mutate({ id: order.id, status: "Processing" })
-                        }
+                        disabled={updateStatusMutation.isPending || voidTaskMutation.isPending}
+                        onClick={async () => {
+                          await voidTaskMutation.mutateAsync({ orderId: order.id });
+                          updateStatusMutation.mutate({ id: order.id, status: "Processing" });
+                        }}
                         className="w-full py-1 text-[10px] text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1 transition"
                       >
                         <RotateCcw className="size-2.5" /> Move back to Step 2 (Wash)
@@ -591,6 +633,30 @@ export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => vo
         </div>
       )}
 
+      {/* Start Ironing - Assign Staff Modal */}
+      {startIroningOrder && (
+        <StartIroningModal
+          order={startIroningOrder}
+          onClose={() => setStartIroningOrder(null)}
+          onStart={(orderId, staffId) =>
+            startIroningMutation.mutate({ orderId, staffId })
+          }
+          isPending={startIroningMutation.isPending}
+        />
+      )}
+
+      {/* Complete Ironing & Record Labour Modal */}
+      {completeIroningOrder && (
+        <CompleteIroningModal
+          order={completeIroningOrder}
+          onClose={() => setCompleteIroningOrder(null)}
+          onComplete={(orderId, staffId) =>
+            completeIroningMutation.mutate({ orderId, staffId })
+          }
+          isPending={completeIroningMutation.isPending}
+        />
+      )}
+
       {/* Shop Collection & Payment Collection Modal */}
       {selectedOrderForPickup && (
         <PickupModal
@@ -607,6 +673,393 @@ export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => vo
           isPending={settlePaymentMutation.isPending || updateStatusMutation.isPending}
         />
       )}
+    </div>
+  );
+}
+
+function IroningStaffBadge({ orderId }: { orderId: string }) {
+  const { data: task } = trpc.ironing.getActiveTask.useQuery(
+    { orderId },
+    { staleTime: 5000 }
+  );
+
+  if (!task || task.status !== "In Progress") {
+    return (
+      <div className="flex items-center gap-1 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl">
+        <AlertCircle className="size-3 text-amber-600 shrink-0" />
+        <span>Staff assignment required on completion</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-1 text-[11px] font-semibold text-purple-800 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-xl">
+      <div className="flex items-center gap-1.5 truncate">
+        <User className="size-3 text-purple-600 shrink-0" />
+        <span className="truncate">
+          Ironing by: <strong className="font-bold">{task.staffName}</strong>
+        </span>
+      </div>
+      <span className="text-[9px] uppercase px-1.5 py-0.2 bg-purple-200/70 text-purple-800 font-bold rounded">
+        In Progress
+      </span>
+    </div>
+  );
+}
+
+function StartIroningModal({
+  order,
+  onClose,
+  onStart,
+  isPending,
+}: {
+  order: Order;
+  onClose: () => void;
+  onStart: (orderId: string, staffId: string) => void;
+  isPending: boolean;
+}) {
+  const { data: staffList = [], isLoading } = trpc.workers.activeStaffList.useQuery();
+  const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStaffId) {
+      toast.error("Please select a staff member to start ironing");
+      return;
+    }
+    onStart(order.id, selectedStaffId);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+      <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-in fade-in zoom-in-95">
+        <div className="flex justify-between items-start border-b border-slate-100 pb-3 sm:pb-4">
+          <div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-600 text-white">
+                STEP 3 OF 5
+              </span>
+              <span className="text-[10px] font-semibold text-purple-700">IRONING STAGE</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Sparkles className="size-5 text-purple-600" />
+              Who is doing this ironing?
+            </h3>
+            <p className="text-[11px] sm:text-xs text-slate-500">
+              Assign an active staff member to track their ironing labour
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="grid size-8 place-items-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Order Preview */}
+        <div className="bg-slate-50 p-3.5 rounded-2xl space-y-2 text-xs border border-slate-100">
+          <div className="flex justify-between">
+            <span className="text-slate-500">Order ID:</span>
+            <span className="font-mono font-bold text-purple-800">{order.id}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-500">Customer:</span>
+            <span className="font-bold text-slate-800">{order.customer} ({order.phone})</span>
+          </div>
+          <div className="pt-1 border-t border-slate-200/70">
+            <span className="text-slate-500 block mb-0.5 font-medium">Garments to Iron:</span>
+            <p className="font-medium text-slate-800">{order.items}</p>
+          </div>
+        </div>
+
+        {/* Staff Selection Dropdown */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Select Active Staff Member <span className="text-rose-500">*</span>
+            </label>
+            {isLoading ? (
+              <div className="py-2 text-xs text-slate-400">Loading active staff...</div>
+            ) : staffList.length === 0 ? (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                No active staff found. Please add or activate staff in <strong>Staff Management</strong> tab.
+              </div>
+            ) : (
+              <div className="relative">
+                <select
+                  value={selectedStaffId}
+                  onChange={(e) => setSelectedStaffId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-slate-800"
+                  required
+                >
+                  <option value="">-- Choose Active Staff --</option>
+                  {staffList.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.role}) {s.phone ? `· ${s.phone}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="p-3 bg-purple-50/70 border border-purple-200/70 rounded-xl text-[11px] text-purple-900 space-y-1">
+            <p className="font-semibold flex items-center gap-1.5">
+              <Sparkles className="size-3.5 text-purple-600 shrink-0" />
+              Starting Ironing creates NO expense.
+            </p>
+            <p className="text-purple-700 text-[10px]">
+              Labour earning and linked internal expense are calculated and recorded only upon completing ironing.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 border border-slate-200 text-slate-600 text-xs font-semibold rounded-xl hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPending || !selectedStaffId}
+              className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-700 transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
+            >
+              <Sparkles className="size-4" />
+              {isPending ? "Starting..." : "Start Ironing"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CompleteIroningModal({
+  order,
+  onClose,
+  onComplete,
+  isPending,
+}: {
+  order: Order;
+  onClose: () => void;
+  onComplete: (orderId: string, staffId?: string) => void;
+  isPending: boolean;
+}) {
+  const { data: activeTask, isLoading: isLoadingTask } = trpc.ironing.getActiveTask.useQuery({
+    orderId: order.id,
+  });
+  const { data: staffList = [] } = trpc.workers.activeStaffList.useQuery();
+  const { data: products = [] } = trpc.products.list.useQuery();
+
+  const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+
+  // Product staffIroningRate mapping
+  const productRateMap = new Map<string, number>();
+  for (const p of products) {
+    productRateMap.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
+  }
+
+  // Parse items from order
+  const orderItemsList = Array.isArray(order.items)
+    ? order.items
+    : typeof order.items === "string"
+    ? order.items.split(",").map((s) => {
+        const trimmed = s.trim();
+        const match = trimmed.match(/^(\d+)\s*x\s*(.+)$/i) || trimmed.match(/^(.+)\s*x\s*(\d+)$/i);
+        if (match) {
+          return { name: match[2]?.trim() || trimmed, quantity: Number(match[1]) || 1 };
+        }
+        return { name: trimmed, quantity: 1 };
+      })
+    : [];
+
+  const calculatedItems = orderItemsList.map((item) => {
+    const rate = productRateMap.get(item.name.toLowerCase().trim()) ?? 0;
+    return {
+      name: item.name,
+      quantity: item.quantity || 1,
+      staffRate: rate,
+      staffEarning: (item.quantity || 1) * rate,
+    };
+  });
+
+  const totalPieces = calculatedItems.reduce((acc, i) => acc + i.quantity, 0);
+  const totalEarnings = calculatedItems.reduce((acc, i) => acc + i.staffEarning, 0);
+  const missingRateItems = calculatedItems.filter((i) => i.staffRate <= 0);
+
+  const effectiveStaffId = activeTask?.staffId || selectedStaffId;
+  const effectiveStaffName = activeTask?.staffName || staffList.find((s) => s.id === selectedStaffId)?.name;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!effectiveStaffId) {
+      toast.error("Please select the staff member who did the ironing");
+      return;
+    }
+    if (missingRateItems.length > 0) {
+      toast.error(
+        `Staff Ironing Rate missing for: ${missingRateItems.map((i) => i.name).join(", ")}. Please set it in Products setup.`
+      );
+      return;
+    }
+    onComplete(order.id, activeTask ? undefined : effectiveStaffId);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+      <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
+        <div className="flex justify-between items-start border-b border-slate-100 pb-3 sm:pb-4">
+          <div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-600 text-white">
+                STEP 3 ➔ 4
+              </span>
+              <span className="text-[10px] font-semibold text-emerald-700">COMPLETING IRONING</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <PackageCheck className="size-5 text-emerald-600" />
+              Complete Ironing & Record Labour
+            </h3>
+            <p className="text-[11px] sm:text-xs text-slate-500">
+              Calculate staff labour earning and create automatic internal expense
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="grid size-8 place-items-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Staff details or fallback prompt */}
+        {activeTask ? (
+          <div className="bg-purple-50/70 border border-purple-200/80 p-3.5 rounded-2xl flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="size-9 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold">
+                {activeTask.staffName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="text-[10px] text-purple-700 font-semibold uppercase">Assigned Staff</p>
+                <p className="font-bold text-purple-950 text-sm">{activeTask.staffName}</p>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-200/80 text-purple-800">
+              Ironing In Progress
+            </span>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-slate-700">
+              Who completed this ironing? <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={selectedStaffId}
+              onChange={(e) => setSelectedStaffId(e.target.value)}
+              className="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
+              required
+            >
+              <option value="">-- Choose Staff Member --</option>
+              {staffList.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.role})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Rate Breakdown Table */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+            <span>Garment Breakdown</span>
+            <span className="text-[11px] font-normal text-slate-500">Staff Labour Rates</span>
+          </div>
+
+          <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
+            <div className="grid grid-cols-12 bg-slate-100/80 px-3 py-2 font-bold text-slate-600 text-[11px] border-b border-slate-200">
+              <div className="col-span-5">Garment</div>
+              <div className="col-span-2 text-center">Qty</div>
+              <div className="col-span-2 text-right">Rate</div>
+              <div className="col-span-3 text-right">Labour Earning</div>
+            </div>
+
+            <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
+              {calculatedItems.map((item, idx) => (
+                <div key={idx} className="grid grid-cols-12 px-3 py-2 items-center text-slate-700">
+                  <div className="col-span-5 font-semibold truncate">{item.name}</div>
+                  <div className="col-span-2 text-center font-mono">{item.quantity}</div>
+                  <div className="col-span-2 text-right font-mono">
+                    {item.staffRate > 0 ? (
+                      `₹${item.staffRate}`
+                    ) : (
+                      <span className="text-rose-600 font-bold">₹0</span>
+                    )}
+                  </div>
+                  <div className="col-span-3 text-right font-mono font-bold text-emerald-700">
+                    ₹{item.staffEarning}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-12 bg-slate-50 px-3 py-2.5 font-bold text-slate-800 border-t border-slate-200">
+              <div className="col-span-5">Total Pieces & Labour:</div>
+              <div className="col-span-2 text-center text-slate-900">{totalPieces} pcs</div>
+              <div className="col-span-2 text-right text-slate-400">-</div>
+              <div className="col-span-3 text-right text-emerald-700 text-sm">₹{totalEarnings}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Missing Rate Alert */}
+        {missingRateItems.length > 0 && (
+          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 space-y-1">
+            <p className="font-bold flex items-center gap-1.5 text-rose-700">
+              <AlertCircle className="size-4 shrink-0" />
+              Missing Staff Ironing Rate
+            </p>
+            <p className="text-[11px] leading-relaxed">
+              The following item(s) do not have a configured Staff Ironing Rate:{" "}
+              <strong>{missingRateItems.map((i) => i.name).join(", ")}</strong>. Please configure
+              their rates in <strong>Items / Services</strong> setup before completing.
+            </p>
+          </div>
+        )}
+
+        {/* Separate Billing / Accounting Notice */}
+        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-1.5 text-slate-600">
+          <div className="flex justify-between items-center text-[11px]">
+            <span>Customer Bill Amount (Unchanged):</span>
+            <span className="font-bold text-slate-800">₹{order.totalAmount}</span>
+          </div>
+          <div className="flex justify-between items-center text-[11px] text-emerald-700 font-semibold border-t border-slate-200/60 pt-1">
+            <span>Automatic Internal Expense:</span>
+            <span>₹{totalEarnings} under "Staff / Ironing Labour"</span>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="pt-1 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 border border-slate-200 text-slate-600 text-xs font-semibold rounded-xl hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isPending || missingRateItems.length > 0 || !effectiveStaffId}
+            className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
+          >
+            <Check className="size-4" />
+            {isPending ? "Recording..." : `Complete & Credit ₹${totalEarnings}`}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

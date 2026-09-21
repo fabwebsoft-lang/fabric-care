@@ -112,11 +112,61 @@ export type Product = {
   category: "Men's Wear" | "Women's Wear" | "Kids Wear" | "Household" | "Other" | string;
   serviceType: "Wash & Fold" | "Wash & Iron" | "Dry Clean" | "Iron Only" | "Steam Iron" | "Other" | string;
   price: number;
+  staffIroningRate?: number;
   status: "Active" | "Inactive";
   isArchived?: boolean;
   createdAt: string;
   updatedAt: string;
 };
+
+export interface IroningTaskItem {
+  name: string;
+  quantity: number;
+  staffRate: number;
+  staffEarning: number;
+}
+
+export interface IroningTask {
+  id: string;
+  orderId: string;
+  staffId: string;
+  staffName: string;
+  customer: string;
+  items: IroningTaskItem[];
+  totalPieces: number;
+  totalEarning: number;
+  status: "In Progress" | "Completed" | "Voided";
+  startedAt: string | null;
+  completedAt: string | null;
+  assignedBy: string;
+}
+
+export interface StaffPerformanceItem {
+  staffId: string;
+  staffName: string;
+  totalPieces: number;
+  totalEarnings: number;
+  completedTasksCount: number;
+  tasks: Array<{
+    id: string;
+    orderId: string;
+    customer: string;
+    completedAt: string;
+    totalPieces: number;
+    totalEarning: number;
+    items: IroningTaskItem[];
+  }>;
+}
+
+export interface IroningReportResponse {
+  period: string;
+  startDate: string;
+  endDate: string;
+  totalPieces: number;
+  totalEarnings: number;
+  totalTasksCount: number;
+  staffBreakdown: StaffPerformanceItem[];
+}
 
 export type RecycleBinItemType = "order" | "customer" | "expense";
 
@@ -732,9 +782,70 @@ export const trpc = {
           ...options,
         }),
     },
+    activeStaffList: {
+      useQuery: (_input?: any, options?: any) =>
+        useQuery<Array<{ id: string; name: string; role: string; active: boolean }>>({
+          queryKey: ["workers.activeStaffList"],
+          queryFn: () => client.workers.activeStaffList.query(),
+          staleTime: 5000,
+          ...options,
+        }),
+    },
+    staffList: {
+      useQuery: (_input?: any, options?: any) =>
+        useQuery<Array<{ id: string; name: string; email: string | null; role: string; active: boolean; hasPin: boolean; createdAt: string }>>({
+          queryKey: ["workers.staffList"],
+          queryFn: () => client.workers.staffList.query(),
+          staleTime: 5000,
+          ...options,
+        }),
+    },
+    toggleActive: {
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: { workerId: string }) => {
+            try {
+              return await client.workers.toggleActive.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["workers.list"] });
+            qc.invalidateQueries({ queryKey: ["workers.activeStaffList"] });
+            qc.invalidateQueries({ queryKey: ["workers.staffList"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+    update: {
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: { workerId: string; name?: string; role?: Worker["role"] }) => {
+            try {
+              return await client.workers.update.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["workers.list"] });
+            qc.invalidateQueries({ queryKey: ["workers.activeStaffList"] });
+            qc.invalidateQueries({ queryKey: ["workers.staffList"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
     create: {
-      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) =>
-        useMutation({
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
           mutationFn: async (input: { name: string; role: Worker["role"]; pin?: string }) => {
             try {
               return await client.workers.create.mutate(input);
@@ -742,9 +853,15 @@ export const trpc = {
               throw new Error(errorMessage(err));
             }
           },
-          onSuccess: options?.onSuccess,
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["workers.list"] });
+            qc.invalidateQueries({ queryKey: ["workers.activeStaffList"] });
+            qc.invalidateQueries({ queryKey: ["workers.staffList"] });
+            options?.onSuccess?.(data);
+          },
           onError: options?.onError,
-        }),
+        });
+      },
     },
     updateRole: {
       useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) =>
@@ -885,6 +1002,7 @@ export const trpc = {
             category: string;
             serviceType: string;
             price: number;
+            staffIroningRate?: number;
             status?: "Active" | "Inactive";
           }) => {
             try {
@@ -912,6 +1030,7 @@ export const trpc = {
             category?: string;
             serviceType?: string;
             price?: number;
+            staffIroningRate?: number;
             status?: "Active" | "Inactive";
           }) => {
             try {
@@ -968,6 +1087,148 @@ export const trpc = {
           onError: options?.onError,
         });
       },
+    },
+  },
+
+  ironing: {
+    startIroning: {
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: { orderId: string; staffId: string }) => {
+            try {
+              return await client.ironing.startIroning.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+    getActiveTask: {
+      useQuery: (input: { orderId: string }, options?: any) =>
+        useQuery<IroningTask | null>({
+          queryKey: ["ironing.getActiveTask", input.orderId],
+          queryFn: () => client.ironing.getActiveTask.query(input),
+          enabled: Boolean(input.orderId),
+          ...options,
+        }),
+    },
+    completeIroning: {
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: {
+            orderId: string;
+            staffId?: string;
+            ratesOverride?: Record<string, number>;
+          }) => {
+            try {
+              return await client.ironing.completeIroning.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.reports"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["expenses.list"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+    correctTask: {
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: {
+            taskId: string;
+            staffId?: string;
+            items?: Array<{ name: string; quantity: number; staffRate: number }>;
+          }) => {
+            try {
+              return await client.ironing.correctTask.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["ironing.reports"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["expenses.list"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+    voidTask: {
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: { orderId: string }) => {
+            try {
+              return await client.ironing.voidTask.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.reports"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["expenses.list"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+    reports: {
+      useQuery: (
+        input?: {
+          period?: "today" | "yesterday" | "this_week" | "this_month" | "custom";
+          fromDate?: string;
+          toDate?: string;
+          staffId?: string;
+        },
+        options?: any
+      ) =>
+        useQuery<IroningReportResponse>({
+          queryKey: ["ironing.reports", input],
+          queryFn: () => client.ironing.reports.query(input),
+          staleTime: 5000,
+          ...options,
+        }),
+    },
+    todayStats: {
+      useQuery: (_input?: any, options?: any) =>
+        useQuery<{
+          todayPieces: number;
+          todayLabourCost: number;
+          activeStaffCount: number;
+          activeIroningStaffToday: number;
+          inProgressCount: number;
+        }>({
+          queryKey: ["ironing.todayStats"],
+          queryFn: () => client.ironing.todayStats.query(),
+          staleTime: 5000,
+          ...options,
+        }),
     },
   },
 
@@ -1060,4 +1321,3 @@ export const trpc = {
     },
   },
 };
-

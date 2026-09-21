@@ -33,6 +33,7 @@ function toApiProduct(p: any) {
     category: p.category,
     serviceType: p.serviceType,
     price: p.price,
+    staffIroningRate: Number(p.staffIroningRate ?? 0),
     status: p.status as "Active" | "Inactive",
     isArchived: Boolean(p.isArchived),
     createdAt: p.createdAt ? p.createdAt.toISOString() : new Date().toISOString(),
@@ -90,6 +91,7 @@ export const productsRouter = router({
         category: z.enum(["Men's Wear", "Women's Wear", "Kids Wear", "Household", "Other"]),
         serviceType: z.enum(["Wash & Fold", "Wash & Iron", "Dry Clean", "Iron Only", "Steam Iron", "Other"]),
         price: z.number().positive("Price must be greater than 0"),
+        staffIroningRate: z.number().min(0, "Staff rate cannot be negative").default(0),
         status: z.enum(["Active", "Inactive"]).default("Active"),
       })
     )
@@ -112,6 +114,7 @@ export const productsRouter = router({
         category: input.category,
         serviceType: input.serviceType,
         price: input.price,
+        staffIroningRate: input.staffIroningRate ?? 0,
         status: input.status,
       });
 
@@ -126,6 +129,7 @@ export const productsRouter = router({
         category: z.enum(["Men's Wear", "Women's Wear", "Kids Wear", "Household", "Other"]).optional(),
         serviceType: z.enum(["Wash & Fold", "Wash & Iron", "Dry Clean", "Iron Only", "Steam Iron", "Other"]).optional(),
         price: z.number().positive("Price must be greater than 0").optional(),
+        staffIroningRate: z.number().min(0, "Staff rate cannot be negative").optional(),
         status: z.enum(["Active", "Inactive"]).optional(),
       })
     )
@@ -151,6 +155,7 @@ export const productsRouter = router({
           ...(patch.category && { category: patch.category }),
           ...(patch.serviceType && { serviceType: patch.serviceType }),
           ...(patch.price !== undefined && { price: patch.price }),
+          ...(patch.staffIroningRate !== undefined && { staffIroningRate: patch.staffIroningRate }),
           ...(patch.status && { status: patch.status }),
         },
         { new: true }

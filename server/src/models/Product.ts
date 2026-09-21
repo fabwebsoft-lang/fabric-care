@@ -16,6 +16,7 @@ const productSchema = new Schema(
       default: "Wash & Iron",
     },
     price: { type: Number, required: true, min: 0 },
+    staffIroningRate: { type: Number, default: 0, min: 0 },
     status: {
       type: String,
       enum: ["Active", "Inactive"],

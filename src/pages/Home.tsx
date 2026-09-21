@@ -65,8 +65,9 @@ const DashboardView = lazy(() => import("@/components/DashboardView"));
 const ExpensesView = lazy(() => import("@/components/ExpensesView"));
 const ProductsView = lazy(() => import("@/components/ProductsView"));
 const RecycleBinView = lazy(() => import("@/components/RecycleBinView"));
+const StaffManagementView = lazy(() => import("@/components/StaffManagementView"));
 
-type Section = "Overview" | "Orders" | "Active process" | "Products" | "Customers" | "Expenses" | "Statements" | "Roles" | "Settings" | "Recycle Bin";
+type Section = "Overview" | "Orders" | "Active process" | "Staff Management" | "Products" | "Customers" | "Expenses" | "Statements" | "Roles" | "Settings" | "Recycle Bin";
 
 type Order = {
   id: string;
@@ -117,8 +118,9 @@ const navItems: { label: Section; icon: typeof LayoutDashboard }[] = [
   { label: "Overview", icon: LayoutDashboard },
   { label: "Orders", icon: ClipboardList },
   { label: "Active process", icon: WashingMachine },
+  { label: "Staff Management", icon: UsersRound },
   { label: "Products", icon: Shirt },
-  { label: "Customers", icon: UsersRound },
+  { label: "Customers", icon: UserCheck },
   { label: "Expenses", icon: WalletCards },
   { label: "Statements", icon: BarChart3 },
   { label: "Recycle Bin", icon: Trash2 },
@@ -755,6 +757,7 @@ function SectionView({ section, onNewOrder, onNavigate }: { section: Section; on
     <Suspense fallback={<ViewFallback />}>
       {section === "Active process" && <ActiveProcessView onNewOrder={onNewOrder} />}
       {section === "Orders" && <BillsView onNewOrder={onNewOrder} />}
+      {section === "Staff Management" && <StaffManagementView />}
       {section === "Products" && <ProductsView onNewOrder={onNewOrder} />}
       {section === "Customers" && <CustomersView onNewOrder={onNewOrder} />}
       {section === "Statements" && <StatementsView />}

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import mongoose from "mongoose";
 import { TRPCError } from "@trpc/server";
-import { router, approvedProcedure } from "../trpc.js";
+import { router, approvedProcedure, requirePermission } from "../trpc.js";
 import { Customer } from "../../models/Customer.js";
 import { Order } from "../../models/Order.js";
 import { normalizePhone } from "../../lib/phone.js";

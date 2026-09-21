@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure, requirePermission } from "../trpc.js";
+import { router, protectedProcedure, approvedProcedure, requirePermission } from "../trpc.js";
 import { Worker } from "../../models/Worker.js";
 import { hashSecret, compareSecret, signRoleToken } from "../../lib/auth.js";
 import type { RoleName } from "../../lib/permissions.js";
@@ -25,6 +25,66 @@ export const workersRouter = router({
     }));
   }),
 
+  // Public within app: active staff dropdown for assignment (non-pending)
+  activeStaffList: approvedProcedure.query(async () => {
+    const workers = await Worker.find({ active: true, role: { $ne: "pending" } }).sort({ name: 1 });
+    return workers.map((w) => ({
+      id: w._id.toString(),
+      name: w.name,
+      role: w.role,
+      active: w.active,
+    }));
+  }),
+
+  // Full staff list with active/inactive status for Staff Management view
+  staffList: approvedProcedure.query(async () => {
+    const workers = await Worker.find({ role: { $ne: "pending" } }).sort({ active: -1, name: 1 });
+    return workers.map((w) => ({
+      id: w._id.toString(),
+      name: w.name,
+      email: w.email ?? null,
+      role: w.role,
+      active: Boolean(w.active),
+      hasPin: Boolean(w.pinHash),
+      createdAt: w.createdAt!.toISOString(),
+    }));
+  }),
+
+  toggleActive: requirePermission("canManageRoles")
+    .input(z.object({ workerId: z.string() }))
+    .mutation(async ({ input }) => {
+      const worker = await Worker.findById(input.workerId);
+      if (!worker) throw new TRPCError({ code: "NOT_FOUND", message: "Staff member not found" });
+
+      worker.active = !worker.active;
+      await worker.save();
+      return {
+        id: worker._id.toString(),
+        name: worker.name,
+        active: worker.active,
+        message: `${worker.name} is now ${worker.active ? "Active" : "Inactive"}`,
+      };
+    }),
+
+  update: requirePermission("canManageRoles")
+    .input(
+      z.object({
+        workerId: z.string(),
+        name: z.string().min(1).optional(),
+        role: roleSchema.optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const worker = await Worker.findById(input.workerId);
+      if (!worker) throw new TRPCError({ code: "NOT_FOUND", message: "Staff member not found" });
+
+      if (input.name) worker.name = input.name.trim();
+      if (input.role) worker.role = input.role;
+
+      await worker.save();
+      return { id: worker._id.toString(), name: worker.name, role: worker.role, active: worker.active };
+    }),
+
   create: requirePermission("canManageRoles")
     .input(z.object({ name: z.string().min(1), role: roleSchema, pin: z.string().length(4).optional() }))
     .mutation(async ({ input }) => {
@@ -41,7 +101,7 @@ export const workersRouter = router({
         pinHash,
         active: true,
       });
-      return { id: worker._id.toString(), name: worker.name, role: worker.role };
+      return { id: worker._id.toString(), name: worker.name, role: worker.role, active: worker.active };
     }),
 
   // Also how an admin approves a pending signup: assigning any real role

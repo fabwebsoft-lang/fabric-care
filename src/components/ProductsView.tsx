@@ -244,8 +244,9 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
                   <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-[#0F4C5C]">
                     <th className="py-3 px-4">Item Name</th>
                     <th className="py-3 px-4">Category</th>
-                    <th className="py-3 px-4">Service Type</th>
-                    <th className="py-3 px-4">Price</th>
+                    <th className="py-3 px-4">Service</th>
+                    <th className="py-3 px-4">Customer Price</th>
+                    <th className="py-3 px-4">Staff Ironing Rate</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Created</th>
                     <th className="py-3 px-4 text-right">Actions</th>
@@ -278,6 +279,11 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
                       <td className="py-3.5 px-4">
                         <span className="font-display text-sm font-bold text-[#0F4C5C]">
                           ₹{product.price}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-display text-xs font-bold text-purple-800 bg-purple-50 px-2 py-1 rounded-md border border-purple-200">
+                          ₹{product.staffIroningRate ?? 0} / pc
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
@@ -473,12 +479,15 @@ function ProductFormModal({
   const [category, setCategory] = useState<string>(product?.category || "Men's Wear");
   const [serviceType, setServiceType] = useState<string>(product?.serviceType || "Wash & Iron");
   const [price, setPrice] = useState<string>(product ? String(product.price) : "");
+  const [staffIroningRate, setStaffIroningRate] = useState<string>(
+    product?.staffIroningRate !== undefined ? String(product.staffIroningRate) : "10"
+  );
   const [status, setStatus] = useState<"Active" | "Inactive">(product?.status || "Active");
 
   const createMutation = trpc.products.create.useMutation({
     onSuccess: (created) => {
       toast.success(`${created.name} added to catalog`, {
-        description: `₹${created.price} · Available in New Orders`,
+        description: `Price: ₹${created.price} · Staff Rate: ₹${created.staffIroningRate ?? 0}`,
       });
       onSuccess();
     },
@@ -490,7 +499,7 @@ function ProductFormModal({
   const updateMutation = trpc.products.update.useMutation({
     onSuccess: (updated) => {
       toast.success(`${updated.name} updated`, {
-        description: `New price: ₹${updated.price} · Applied to future orders`,
+        description: `Price: ₹${updated.price} · Staff Rate: ₹${updated.staffIroningRate ?? 0}`,
       });
       onSuccess();
     },
@@ -510,6 +519,7 @@ function ProductFormModal({
       toast.error("Please enter a valid price greater than 0");
       return;
     }
+    const staffRateNum = Number(staffIroningRate) || 0;
 
     if (isEditing && product) {
       updateMutation.mutate({
@@ -518,6 +528,7 @@ function ProductFormModal({
         category: category as any,
         serviceType: serviceType as any,
         price: priceNum,
+        staffIroningRate: staffRateNum,
         status,
       });
     } else {
@@ -526,6 +537,7 @@ function ProductFormModal({
         category: category as any,
         serviceType: serviceType as any,
         price: priceNum,
+        staffIroningRate: staffRateNum,
         status,
       });
     }
@@ -602,22 +614,42 @@ function ProductFormModal({
             </div>
           </div>
 
-          <div>
-            <label className="mb-1 block font-bold text-[#0F4C5C]">Price (₹) *</label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400">₹</span>
-              <input
-                type="number"
-                required
-                min="1"
-                step="1"
-                placeholder="80"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3.5 py-2 text-xs font-bold text-[#0F4C5C] focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
-              />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block font-bold text-[#0F4C5C]">Customer Price (₹) *</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400">₹</span>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  step="1"
+                  placeholder="80"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3.5 py-2 text-xs font-bold text-[#0F4C5C] focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
+                />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">Charged to the customer on the bill.</p>
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">Default rate loaded automatically when added to a bill.</p>
+
+            <div>
+              <label className="mb-1 block font-bold text-purple-900">Staff Ironing Rate (₹) *</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-purple-400">₹</span>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  step="1"
+                  placeholder="10"
+                  value={staffIroningRate}
+                  onChange={(e) => setStaffIroningRate(e.target.value)}
+                  className="w-full rounded-xl border border-purple-300 bg-purple-50/40 pl-8 pr-3.5 py-2 text-xs font-bold text-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-600"
+                />
+              </div>
+              <p className="text-[10px] text-purple-600 mt-1">Labour payout per piece to ironing staff.</p>
+            </div>
           </div>
 
           <div>

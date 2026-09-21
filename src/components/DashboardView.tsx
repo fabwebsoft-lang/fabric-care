@@ -14,6 +14,8 @@ import {
   PackageCheck,
   ChevronRight,
   Eye,
+  Sparkles,
+  Users,
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
@@ -27,6 +29,7 @@ export default function DashboardView({
   const { canDelete } = useAccessControl();
   const utils = trpc.useUtils();
   const { data: stats } = trpc.dashboard.stats.useQuery();
+  const { data: ironingStats } = trpc.ironing.todayStats.useQuery();
   const { data: orders = [] } = trpc.orders.list.useQuery();
   const { data: statements } = trpc.reports.businessStatements.useQuery({ period: "7_days" });
 
@@ -208,6 +211,47 @@ export default function DashboardView({
             </p>
             <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">Active total workload</p>
           </div>
+        </div>
+      </div>
+
+      {/* Ironing Labour & Staff Today (Subtle operational card) */}
+      <div
+        onClick={() => onNavigate("Staff Management")}
+        className="bg-gradient-to-r from-purple-50/70 via-white to-slate-50 p-4 sm:p-5 rounded-2xl border border-purple-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer hover:border-purple-300 transition group hover:shadow-sm"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-purple-100 text-purple-700 rounded-xl group-hover:scale-105 transition shrink-0">
+            <Sparkles className="size-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-slate-800 text-xs sm:text-sm">Ironing Staff Today</h3>
+              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-100 text-purple-800">
+                IST Live
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Staff labour tracking & automated internal expense calculation
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2.5 sm:pt-0 border-purple-100 text-xs">
+          <div>
+            <span className="text-[10px] font-medium text-slate-500 block">Ironed Pieces</span>
+            <span className="text-sm font-bold text-slate-900 font-mono">{ironingStats?.todayPieces ?? 0} pcs</span>
+          </div>
+          <div>
+            <span className="text-[10px] font-medium text-slate-500 block">Labour Cost</span>
+            <span className="text-sm font-bold text-purple-700 font-mono">₹{ironingStats?.todayLabourCost ?? 0}</span>
+          </div>
+          <div>
+            <span className="text-[10px] font-medium text-slate-500 block">Active Ironing Staff</span>
+            <span className="text-sm font-bold text-slate-800 font-mono">
+              {ironingStats?.activeIroningStaffToday ?? 0} staff
+            </span>
+          </div>
+          <ChevronRight className="size-4 text-slate-400 group-hover:text-purple-700 group-hover:translate-x-0.5 transition hidden sm:block" />
         </div>
       </div>
 
