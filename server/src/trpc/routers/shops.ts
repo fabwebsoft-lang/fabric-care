@@ -5,7 +5,11 @@ import { Shop } from "../../models/Shop.js";
 async function getOrCreateShop() {
   let shop = await Shop.findOne();
   if (!shop) {
-    shop = await Shop.create({ name: "My Shop", address: "", shopCode: "FC01" });
+    shop = await Shop.create({
+      name: "Fabric Care",
+      address: "17/B3, 1st street, Pandian Nagar, Dindigul",
+      shopCode: "FC01",
+    });
   }
   return shop;
 }

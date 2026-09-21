@@ -32,8 +32,9 @@ function toApiCustomer(c: any, statsByPhone?: Map<string, any>) {
 
 export const customersRouter = router({
   list: approvedProcedure.query(async () => {
-    const customers = await Customer.find().sort({ createdAt: -1 });
+    const customers = await Customer.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
     const stats = await Order.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
       {
         $group: {
           _id: "$phone",
@@ -59,7 +60,7 @@ export const customersRouter = router({
       const q = input.query.trim();
       const normDigits = normalizePhone(q);
 
-      let filter: Record<string, any> = {};
+      let filter: Record<string, any> = { isDeleted: { $ne: true } };
       if (q) {
         const escapedQuery = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const conditions: any[] = [
@@ -71,7 +72,9 @@ export const customersRouter = router({
         if (normDigits) {
           conditions.push({ normalizedPhone: { $regex: normDigits } });
         }
-        filter = { $or: conditions };
+        filter = {
+          $and: [{ isDeleted: { $ne: true } }, { $or: conditions }],
+        };
       }
 
       const customers = await Customer.find(filter)
@@ -112,7 +115,10 @@ export const customersRouter = router({
         return { exists: false, customer: null };
       }
 
-      const filter: Record<string, any> = { $or: conditions };
+      const filter: Record<string, any> = {
+        isDeleted: { $ne: true },
+        $or: conditions,
+      };
       if (input.excludeId) {
         if (mongoose.isValidObjectId(input.excludeId)) {
           filter._id = { $ne: input.excludeId };
@@ -250,5 +256,32 @@ export const customersRouter = router({
 
       if (!customer) throw new TRPCError({ code: "NOT_FOUND", message: "Customer not found" });
       return toApiCustomer(customer);
+    }),
+
+  delete: requirePermission("canDeleteCustomers")
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const userLabel = ctx.activeRole
+        ? String(ctx.activeRole).charAt(0).toUpperCase() + String(ctx.activeRole).slice(1)
+        : "Admin";
+      let customer: any = null;
+      if (mongoose.isValidObjectId(input.id)) {
+        customer = await Customer.findByIdAndUpdate(
+          input.id,
+          { isDeleted: true, deletedAt: new Date(), deletedBy: userLabel },
+          { new: true }
+        );
+      }
+      if (!customer) {
+        customer = await Customer.findOneAndUpdate(
+          { $or: [{ customerId: input.id }, { phone: input.id }] },
+          { isDeleted: true, deletedAt: new Date(), deletedBy: userLabel },
+          { new: true }
+        );
+      }
+      if (!customer) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Customer not found" });
+      }
+      return { success: true };
     }),
 });

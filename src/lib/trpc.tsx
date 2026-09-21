@@ -32,7 +32,7 @@ export type Order = {
   items: string;
   amount: string;
   balance: string;
-  status: "Received" | "Processing" | "Ready" | "Collected";
+  status: "Received" | "Processing" | "Ironing" | "Ready" | "Collected";
   deliveryType: "Shop Collection" | "Home Delivery" | null;
   due: string;
   initials: string;
@@ -115,6 +115,23 @@ export type Product = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type RecycleBinItemType = "order" | "customer" | "expense";
+
+export interface RecycleBinItem {
+  id: string;
+  recordType: RecycleBinItemType;
+  title: string;
+  subtitle?: string;
+  customerName?: string;
+  phone?: string;
+  amount?: number;
+  outstandingAmount?: number;
+  itemsSummary?: string;
+  originalDate?: string;
+  deletedAt: string;
+  deletedBy: string;
+}
 
 
 // ---------------------------------------------------------------------------
@@ -267,6 +284,10 @@ export const trpc = {
         businessStatements: {
           invalidate: () => qc.invalidateQueries({ queryKey: ["reports.businessStatements"] }),
         },
+      },
+      recycleBin: {
+        list: { invalidate: () => qc.invalidateQueries({ queryKey: ["recycleBin.list"] }) },
+        counts: { invalidate: () => qc.invalidateQueries({ queryKey: ["recycleBin.counts"] }) },
       },
     };
   },
@@ -533,6 +554,20 @@ export const trpc = {
           mutationFn: async (input: any) => {
             try {
               return await client.customers.update.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: options?.onSuccess,
+          onError: options?.onError,
+        }),
+    },
+    delete: {
+      useMutation: (options?: { onSuccess?: () => void; onError?: (err: Error) => void }) =>
+        useMutation({
+          mutationFn: async (input: { id: string }) => {
+            try {
+              return await client.customers.delete.mutate(input);
             } catch (err) {
               throw new Error(errorMessage(err));
             }
@@ -878,6 +913,95 @@ export const trpc = {
           onSuccess: (data) => {
             qc.invalidateQueries({ queryKey: ["products.list"] });
             qc.invalidateQueries({ queryKey: ["products.activeList"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+  },
+
+  recycleBin: {
+    list: {
+      useQuery: (_input?: any, options?: any) =>
+        useQuery<RecycleBinItem[]>({
+          queryKey: ["recycleBin.list"],
+          queryFn: () => client.recycleBin.list.query(),
+          staleTime: 3000,
+          ...options,
+        }),
+    },
+    counts: {
+      useQuery: (_input?: any, options?: any) =>
+        useQuery<{ total: number; orders: number; customers: number; expenses: number }>({
+          queryKey: ["recycleBin.counts"],
+          queryFn: () => client.recycleBin.counts.query(),
+          staleTime: 3000,
+          ...options,
+        }),
+    },
+    restore: {
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: { type: RecycleBinItemType; id: string }) => {
+            try {
+              return await client.recycleBin.restore.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
+            qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
+            qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["customers.list"] });
+            qc.invalidateQueries({ queryKey: ["expenses.list"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+    deleteForever: {
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: { type: RecycleBinItemType; id: string }) => {
+            try {
+              return await client.recycleBin.deleteForever.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
+            qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+    emptyBin: {
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input?: { type?: "all" | "order" | "customer" | "expense" }) => {
+            try {
+              return await client.recycleBin.emptyBin.mutate(input || {});
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
+            qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
+            qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["customers.list"] });
+            qc.invalidateQueries({ queryKey: ["expenses.list"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
             options?.onSuccess?.(data);
           },
           onError: options?.onError,

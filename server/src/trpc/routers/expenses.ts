@@ -5,7 +5,7 @@ import { Expense } from "../../models/Expense.js";
 
 export const expensesRouter = router({
   list: approvedProcedure.query(async () => {
-    const expenses = await Expense.find().sort({ expenseDate: -1 });
+    const expenses = await Expense.find({ isDeleted: { $ne: true } }).sort({ expenseDate: -1 });
     return expenses.map((e) => ({
       id: e._id.toString(),
       title: e.title,
@@ -73,8 +73,19 @@ export const expensesRouter = router({
 
   delete: requirePermission("canDeleteExpenses")
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      const deleted = await Expense.findByIdAndDelete(input.id);
+    .mutation(async ({ input, ctx }) => {
+      const userLabel = ctx.activeRole
+        ? String(ctx.activeRole).charAt(0).toUpperCase() + String(ctx.activeRole).slice(1)
+        : "Admin";
+      const deleted = await Expense.findByIdAndUpdate(
+        input.id,
+        {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedBy: userLabel,
+        },
+        { new: true }
+      );
       if (!deleted) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
       }

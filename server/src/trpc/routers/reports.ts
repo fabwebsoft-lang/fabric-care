@@ -55,12 +55,14 @@ export const reportsRouter = router({
       const selectedPeriod = input?.period || "month";
       const { start, end, groupMode } = getPeriodDateRange(selectedPeriod, input?.startDate, input?.endDate);
 
-      // Fetch all orders and expenses within date range
+      // Fetch all non-deleted orders and expenses within date range
       const orders = await Order.find({
+        isDeleted: { $ne: true },
         createdAt: { $gte: start, $lte: end },
       }).sort({ createdAt: 1 });
 
       const expenses = await Expense.find({
+        isDeleted: { $ne: true },
         expenseDate: { $gte: start, $lte: end },
       }).sort({ expenseDate: 1 });
 

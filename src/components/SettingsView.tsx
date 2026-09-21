@@ -42,8 +42,8 @@ export default function SettingsView({
   const shop = shops[0];
   const { data: devices = [] } = trpc.devices.list.useQuery();
 
-  const [shopName, setShopName] = useState(shop?.name || "Indiranagar shop");
-  const [shopAddress, setShopAddress] = useState(shop?.address || "");
+  const [shopName, setShopName] = useState(shop?.name || "Fabric Care");
+  const [shopAddress, setShopAddress] = useState(shop?.address || "17/B3, 1st street, Pandian Nagar, Dindigul");
 
   // Invoice Settings Hook & Local Form State
   const [invoiceSettings, setInvoiceSettings] = useInvoiceSettings();
@@ -225,7 +225,7 @@ export default function SettingsView({
                     value={invForm.tagline}
                     onChange={(e) => setInvForm({ ...invForm, tagline: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C] text-xs"
-                    placeholder="You wear, we care"
+                    placeholder="Associated with Dindigul Express - dindigulexpress.in"
                   />
                 </div>
 
@@ -236,7 +236,7 @@ export default function SettingsView({
                     value={invForm.address}
                     onChange={(e) => setInvForm({ ...invForm, address: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C] text-xs"
-                    placeholder="Indiranagar, Bengaluru - 560038"
+                    placeholder="17/B3, 1st street, Pandian Nagar, Dindigul"
                   />
                 </div>
 
@@ -258,7 +258,7 @@ export default function SettingsView({
                       value={invForm.email}
                       onChange={(e) => setInvForm({ ...invForm, email: e.target.value })}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C] text-xs"
-                      placeholder="care@fabriccare.in"
+                      placeholder="care@dindigulexpress.in"
                     />
                   </div>
                 </div>

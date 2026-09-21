@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { useAccessControl } from "@/contexts/AccessControlContext";
 import { buildBillText, getSmsUri, getWhatsAppUri, BillOrder } from "@/lib/billText";
 import InvoiceModal from "./InvoiceModal";
+import { OrderProcessTimeline } from "./OrderProcessTimeline";
 import {
   FileText,
   Search,
@@ -32,6 +33,7 @@ import { toast } from "sonner";
 const statusStyles: Record<string, string> = {
   Received: "bg-amber-100 text-amber-800 border-amber-200",
   Processing: "bg-blue-100 text-blue-800 border-blue-200",
+  Ironing: "bg-purple-100 text-purple-800 border-purple-200",
   Ready: "bg-emerald-100 text-emerald-800 border-emerald-200",
   Collected: "bg-slate-100 text-slate-700 border-slate-200",
 };
@@ -147,10 +149,14 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
     onSuccess: async () => {
       await utils.orders.list.invalidate();
       await utils.dashboard.stats.invalidate();
-      toast.success("Bill deleted successfully");
+      await utils.recycleBin.counts.invalidate();
+      await utils.recycleBin.list.invalidate();
+      toast.success("Bill moved to Recycle Bin", {
+        description: "You can restore or permanently delete it from the Recycle Bin.",
+      });
       setSelectedOrder(null);
     },
-    onError: (err: Error) => toast.error("Failed to delete bill", { description: err.message }),
+    onError: (err: Error) => toast.error("Failed to move bill to Recycle Bin", { description: err.message }),
   });
 
   // Date filtering logic (IST based)
@@ -483,7 +489,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         {/* Status Pills */}
         <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
-          {["All", "Received", "Processing", "Ready", "Collected"].map((st) => (
+          {["All", "Received", "Processing", "Ironing", "Ready", "Collected"].map((st) => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
@@ -719,6 +725,13 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                           </span>
                           <p className="truncate text-slate-700">{order.items}</p>
                         </div>
+
+                        {/* Order Process Timeline */}
+                        <OrderProcessTimeline
+                          status={order.status}
+                          createdAt={order.createdAt}
+                          updatedAt={order.updatedAt}
+                        />
 
                         {/* Action Row (SMS, Share, View) */}
                         <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs gap-2">
@@ -956,7 +969,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
               });
               return;
             }
-            if (confirm(`Are you sure you want to delete Bill ${selectedOrder.id}? This action cannot be undone.`)) {
+            if (confirm(`Move Bill ${selectedOrder.id} to Recycle Bin?\n\nThis item will be moved to the Recycle Bin and can be restored later.`)) {
               deleteOrderMutation.mutate({ id: selectedOrder.id });
             }
           }}

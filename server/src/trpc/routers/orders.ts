@@ -64,7 +64,7 @@ async function nextOrderId(): Promise<string> {
 
 export const ordersRouter = router({
   list: approvedProcedure.query(async () => {
-    const orders = await Order.find().sort({ createdAt: -1 });
+    const orders = await Order.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
     return orders.map(toApiOrder);
   }),
 
@@ -189,7 +189,7 @@ export const ordersRouter = router({
     .input(
       z.object({
         id: z.string(),
-        status: z.enum(["Received", "Processing", "Ready", "Collected"]),
+        status: z.enum(["Received", "Processing", "Ironing", "Ready", "Collected"]),
       })
     )
     .mutation(async ({ input }) => {
@@ -206,7 +206,7 @@ export const ordersRouter = router({
     .input(
       z.object({
         ids: z.array(z.string()).min(1, "At least one order ID required"),
-        status: z.enum(["Received", "Processing", "Ready", "Collected"]),
+        status: z.enum(["Received", "Processing", "Ironing", "Ready", "Collected"]),
       })
     )
     .mutation(async ({ input }) => {
@@ -253,8 +253,20 @@ export const ordersRouter = router({
 
   delete: requirePermission("canDeleteOrders")
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      await Order.findByIdAndDelete(input.id);
+    .mutation(async ({ input, ctx }) => {
+      const userLabel = (ctx.activeRole ? String(ctx.activeRole).charAt(0).toUpperCase() + String(ctx.activeRole).slice(1) : "Admin");
+      const updated = await Order.findByIdAndUpdate(
+        input.id,
+        {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedBy: userLabel,
+        },
+        { new: true }
+      );
+      if (!updated) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      }
       return { success: true };
     }),
 });

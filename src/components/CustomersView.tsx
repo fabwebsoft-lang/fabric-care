@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import { trpc, type Customer } from "@/lib/trpc";
 import { normalizePhone } from "@/lib/phone";
 import InvoiceModal from "./InvoiceModal";
-import { Users, Search, Phone, History, X, FileText, Pencil, Plus, Check } from "lucide-react";
+import { Users, Search, Phone, History, X, FileText, Pencil, Plus, Check, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAccessControl } from "@/contexts/AccessControlContext";
 
 export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?: any) => void }) {
+  const { canDelete } = useAccessControl();
+  const utils = trpc.useUtils();
   const { data: customers = [], isLoading } = trpc.customers.list.useQuery();
   const { data: orders = [] } = trpc.orders.list.useQuery();
   const [searchQuery, setSearchQuery] = useState("");
@@ -13,6 +16,19 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
   const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
+
+  const deleteCustomerMutation = trpc.customers.delete.useMutation({
+    onSuccess: async () => {
+      await utils.customers.list.invalidate();
+      await utils.customers.search.invalidate();
+      await utils.recycleBin.counts.invalidate();
+      await utils.recycleBin.list.invalidate();
+      toast.success("Customer moved to Recycle Bin", {
+        description: "You can restore or permanently delete it from the Recycle Bin.",
+      });
+    },
+    onError: (err: any) => toast.error("Failed to delete customer", { description: err.message }),
+  });
 
   // Listen for mobile floating "+" button trigger on Customers page
   useEffect(() => {
@@ -120,13 +136,33 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
                       <Phone className="size-3" /> {c.phone}
                     </a>
                   </div>
-                  <button
-                    onClick={() => setEditingCustomer(c)}
-                    className="p-1.5 text-slate-400 hover:text-[#0F4C5C] hover:bg-slate-100 rounded-lg transition"
-                    title="Edit Customer"
-                  >
-                    <Pencil className="size-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEditingCustomer(c)}
+                      className="p-1.5 text-slate-400 hover:text-[#0F4C5C] hover:bg-slate-100 rounded-lg transition"
+                      title="Edit Customer"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    {canDelete && (
+                      <button
+                        onClick={() => {
+                          if (
+                            confirm(
+                              `Move customer "${c.name}" to Recycle Bin?\n\nThis customer account will be moved to the Recycle Bin and can be restored later.`
+                            )
+                          ) {
+                            deleteCustomerMutation.mutate({ id: c.id });
+                          }
+                        }}
+                        disabled={deleteCustomerMutation.isPending}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                        title="Move to Recycle Bin"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-3 space-y-2 text-xs">
@@ -216,6 +252,7 @@ function CustomerFormModal({
   onClose: () => void;
 }) {
   const isEditing = Boolean(customer);
+  const { canDelete } = useAccessControl();
   const utils = trpc.useUtils();
   const [name, setName] = useState(customer?.name || "");
   const [phone, setPhone] = useState(customer?.phone || "");
@@ -247,6 +284,22 @@ function CustomerFormModal({
     },
     onError: (err: any) => {
       setError(err.message || "Failed to update customer");
+    },
+  });
+
+  const deleteMutation = trpc.customers.delete.useMutation({
+    onSuccess: async () => {
+      await utils.customers.list.invalidate();
+      await utils.customers.search.invalidate();
+      await utils.recycleBin.counts.invalidate();
+      await utils.recycleBin.list.invalidate();
+      toast.success("Customer moved to Recycle Bin", {
+        description: "You can restore or permanently delete it from the Recycle Bin.",
+      });
+      onClose();
+    },
+    onError: (err: any) => {
+      setError(err.message || "Failed to delete customer");
     },
   });
 
@@ -439,6 +492,25 @@ function CustomerFormModal({
           </div>
 
           <div className="flex gap-2 pt-2 border-t border-slate-100">
+            {isEditing && canDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Move customer "${customer?.name}" to Recycle Bin?\n\nThis customer account will be moved to the Recycle Bin and can be restored later.`
+                    )
+                  ) {
+                    deleteMutation.mutate({ id: customer!.id });
+                  }
+                }}
+                disabled={deleteMutation.isPending}
+                className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-semibold rounded-xl transition flex items-center justify-center min-h-[44px]"
+                title="Move customer to Recycle Bin"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}

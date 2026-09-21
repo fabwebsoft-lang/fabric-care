@@ -56,10 +56,14 @@ export default function ExpensesView() {
     onSuccess: async () => {
       await utils.expenses.list.invalidate();
       await utils.dashboard.stats.invalidate();
+      await utils.recycleBin.counts.invalidate();
+      await utils.recycleBin.list.invalidate();
       setDeletingExpense(null);
-      toast.success("Expense deleted");
+      toast.success("Expense moved to Recycle Bin", {
+        description: "You can restore or permanently delete it from the Recycle Bin.",
+      });
     },
-    onError: (error) => toast.error("Could not delete expense", { description: error.message }),
+    onError: (error) => toast.error("Could not move expense to Recycle Bin", { description: error.message }),
   });
 
   const totalExpenseAmount = apiExpenses.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
@@ -469,12 +473,12 @@ function DeleteConfirmModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-3 sm:p-4 backdrop-blur-sm min-h-screen">
       <div className="w-full max-w-sm rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center gap-3">
-          <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-rose-50 text-rose-600 border border-rose-100">
-            <AlertTriangle className="size-5" />
+          <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-100">
+            <Trash2 className="size-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-800">Delete Expense</h3>
-            <p className="text-xs text-slate-500">This action cannot be undone.</p>
+            <h3 className="text-base font-bold text-slate-800">Move to Recycle Bin?</h3>
+            <p className="text-xs text-slate-500">This item will be moved to the Recycle Bin and can be restored later.</p>
           </div>
         </div>
 
@@ -484,10 +488,6 @@ function DeleteConfirmModal({
             {expense.category} · ₹{Number(expense.amount).toLocaleString("en-IN")} · {expense.paymentMethod}
           </p>
         </div>
-
-        <p className="text-xs text-slate-600">
-          Delete this expense? This cannot be undone.
-        </p>
 
         <div className="flex gap-2 pt-2 border-t border-slate-100">
           <button
@@ -504,7 +504,7 @@ function DeleteConfirmModal({
             disabled={isDeleting}
             className="flex-1 flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-xs active:scale-95 min-h-[44px]"
           >
-            <Trash2 className="size-4" /> {isDeleting ? "Deleting..." : "Delete"}
+            <Trash2 className="size-4" /> {isDeleting ? "Moving..." : "Move to Recycle Bin"}
           </button>
         </div>
       </div>

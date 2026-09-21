@@ -21,7 +21,7 @@ const orderSchema = new Schema(
     serviceType: { type: String, default: "Standard Laundry" },
     status: {
       type: String,
-      enum: ["Received", "Processing", "Ready", "Collected"],
+      enum: ["Received", "Processing", "Ironing", "Ready", "Collected"],
       default: "Received",
     },
     deliveryType: { type: String, enum: ["Shop Collection", "Home Delivery"], default: null },
@@ -30,6 +30,9 @@ const orderSchema = new Schema(
     amountPaid: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
     items: { type: [orderItemSchema], default: [] },
+    isDeleted: { type: Boolean, default: false, index: true },
+    deletedAt: { type: Date, default: null },
+    deletedBy: { type: String, default: null },
   },
   { timestamps: true, _id: false }
 );

@@ -37,7 +37,8 @@ export default function DashboardView({
 
   const receivedCount = orders.filter((o) => o.status === "Received").length;
   const processingCount = orders.filter((o) => o.status === "Processing").length;
-  const outstandingProcessesCount = receivedCount + processingCount;
+  const ironingCount = orders.filter((o) => o.status === "Ironing").length;
+  const outstandingProcessesCount = receivedCount + processingCount + ironingCount;
   const needToDeliverCount = orders.filter((o) => o.status === "Ready").length;
   const activeProcessCount = orders.filter((o) => o.status !== "Collected").length;
   const chartData = statements?.dailyBreakdown || [];
@@ -143,7 +144,7 @@ export default function DashboardView({
               {outstandingProcessesCount} {outstandingProcessesCount === 1 ? "Order" : "Orders"}
             </p>
             <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
-              {receivedCount} recv · {processingCount} washing
+              {receivedCount} intake · {processingCount} wash · {ironingCount} iron
             </p>
           </div>
         </div>

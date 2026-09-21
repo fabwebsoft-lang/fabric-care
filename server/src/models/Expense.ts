@@ -8,6 +8,9 @@ const expenseSchema = new Schema(
     paymentMethod: { type: String, required: true },
     expenseDate: { type: Date, required: true },
     notes: { type: String, default: null },
+    isDeleted: { type: Boolean, default: false, index: true },
+    deletedAt: { type: Date, default: null },
+    deletedBy: { type: String, default: null },
   },
   { timestamps: true }
 );

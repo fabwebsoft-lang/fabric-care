@@ -1,4 +1,4 @@
-export type OrderStatus = "Received" | "Processing" | "Ready" | "Collected";
+export type OrderStatus = "Received" | "Processing" | "Ironing" | "Ready" | "Collected";
 export type CustomerType = "Normal" | "Premium";
 export type DeliveryType = "Shop Collection" | "Home Delivery";
 export type UserRole = "admin" | "manager" | "staff" | "owner" | "worker";

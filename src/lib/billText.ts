@@ -42,7 +42,8 @@ export function buildBillText(order: BillOrder): string {
   const customerDisplay = order.customerId ? `${order.customer} (ID: ${order.customerId})` : order.customer;
 
   return [
-    "Fabric Care - You wear, we care",
+    "Fabric Care (Associated with Dindigul Express)",
+    "17/B3, 1st street, Pandian Nagar, Dindigul",
     `Bill: ${order.id}`,
     `Date: ${dateStr}`,
     `Customer: ${customerDisplay}`,
@@ -51,8 +52,8 @@ export function buildBillText(order: BillOrder): string {
     `Paid: ₹${order.amountPaid}`,
     `Balance: ₹${dueAmount}`,
     `Status: ${order.status}`,
-    "Thank you!",
-    "Powered by Mallist - mallist.online",
+    "Thank you for your visit!",
+    "dindigulexpress.in",
   ].join("\n");
 }
 

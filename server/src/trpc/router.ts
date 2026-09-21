@@ -9,6 +9,7 @@ import { devicesRouter } from "./routers/devices.js";
 import { reportsRouter } from "./routers/reports.js";
 import { dashboardRouter } from "./routers/dashboard.js";
 import { productsRouter } from "./routers/products.js";
+import { recycleBinRouter } from "./routers/recycleBin.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   reports: reportsRouter,
   dashboard: dashboardRouter,
   products: productsRouter,
+  recycleBin: recycleBinRouter,
 });
 
 export type AppRouter = typeof appRouter;

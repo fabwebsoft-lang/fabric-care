@@ -105,7 +105,7 @@ export default function RolesAndAccessView() {
     },
     {
       feature: "Active Process Workflow",
-      description: "Move orders: Received ➔ Processing ➔ Ready ➔ Collected",
+      description: "Move orders: Step 1 (Collect) ➔ Step 2 (Wash/Dry Clean) ➔ Step 3 (Ironing) ➔ Step 4 (Collection/Delivery) ➔ Step 5 (Payment)",
       admin: true,
       manager: true,
       staff: true,

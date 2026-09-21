@@ -21,7 +21,8 @@ export type NavSection =
   | "Expenses"
   | "Statements"
   | "Roles"
-  | "Settings";
+  | "Settings"
+  | "Recycle Bin";
 
 export default function BottomNav({
   activeSection,

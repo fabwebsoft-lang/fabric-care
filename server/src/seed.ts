@@ -29,8 +29,8 @@ async function main() {
     { shopCode },
     {
       $setOnInsert: {
-        name: process.env.SEED_SHOP_NAME || "My Shop",
-        address: process.env.SEED_SHOP_ADDRESS || "",
+        name: process.env.SEED_SHOP_NAME || "Fabric Care",
+        address: process.env.SEED_SHOP_ADDRESS || "17/B3, 1st street, Pandian Nagar, Dindigul",
         shopCode,
       },
     },

@@ -17,10 +17,10 @@ export interface InvoiceSettings {
 
 export const DEFAULT_INVOICE_SETTINGS: InvoiceSettings = {
   shopName: "Fabric Care",
-  tagline: "You wear, we care",
-  address: "Indiranagar, Bengaluru - 560038",
+  tagline: "Associated with Dindigul Express - dindigulexpress.in",
+  address: "17/B3, 1st street, Pandian Nagar, Dindigul",
   phone: "+91 98765 43210",
-  email: "care@fabriccare.in",
+  email: "care@dindigulexpress.in",
   gstin: "",
   upiId: "",
   logoUrl: "/fabric-care-logo.png",
@@ -41,6 +41,18 @@ export function getInvoiceSettings(): InvoiceSettings {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_INVOICE_SETTINGS;
     const parsed = JSON.parse(raw);
+    
+    // Seamlessly migrate if previous Indiranagar address was stored in cache
+    if (!parsed.address || parsed.address.includes("Indiranagar")) {
+      parsed.address = DEFAULT_INVOICE_SETTINGS.address;
+    }
+    if (!parsed.tagline || parsed.tagline === "You wear, we care") {
+      parsed.tagline = DEFAULT_INVOICE_SETTINGS.tagline;
+    }
+    if (parsed.email === "care@fabriccare.in") {
+      parsed.email = DEFAULT_INVOICE_SETTINGS.email;
+    }
+
     return {
       ...DEFAULT_INVOICE_SETTINGS,
       ...parsed,

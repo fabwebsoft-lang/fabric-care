@@ -63,8 +63,9 @@ const RolesAndAccessView = lazy(() => import("@/components/RolesAndAccessView"))
 const DashboardView = lazy(() => import("@/components/DashboardView"));
 const ExpensesView = lazy(() => import("@/components/ExpensesView"));
 const ProductsView = lazy(() => import("@/components/ProductsView"));
+const RecycleBinView = lazy(() => import("@/components/RecycleBinView"));
 
-type Section = "Overview" | "Orders" | "Active process" | "Products" | "Customers" | "Expenses" | "Statements" | "Roles" | "Settings";
+type Section = "Overview" | "Orders" | "Active process" | "Products" | "Customers" | "Expenses" | "Statements" | "Roles" | "Settings" | "Recycle Bin";
 
 type Order = {
   id: string;
@@ -73,7 +74,7 @@ type Order = {
   items: string;
   amount: string;
   balance: string;
-  status: "Received" | "Processing" | "Ready" | "Collected";
+  status: "Received" | "Processing" | "Ironing" | "Ready" | "Collected";
   due: string;
   initials: string;
   accent: string;
@@ -92,7 +93,7 @@ type OverviewMetrics = {
   readyCount: number;
   ordersReceived: number;
   itemsInProcess: number;
-  processCounts: { Received: number; Processing: number; Ready: number };
+  processCounts: { Received: number; Processing: number; Ironing: number; Ready: number };
 };
 
 type ShopSettings = {
@@ -119,6 +120,7 @@ const navItems: { label: Section; icon: typeof LayoutDashboard }[] = [
   { label: "Customers", icon: UsersRound },
   { label: "Expenses", icon: WalletCards },
   { label: "Statements", icon: BarChart3 },
+  { label: "Recycle Bin", icon: Trash2 },
 ];
 
 const catalogItems = [
@@ -146,9 +148,10 @@ export default function Home() {
 
   const [activeSection, setActiveSection] = useState<Section>("Overview");
   const { data: apiOrders } = trpc.orders.list.useQuery(undefined, { enabled: hasApprovedAccess });
+  const { data: recycleBinCounts } = trpc.recycleBin.counts.useQuery(undefined, { enabled: hasApprovedAccess });
   const createOrderMutation = trpc.orders.create.useMutation();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [overviewMetrics, setOverviewMetrics] = useState<OverviewMetrics>({ todaysRevenue: 0, collectedToday: 0, pendingDues: 0, inProcessCount: 0, readyCount: 0, ordersReceived: 0, itemsInProcess: 0, processCounts: { Received: 0, Processing: 0, Ready: 0 } });
+  const [overviewMetrics, setOverviewMetrics] = useState<OverviewMetrics>({ todaysRevenue: 0, collectedToday: 0, pendingDues: 0, inProcessCount: 0, readyCount: 0, ordersReceived: 0, itemsInProcess: 0, processCounts: { Received: 0, Processing: 0, Ironing: 0, Ready: 0 } });
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [newOrderCustomer, setNewOrderCustomer] = useState<any | null>(null);
   const [showMobileNav, setShowMobileNav] = useState(false);
@@ -160,7 +163,7 @@ export default function Home() {
   const [statusFilter, setStatusFilter] = useState("All status");
   const { data: apiShop } = trpc.shops.list.useQuery(undefined, { enabled: hasApprovedAccess });
   const shop = apiShop?.[0];
-  const [settingsForm, setSettingsForm] = useState<ShopSettings>({ name: "Indiranagar shop", address: "Indiranagar, Bengaluru", customerNotifications: true, pricingTier: "Normal + Premium" });
+  const [settingsForm, setSettingsForm] = useState<ShopSettings>({ name: "Fabric Care - Dindigul", address: "17/B3, 1st street, Pandian Nagar, Dindigul", customerNotifications: true, pricingTier: "Normal + Premium" });
   const utils = trpc.useUtils();
   const updateShopMutation = trpc.shops.updateSettings.useMutation({
     onSuccess: async (updated) => {
@@ -224,7 +227,12 @@ export default function Home() {
     };
     const active = orders.filter((order) => order.status !== "Collected");
     const today = orders.filter((order) => isToday(order.createdAt));
-    const processCounts = { Received: active.filter((order) => order.status === "Received").length, Processing: active.filter((order) => order.status === "Processing").length, Ready: active.filter((order) => order.status === "Ready").length };
+    const processCounts = {
+      Received: active.filter((order) => order.status === "Received").length,
+      Processing: active.filter((order) => order.status === "Processing").length,
+      Ironing: active.filter((order) => order.status === "Ironing").length,
+      Ready: active.filter((order) => order.status === "Ready").length,
+    };
     setOverviewMetrics({
       todaysRevenue: today.reduce((sum, order) => sum + money(order.amount), 0),
       collectedToday: today.reduce((sum, order) => sum + order.amountPaid, 0),
@@ -306,6 +314,11 @@ export default function Home() {
                   {label === "Active process" && overviewMetrics.inProcessCount > 0 && (
                     <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] font-bold text-white">
                       {overviewMetrics.inProcessCount}
+                    </span>
+                  )}
+                  {label === "Recycle Bin" && (recycleBinCounts?.total ?? 0) > 0 && (
+                    <span className="rounded-full bg-rose-500/90 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-2xs">
+                      {recycleBinCounts?.total}
                     </span>
                   )}
                 </button>
@@ -482,6 +495,11 @@ export default function Home() {
                       {overviewMetrics.inProcessCount}
                     </span>
                   )}
+                  {label === "Recycle Bin" && (recycleBinCounts?.total ?? 0) > 0 && (
+                    <span className="rounded-full bg-rose-500/90 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-2xs">
+                      {recycleBinCounts?.total}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
@@ -608,7 +626,7 @@ function Overview({ onNavigate, orders, metrics }: { onNavigate: (section: Secti
         <div className="hidden grid-cols-[1.3fr_1fr_.8fr_.8fr_auto] gap-4 border-b border-slate-200 px-2 pb-3 text-[9px] font-bold uppercase tracking-[.12em] text-slate-500 sm:grid"><span>Customer</span><span>Order</span><span>Amount</span><span>Status</span><span /></div>
         <div className="divide-y divide-slate-100">{uniqueOrders(orders).slice(0, 4).map((order) => <OrderRow key={order.id} order={order} />)}</div>
       </section>
-      <section className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-[0_7px_30px_rgba(17,17,17,.05)] sm:p-6"><div className="mb-5 flex items-center justify-between"><div><p className="text-[13px] font-bold text-[#0F4C5C]">Process pulse</p><p className="mt-1 text-[11px] text-slate-500">Where orders are right now</p></div><button onClick={() => onNavigate("Active process")} className="grid size-8 place-items-center rounded-lg bg-slate-100 text-[#0F4C5C]"><MoreHorizontal className="size-4" /></button></div><div className="space-y-4"><ProcessBar label="Received" count={`${metrics.processCounts.Received}`} percent={metrics.inProcessCount ? metrics.processCounts.Received / metrics.inProcessCount * 100 : 0} color="#0F4C5C" /><ProcessBar label="Processing" count={`${metrics.processCounts.Processing}`} percent={metrics.inProcessCount ? metrics.processCounts.Processing / metrics.inProcessCount * 100 : 0} color="#D97706" /><ProcessBar label="Ready" count={`${metrics.processCounts.Ready}`} percent={metrics.inProcessCount ? metrics.processCounts.Ready / metrics.inProcessCount * 100 : 0} color="#059669" /></div><div className="mt-6 flex items-center gap-2 rounded-xl bg-slate-50 p-3 text-[10px] text-[#0F4C5C] border border-slate-200/80"><Clock3 className="size-3.5 text-[#0F4C5C]" /> Average turnaround <strong className="text-[#0F4C5C]">1.8 days</strong><ArrowDownRight className="ml-auto size-3.5 text-[#0F4C5C]" /></div></section>
+      <section className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-[0_7px_30px_rgba(17,17,17,.05)] sm:p-6"><div className="mb-5 flex items-center justify-between"><div><p className="text-[13px] font-bold text-[#0F4C5C]">Process pulse</p><p className="mt-1 text-[11px] text-slate-500">Where orders are right now</p></div><button onClick={() => onNavigate("Active process")} className="grid size-8 place-items-center rounded-lg bg-slate-100 text-[#0F4C5C]"><MoreHorizontal className="size-4" /></button></div><div className="space-y-4"><ProcessBar label="1. Received" count={`${metrics.processCounts.Received}`} percent={metrics.inProcessCount ? metrics.processCounts.Received / metrics.inProcessCount * 100 : 0} color="#0F4C5C" /><ProcessBar label="2. Washing" count={`${metrics.processCounts.Processing}`} percent={metrics.inProcessCount ? metrics.processCounts.Processing / metrics.inProcessCount * 100 : 0} color="#2563EB" /><ProcessBar label="3. Ironing" count={`${metrics.processCounts.Ironing}`} percent={metrics.inProcessCount ? metrics.processCounts.Ironing / metrics.inProcessCount * 100 : 0} color="#9333EA" /><ProcessBar label="4. Ready" count={`${metrics.processCounts.Ready}`} percent={metrics.inProcessCount ? metrics.processCounts.Ready / metrics.inProcessCount * 100 : 0} color="#059669" /></div><div className="mt-6 flex items-center gap-2 rounded-xl bg-slate-50 p-3 text-[10px] text-[#0F4C5C] border border-slate-200/80"><Clock3 className="size-3.5 text-[#0F4C5C]" /> Average turnaround <strong className="text-[#0F4C5C]">1.8 days</strong><ArrowDownRight className="ml-auto size-3.5 text-[#0F4C5C]" /></div></section>
     </div>
   </>;
 }
@@ -625,11 +643,11 @@ function SnapshotRow({ icon: Icon, label, value, color }: { icon: typeof Package
 
 function ProcessBar({ label, count, percent, color }: { label: string; count: string; percent: number; color: string }) { return <div><div className="mb-2 flex justify-between text-[11px]"><span className="font-semibold text-[#0F4C5C]">{label}</span><span className="font-bold text-[#0F4C5C]">{count} <span className="font-normal text-slate-500">orders</span></span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full transition-all duration-500" style={{ width: `${percent}%`, backgroundColor: color }} /></div></div>; }
 
-const statusStyles = { Received: "bg-[#EAF2F8] text-[#3976A8]", Processing: "bg-[#FFF4D6] text-[#9A6A12]", Ready: "bg-[#E8F3EC] text-[#4E8C6A]", Collected: "bg-slate-100 text-slate-600" };
+const statusStyles: Record<string, string> = { Received: "bg-[#EAF2F8] text-[#3976A8]", Processing: "bg-[#FFF4D6] text-[#9A6A12]", Ironing: "bg-purple-100 text-purple-800", Ready: "bg-[#E8F3EC] text-[#4E8C6A]", Collected: "bg-slate-100 text-slate-600" };
 
 function OrderRow({ order }: { order: Order }) {
   const [showDetails, setShowDetails] = useState(false);
-  return <><button onClick={() => setShowDetails(true)} className="group grid w-full grid-cols-1 gap-2 px-2 py-3.5 text-left transition hover:bg-slate-50 sm:grid-cols-[1.3fr_1fr_.8fr_.8fr_auto] sm:items-center sm:gap-4"><div className="flex items-center gap-3"><span style={{ backgroundColor: `${order.accent}20`, color: order.accent }} className="grid size-8 shrink-0 place-items-center rounded-full text-[10px] font-bold">{order.initials}</span><div><p className="text-[11px] font-bold text-[#0F4C5C]">{order.customer}</p><p className="text-[9px] text-slate-500">{order.phone}</p></div></div><div className="ml-11 -mt-1 text-[10px] text-slate-600 sm:ml-0 sm:mt-0"><span className="font-bold text-[#0F4C5C]">{order.id}</span><span className="hidden xl:inline"> · {order.items}</span></div><span className="ml-11 -mt-1 text-[11px] font-bold text-[#0F4C5C] sm:ml-0 sm:mt-0">{order.amount}<span className="ml-2 text-[9px] font-medium text-amber-600">{order.balance !== "Paid" ? order.balance : ""}</span></span><span className={`ml-11 -mt-1 w-fit rounded-full px-2 py-1 text-[9px] font-bold sm:ml-0 sm:mt-0 ${statusStyles[order.status]}`}>{order.status}</span><ChevronRight className="absolute right-2 hidden size-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-[#0F4C5C] sm:relative sm:right-auto sm:block" /></button>{showDetails && <OrderDetailsModal order={order} onClose={() => setShowDetails(false)} />}</>;
+  return <><button onClick={() => setShowDetails(true)} className="group grid w-full grid-cols-1 gap-2 px-2 py-3.5 text-left transition hover:bg-slate-50 sm:grid-cols-[1.3fr_1fr_.8fr_.8fr_auto] sm:items-center sm:gap-4"><div className="flex items-center gap-3"><span style={{ backgroundColor: `${order.accent}20`, color: order.accent }} className="grid size-8 shrink-0 place-items-center rounded-full text-[10px] font-bold">{order.initials}</span><div><p className="text-[11px] font-bold text-[#0F4C5C]">{order.customer}</p><p className="text-[9px] text-slate-500">{order.phone}</p></div></div><div className="ml-11 -mt-1 text-[10px] text-slate-600 sm:ml-0 sm:mt-0"><span className="font-bold text-[#0F4C5C]">{order.id}</span><span className="hidden xl:inline"> · {order.items}</span></div><span className="ml-11 -mt-1 text-[11px] font-bold text-[#0F4C5C] sm:ml-0 sm:mt-0">{order.amount}<span className="ml-2 text-[9px] font-medium text-amber-600">{order.balance !== "Paid" ? order.balance : ""}</span></span><span className={`ml-11 -mt-1 w-fit rounded-full px-2 py-1 text-[9px] font-bold sm:ml-0 sm:mt-0 ${statusStyles[order.status] || "bg-slate-100 text-slate-700"}`}>{order.status}</span><ChevronRight className="absolute right-2 hidden size-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-[#0F4C5C] sm:relative sm:right-auto sm:block" /></button>{showDetails && <OrderDetailsModal order={order} onClose={() => setShowDetails(false)} />}</>;
 }
 
 function OrderDetailsModal({ order, onClose }: { order: Order; onClose: () => void }) {
@@ -643,10 +661,10 @@ function OrderDetailsModal({ order, onClose }: { order: Order; onClose: () => vo
     },
     onError: (error) => toast.error("Could not update order status", { description: error.message }),
   });
-  const statuses: Order["status"][] = ["Received", "Processing", "Ready", "Collected"];
+  const statuses: Order["status"][] = ["Received", "Processing", "Ironing", "Ready", "Collected"];
   const currentIndex = statuses.indexOf(order.status);
   const nextStatus = statuses[currentIndex + 1];
-  return <OverlayModal title={`Order ${order.id}`} onClose={onClose}><div className="mb-5 flex items-center gap-3 rounded-2xl bg-slate-50 border border-slate-200/80 p-3"><span style={{ backgroundColor: `${order.accent}20`, color: order.accent }} className="grid size-11 place-items-center rounded-xl text-[12px] font-bold">{order.initials}</span><div><p className="text-[13px] font-bold text-[#0F4C5C]">{order.customer}</p><p className="mt-1 text-[10px] text-slate-500">{order.phone}</p></div><span className={`ml-auto rounded-full px-2.5 py-1 text-[9px] font-bold ${statusStyles[order.status]}`}>{order.status}</span></div><div className="grid grid-cols-2 gap-3"><DetailCell label="Bill amount" value={order.amount} /><DetailCell label="Balance" value={order.balance} danger={order.balance !== "Paid"} /><DetailCell label="Pickup" value={order.due} /><DetailCell label="Payment" value={order.balance === "Paid" ? "Paid in full" : "Advance received"} /></div><div className="mt-5 rounded-2xl border border-slate-200 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-[12px] font-bold text-[#0F4C5C]">Order status</p><span className="text-[10px] text-slate-500">Step {currentIndex + 1} of {statuses.length}</span></div><div className="grid grid-cols-4 gap-1.5">{statuses.map((status, index) => <div key={status} className="text-center"><div className={`mx-auto mb-1 grid size-7 place-items-center rounded-full text-[10px] font-bold ${index <= currentIndex ? "bg-[#0F4C5C] text-white" : "bg-slate-100 text-slate-600"}`}>{index + 1}</div><span className="text-[9px] font-semibold text-[#0F4C5C]">{status}</span></div>)}</div>{nextStatus ? <button disabled={updateStatusMutation.isPending} onClick={() => updateStatusMutation.mutate({ id: order.id, status: nextStatus })} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F4C5C] py-3 text-[12px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-60">{updateStatusMutation.isPending ? "Saving…" : `Mark as ${nextStatus}`} <ArrowUpRight className="size-4" /></button> : <p className="mt-4 rounded-xl bg-slate-50 border border-slate-200/80 px-3 py-2.5 text-center text-[10px] font-semibold text-[#0F4C5C]">This order is complete and collected.</p>}</div><div className="mt-5 rounded-2xl border border-slate-200 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-[12px] font-bold text-[#0F4C5C]">Items in this order</p><Shirt className="size-4 text-[#0F4C5C]" /></div><div className="flex flex-wrap gap-2">{order.items.split(" · ").slice(1).join(" · ").split(", ").map((item) => <span key={item} className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[10px] font-bold text-[#0F4C5C]">{item}</span>)}</div></div><button onClick={() => { downloadReceipt(order); toast.success(`${order.id} receipt downloaded`, { description: "Open the HTML receipt to print or save as PDF." }); }} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F4C5C] py-3 text-[12px] font-bold text-white">Download receipt <FileText className="size-4" /></button></OverlayModal>;
+  return <OverlayModal title={`Order ${order.id}`} onClose={onClose}><div className="mb-5 flex items-center gap-3 rounded-2xl bg-slate-50 border border-slate-200/80 p-3"><span style={{ backgroundColor: `${order.accent}20`, color: order.accent }} className="grid size-11 place-items-center rounded-xl text-[12px] font-bold">{order.initials}</span><div><p className="text-[13px] font-bold text-[#0F4C5C]">{order.customer}</p><p className="mt-1 text-[10px] text-slate-500">{order.phone}</p></div><span className={`ml-auto rounded-full px-2.5 py-1 text-[9px] font-bold ${statusStyles[order.status] || "bg-slate-100 text-slate-700"}`}>{order.status}</span></div><div className="grid grid-cols-2 gap-3"><DetailCell label="Bill amount" value={order.amount} /><DetailCell label="Balance" value={order.balance} danger={order.balance !== "Paid"} /><DetailCell label="Pickup" value={order.due} /><DetailCell label="Payment" value={order.balance === "Paid" ? "Paid in full" : "Advance received"} /></div><div className="mt-5 rounded-2xl border border-slate-200 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-[12px] font-bold text-[#0F4C5C]">Order status</p><span className="text-[10px] text-slate-500">Step {currentIndex + 1} of {statuses.length}</span></div><div className="grid grid-cols-5 gap-1.5">{statuses.map((status, index) => <div key={status} className="text-center"><div className={`mx-auto mb-1 grid size-7 place-items-center rounded-full text-[10px] font-bold ${index <= currentIndex ? "bg-[#0F4C5C] text-white" : "bg-slate-100 text-slate-600"}`}>{index + 1}</div><span className="text-[8px] font-semibold text-[#0F4C5C] block truncate">{status}</span></div>)}</div>{nextStatus ? <button disabled={updateStatusMutation.isPending} onClick={() => updateStatusMutation.mutate({ id: order.id, status: nextStatus })} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F4C5C] py-3 text-[12px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-60">{updateStatusMutation.isPending ? "Saving…" : `Mark as ${nextStatus}`} <ArrowUpRight className="size-4" /></button> : <p className="mt-4 rounded-xl bg-slate-50 border border-slate-200/80 px-3 py-2.5 text-center text-[10px] font-semibold text-[#0F4C5C]">This order is complete and collected.</p>}</div><div className="mt-5 rounded-2xl border border-slate-200 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-[12px] font-bold text-[#0F4C5C]">Items in this order</p><Shirt className="size-4 text-[#0F4C5C]" /></div><div className="flex flex-wrap gap-2">{order.items.split(" · ").slice(1).join(" · ").split(", ").map((item) => <span key={item} className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[10px] font-bold text-[#0F4C5C]">{item}</span>)}</div></div><button onClick={() => { downloadReceipt(order); toast.success(`${order.id} receipt downloaded`, { description: "Open the HTML receipt to print or save as PDF." }); }} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F4C5C] py-3 text-[12px] font-bold text-white">Download receipt <FileText className="size-4" /></button></OverlayModal>;
 }
 
 function downloadReceipt(order: Order) {
@@ -742,6 +760,7 @@ function SectionView({ section, onNewOrder, onNavigate }: { section: Section; on
       {section === "Roles" && <RolesAndAccessView />}
       {section === "Settings" && <SettingsViewComponent />}
       {section === "Expenses" && <ExpensesView />}
+      {section === "Recycle Bin" && <RecycleBinView />}
       {section === "Overview" && <DashboardView onNavigate={onNavigate} onNewOrder={onNewOrder} />}
     </Suspense>
   );
