@@ -1,4 +1,5 @@
 import { z } from "zod";
+import mongoose from "mongoose";
 import { TRPCError } from "@trpc/server";
 import { router, approvedProcedure, requirePermission } from "../trpc.js";
 import { Order } from "../../models/Order.js";
@@ -96,24 +97,37 @@ export const ordersRouter = router({
       const cleanCustomerId = input.customerId.trim();
 
       let orderCustomerId: string = cleanCustomerId;
+      let existingCustomer: any = null;
 
       if (input.customerRefId) {
-        // Link to existing customer
-        const existingCustomer = await Customer.findById(input.customerRefId);
-        if (existingCustomer) {
-          if (!existingCustomer.customerId) {
-            existingCustomer.customerId = cleanCustomerId;
-          }
-          orderCustomerId = existingCustomer.customerId || cleanCustomerId;
-          if (input.updateCustomerMaster) {
-            existingCustomer.name = input.customerName;
-            existingCustomer.phone = input.phone;
-            existingCustomer.normalizedPhone = normPhone;
-            if (input.address !== undefined) existingCustomer.address = input.address || null;
-            if (input.alternatePhone !== undefined) existingCustomer.alternatePhone = input.alternatePhone || null;
-            if (input.notes !== undefined) existingCustomer.notes = input.notes || null;
-            await existingCustomer.save();
-          }
+        // Link to existing customer safely without throwing CastError
+        if (mongoose.isValidObjectId(input.customerRefId)) {
+          existingCustomer = await Customer.findById(input.customerRefId);
+        }
+        if (!existingCustomer) {
+          existingCustomer = await Customer.findOne({
+            $or: [
+              { customerId: input.customerRefId },
+              { normalizedPhone: normPhone },
+              { phone: input.phone.trim() },
+            ],
+          });
+        }
+      }
+
+      if (existingCustomer) {
+        if (!existingCustomer.customerId) {
+          existingCustomer.customerId = cleanCustomerId;
+        }
+        orderCustomerId = existingCustomer.customerId || cleanCustomerId;
+        if (input.updateCustomerMaster) {
+          existingCustomer.name = input.customerName;
+          existingCustomer.phone = input.phone;
+          existingCustomer.normalizedPhone = normPhone;
+          if (input.address !== undefined) existingCustomer.address = input.address || null;
+          if (input.alternatePhone !== undefined) existingCustomer.alternatePhone = input.alternatePhone || null;
+          if (input.notes !== undefined) existingCustomer.notes = input.notes || null;
+          await existingCustomer.save();
         }
       } else {
         // Check Customer ID duplicate for new customer (case-insensitive)
@@ -158,70 +172,62 @@ export const ordersRouter = router({
         customer: input.customerName,
         phone: input.phone.trim(),
         customerType: input.customerType,
+        clothesCode: input.storedClothesCode || null,
         serviceType: input.serviceType,
-        status: "Received",
         deliveryType: input.deliveryType,
         dueAt: input.dueAt ? new Date(input.dueAt) : null,
         totalAmount: input.totalAmount,
         amountPaid: input.amountPaid,
         discount: input.discount,
-        items: input.items,
-        createdAt: creationDate,
-        updatedAt: creationDate,
+        items: input.items.map((it) => `${it.quantity}x ${it.name}`).join(", ") || "General laundry",
       });
 
       return toApiOrder(order);
     }),
-
 
   updateStatus: requirePermission("canUpdateOrderStatus")
     .input(
       z.object({
         id: z.string(),
         status: z.enum(["Received", "Processing", "Ready", "Collected"]),
-        deliveryType: z.enum(["Shop Collection", "Home Delivery"]).optional(),
       })
     )
     .mutation(async ({ input }) => {
       const order = await Order.findByIdAndUpdate(
         input.id,
-        { status: input.status, ...(input.deliveryType && { deliveryType: input.deliveryType }) },
+        { status: input.status },
         { new: true }
       );
-      if (!order) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
       return toApiOrder(order);
     }),
 
   bulkUpdateStatus: requirePermission("canUpdateOrderStatus")
     .input(
       z.object({
-        ids: z.array(z.string()).min(1),
+        ids: z.array(z.string()).min(1, "At least one order ID required"),
         status: z.enum(["Received", "Processing", "Ready", "Collected"]),
       })
     )
     .mutation(async ({ input }) => {
-      await Order.updateMany(
+      const result = await Order.updateMany(
         { _id: { $in: input.ids } },
-        { status: input.status, updatedAt: new Date() }
+        { $set: { status: input.status } }
       );
-      return { success: true, count: input.ids.length };
+      return { count: result.modifiedCount, ids: input.ids };
     }),
 
   settlePayment: requirePermission("canSettlePayments")
     .input(
       z.object({
         id: z.string(),
-        amountPaid: z.number().min(0).default(0),
-        deliveryType: z.enum(["Shop Collection", "Home Delivery"]).optional(),
+        amount: z.number().positive(),
       })
     )
     .mutation(async ({ input }) => {
       const order = await Order.findById(input.id);
-      if (!order) throw new TRPCError({ code: "NOT_FOUND" });
-      const addedPaid = Math.max(0, input.amountPaid || 0);
-      order.amountPaid = Math.min(order.totalAmount, order.amountPaid + addedPaid);
-      order.status = "Collected";
-      if (input.deliveryType) order.deliveryType = input.deliveryType;
+      if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      order.amountPaid = Math.min(order.totalAmount, order.amountPaid + input.amount);
       await order.save();
       return toApiOrder(order);
     }),
@@ -229,16 +235,20 @@ export const ordersRouter = router({
   bulkMarkAsPaid: requirePermission("canSettlePayments")
     .input(
       z.object({
-        ids: z.array(z.string()).min(1),
+        ids: z.array(z.string()).min(1, "At least one order ID required"),
       })
     )
     .mutation(async ({ input }) => {
       const orders = await Order.find({ _id: { $in: input.ids } });
+      let updatedCount = 0;
       for (const order of orders) {
-        order.amountPaid = order.totalAmount;
-        await order.save();
+        if (order.amountPaid < order.totalAmount) {
+          order.amountPaid = order.totalAmount;
+          await order.save();
+          updatedCount++;
+        }
       }
-      return { success: true, count: orders.length };
+      return { count: updatedCount, ids: input.ids };
     }),
 
   delete: requirePermission("canDeleteOrders")

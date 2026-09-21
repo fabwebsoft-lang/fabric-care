@@ -1,4 +1,5 @@
 import { z } from "zod";
+import mongoose from "mongoose";
 import { TRPCError } from "@trpc/server";
 import { router, approvedProcedure } from "../trpc.js";
 import { Customer } from "../../models/Customer.js";
@@ -113,7 +114,11 @@ export const customersRouter = router({
 
       const filter: Record<string, any> = { $or: conditions };
       if (input.excludeId) {
-        filter._id = { $ne: input.excludeId };
+        if (mongoose.isValidObjectId(input.excludeId)) {
+          filter._id = { $ne: input.excludeId };
+        } else {
+          filter.customerId = { $ne: input.excludeId };
+        }
       }
 
       const existing = await Customer.findOne(filter);
@@ -197,12 +202,13 @@ export const customersRouter = router({
     )
     .mutation(async ({ input: { id, ...patch } }) => {
       const updateData: Record<string, any> = { ...patch };
+      const excludeFilter = mongoose.isValidObjectId(id) ? { _id: { $ne: id } } : { customerId: { $ne: id } };
 
       if (patch.customerId) {
         const cleanCustomerId = patch.customerId.trim();
         // Check for duplicate Customer ID
         const duplicateId = await Customer.findOne({
-          _id: { $ne: id },
+          ...excludeFilter,
           customerId: { $regex: `^${cleanCustomerId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
         });
         if (duplicateId) {
@@ -219,20 +225,30 @@ export const customersRouter = router({
         updateData.normalizedPhone = normPhone;
         // Check for duplicate phone when updating
         const duplicate = await Customer.findOne({
-          _id: { $ne: id },
+          ...excludeFilter,
           $or: [{ normalizedPhone: normPhone }, { phone: patch.phone }],
         });
         if (duplicate) {
           throw new TRPCError({
             code: "CONFLICT",
-            message: `Another customer (${duplicate.name}) already uses this phone number`,
+            message: "A customer with this mobile number already exists",
           });
         }
       }
 
-      const customer = await Customer.findByIdAndUpdate(id, updateData, { new: true });
+      let customer: any = null;
+      if (mongoose.isValidObjectId(id)) {
+        customer = await Customer.findByIdAndUpdate(id, updateData, { new: true });
+      }
+      if (!customer) {
+        customer = await Customer.findOneAndUpdate(
+          { $or: [{ customerId: id }, { phone: id }] },
+          updateData,
+          { new: true }
+        );
+      }
+
       if (!customer) throw new TRPCError({ code: "NOT_FOUND", message: "Customer not found" });
       return toApiCustomer(customer);
     }),
 });
-

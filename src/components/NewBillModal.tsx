@@ -381,8 +381,10 @@ export default function NewBillModal({
       }
     }
 
+    const isExisting = customerMode === "existing" && Boolean(selectedCustomerId);
+
     createOrderMutation.mutate({
-      customerRefId: selectedCustomerId || undefined,
+      customerRefId: isExisting ? (selectedCustomerId || undefined) : undefined,
       customerId: customerId.trim(),
       customerName: customerName.trim(),
       phone: phone.trim() || "0000000000",
@@ -396,7 +398,7 @@ export default function NewBillModal({
       totalAmount: grandTotal,
       discount,
       amountPaid: Math.min(grandTotal, advancePaid),
-      updateCustomerMaster: selectedCustomerId ? updateCustomerProfile : undefined,
+      updateCustomerMaster: isExisting ? updateCustomerProfile : undefined,
     });
   };
 
