@@ -129,59 +129,66 @@ export default function SettingsView({
           </div>
 
           {/* Tab buttons */}
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold overflow-x-auto w-full sm:w-auto -mx-1 px-1 sm:mx-0 sm:px-1">
-            <button
-              onClick={() => setActiveTab("general")}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === "general"
-                  ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Store className="size-3.5" /> Shop Profile
-            </button>
-            <button
-              onClick={() => setActiveTab("invoice")}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === "invoice"
-                  ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <FileText className="size-3.5" /> Invoice & Print
-            </button>
-            {canManageRoles && (
+          <div className="w-full lg:w-auto overflow-x-auto no-scrollbar -mx-1 px-1 sm:mx-0 sm:px-0">
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold w-max">
               <button
-                onClick={() => setActiveTab("roles")}
-                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "roles"
+                type="button"
+                onClick={() => setActiveTab("general")}
+                className={`shrink-0 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  activeTab === "general"
                     ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <ShieldCheck className="size-3.5" /> Roles & Access
+                <Store className="size-3.5 shrink-0" /> Shop Profile
               </button>
-            )}
-            <button
-              onClick={() => setActiveTab("devices")}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === "devices"
-                  ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Smartphone className="size-3.5" /> Devices
-            </button>
-            <button
-              onClick={() => setActiveTab("account")}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === "account"
-                  ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Cloud className="size-3.5" /> Account
-            </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("invoice")}
+                className={`shrink-0 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  activeTab === "invoice"
+                    ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <FileText className="size-3.5 shrink-0" /> Invoice & Print
+              </button>
+              {canManageRoles && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("roles")}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    activeTab === "roles"
+                      ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <ShieldCheck className="size-3.5 shrink-0" /> Roles & Access
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setActiveTab("devices")}
+                className={`shrink-0 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  activeTab === "devices"
+                    ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Smartphone className="size-3.5 shrink-0" /> Devices
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("account")}
+                className={`shrink-0 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  activeTab === "account"
+                    ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Cloud className="size-3.5 shrink-0" /> Account
+              </button>
+            </div>
           </div>
         </div>
       </div>

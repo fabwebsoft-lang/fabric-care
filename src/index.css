@@ -132,6 +132,15 @@
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(15, 76, 92, 0.4);
   }
+
+  /* Utility for hiding scrollbar while preserving smooth scroll functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 @layer components {

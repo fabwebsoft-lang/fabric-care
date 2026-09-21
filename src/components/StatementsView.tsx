@@ -172,20 +172,23 @@ export default function StatementsView() {
 
         {/* Period Selector Tabs & Custom Range Controls */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-          <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-semibold overflow-x-auto">
-            {(["Today", "Month", "Financial Year", "Custom"] as const).map((r) => (
-              <button
-                key={r}
-                onClick={() => setTimeRange(r)}
-                className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap ${
-                  timeRange === r
-                    ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                {r === "Financial Year" ? "Financial Year (FY)" : r}
-              </button>
-            ))}
+          <div className="w-full sm:w-auto overflow-x-auto no-scrollbar -mx-1 px-1 sm:mx-0 sm:px-0">
+            <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-semibold w-max gap-1">
+              {(["Today", "Month", "Financial Year", "Custom"] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setTimeRange(r)}
+                  className={`shrink-0 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap cursor-pointer ${
+                    timeRange === r
+                      ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  {r === "Financial Year" ? "Financial Year (FY)" : r}
+                </button>
+              ))}
+            </div>
           </div>
 
           {timeRange === "Custom" && (
