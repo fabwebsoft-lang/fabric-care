@@ -15,49 +15,130 @@ export interface RecycleBinItem {
   title: string;
   subtitle?: string;
   customerName?: string;
+  customerId?: string | null;
   phone?: string;
+  customerType?: "Normal" | "Premium";
+  clothesCode?: string | null;
+  serviceType?: string;
+  status?: string;
+  deliveryType?: string | null;
+  dueAt?: string | null;
   amount?: number;
+  amountPaid?: number;
+  discount?: number;
   outstandingAmount?: number;
   itemsSummary?: string;
+  itemsList?: Array<{ name: string; quantity: number; price: number; clothTags?: string[] }>;
   originalDate?: string;
   deletedAt: string;
   deletedBy: string;
+  reason?: string;
+  action?: string;
 }
 
 export const recycleBinRouter = router({
   list: approvedProcedure.query(async (): Promise<RecycleBinItem[]> => {
-    const [deletedOrders, deletedCustomers, deletedExpenses] = await Promise.all([
-      Order.find({ isDeleted: true }).sort({ deletedAt: -1, updatedAt: -1 }),
-      Customer.find({ isDeleted: true }).sort({ deletedAt: -1, updatedAt: -1 }),
-      Expense.find({ isDeleted: true }).sort({ deletedAt: -1, updatedAt: -1 }),
+    const [deletedOrders, deletedBillsArchive, deletedCustomers, deletedExpenses] = await Promise.all([
+      Order.find({ isDeleted: true }).sort({ deletedAt: -1, updatedAt: -1 }).lean(),
+      DeletedBill.find({ action: { $ne: "restored" } }).sort({ deletedAt: -1 }).lean(),
+      Customer.find({ isDeleted: true }).sort({ deletedAt: -1, updatedAt: -1 }).lean(),
+      Expense.find({ isDeleted: true }).sort({ deletedAt: -1, updatedAt: -1 }).lean(),
     ]);
 
     const items: RecycleBinItem[] = [];
+    const seenOrderIds = new Set<string>();
 
-    // Map Orders
+    // 1. Map deleted Orders from Order collection
     for (const o of deletedOrders) {
+      const orderId = String(o._id);
+      seenOrderIds.add(orderId);
       const totalAmount = o.totalAmount || 0;
       const amountPaid = o.amountPaid || 0;
       const outstanding = Math.max(0, totalAmount - amountPaid);
-      const itemsCount = (o.items || []).reduce((acc: number, item: any) => acc + (item.quantity || 1), 0);
+      const orderItems = (o.items || []) as Array<any>;
+      const itemsCount = orderItems.reduce((acc: number, item: any) => acc + (item.quantity || 1), 0);
 
       items.push({
-        id: o._id as string,
+        id: orderId,
         recordType: "order",
-        title: `Bill ${o._id}`,
-        subtitle: `${itemsCount} items · ${o.serviceType || "Laundry"}`,
+        title: `Bill ${orderId}`,
+        subtitle: `${itemsCount} item${itemsCount === 1 ? "" : "s"} · ${o.serviceType || "Laundry"}`,
         customerName: o.customer,
+        customerId: o.customerId || null,
         phone: o.phone,
+        customerType: (o.customerType as "Normal" | "Premium") || "Normal",
+        clothesCode: o.clothesCode || null,
+        serviceType: o.serviceType || "Standard Laundry",
+        status: o.status || "Received",
+        deliveryType: o.deliveryType || null,
+        dueAt: o.dueAt ? new Date(o.dueAt).toISOString() : null,
         amount: totalAmount,
+        amountPaid: amountPaid,
+        discount: o.discount || 0,
         outstandingAmount: outstanding,
-        itemsSummary: (o.items || []).map((i: any) => `${i.quantity}x ${i.name}`).join(", "),
-        originalDate: o.createdAt ? o.createdAt.toISOString() : undefined,
-        deletedAt: o.deletedAt ? o.deletedAt.toISOString() : (o.updatedAt ? o.updatedAt.toISOString() : new Date().toISOString()),
+        itemsSummary: orderItems.map((i: any) => `${i.quantity}x ${i.name}`).join(", "),
+        itemsList: orderItems.map((i: any) => ({
+          name: i.name,
+          quantity: i.quantity || 1,
+          price: i.price || 0,
+          clothTags: i.clothTags || [],
+        })),
+        originalDate: o.createdAt ? new Date(o.createdAt).toISOString() : undefined,
+        deletedAt: o.deletedAt
+          ? new Date(o.deletedAt).toISOString()
+          : o.updatedAt
+          ? new Date(o.updatedAt).toISOString()
+          : new Date().toISOString(),
         deletedBy: o.deletedBy || "Admin",
       });
     }
 
-    // Map Customers
+    // 2. Map any remaining deleted bills from DeletedBill archive
+    for (const db of deletedBillsArchive) {
+      const orderId = String(db.orderId);
+      if (seenOrderIds.has(orderId)) continue;
+      seenOrderIds.add(orderId);
+
+      const totalAmount = db.totalAmount || 0;
+      const amountPaid = db.amountPaid || 0;
+      const outstanding = Math.max(0, totalAmount - amountPaid);
+      const billItems = (db.items || []) as Array<any>;
+      const itemsCount = billItems.reduce((acc: number, item: any) => acc + (item.quantity || 1), 0);
+
+      items.push({
+        id: orderId,
+        recordType: "order",
+        title: `Bill ${orderId}`,
+        subtitle: `${itemsCount} item${itemsCount === 1 ? "" : "s"} · ${db.serviceType || "Laundry"}`,
+        customerName: db.customer,
+        customerId: db.customerId || null,
+        phone: db.phone,
+        customerType: (db.customerType as "Normal" | "Premium") || "Normal",
+        clothesCode: db.clothesCode || null,
+        serviceType: db.serviceType || "Standard Laundry",
+        status: db.status || "Received",
+        deliveryType: db.deliveryType || null,
+        dueAt: db.dueAt ? new Date(db.dueAt).toISOString() : null,
+        amount: totalAmount,
+        amountPaid: amountPaid,
+        discount: db.discount || 0,
+        outstandingAmount: outstanding,
+        itemsSummary: billItems.map((i: any) => `${i.quantity}x ${i.name}`).join(", "),
+        itemsList: billItems.map((i: any) => ({
+          name: i.name,
+          quantity: i.quantity || 1,
+          price: i.price || 0,
+          clothTags: i.clothTags || [],
+        })),
+        originalDate: db.originalCreatedAt ? new Date(db.originalCreatedAt).toISOString() : undefined,
+        deletedAt: db.deletedAt ? new Date(db.deletedAt).toISOString() : new Date().toISOString(),
+        deletedBy: db.deletedBy || "Admin",
+        reason: db.reason || undefined,
+        action: db.action || "moved_to_recycle_bin",
+      });
+    }
+
+    // 3. Map Customers
     for (const c of deletedCustomers) {
       items.push({
         id: c._id.toString(),
@@ -67,13 +148,17 @@ export const recycleBinRouter = router({
         customerName: c.name,
         phone: c.phone,
         itemsSummary: c.address || c.notes || undefined,
-        originalDate: c.createdAt ? c.createdAt.toISOString() : undefined,
-        deletedAt: c.deletedAt ? c.deletedAt.toISOString() : (c.updatedAt ? c.updatedAt.toISOString() : new Date().toISOString()),
+        originalDate: c.createdAt ? new Date(c.createdAt).toISOString() : undefined,
+        deletedAt: c.deletedAt
+          ? new Date(c.deletedAt).toISOString()
+          : c.updatedAt
+          ? new Date(c.updatedAt).toISOString()
+          : new Date().toISOString(),
         deletedBy: c.deletedBy || "Admin",
       });
     }
 
-    // Map Expenses
+    // 4. Map Expenses
     for (const e of deletedExpenses) {
       items.push({
         id: e._id.toString(),
@@ -82,8 +167,12 @@ export const recycleBinRouter = router({
         subtitle: `${e.category} · ${e.paymentMethod}`,
         amount: e.amount,
         itemsSummary: e.notes || undefined,
-        originalDate: e.expenseDate ? e.expenseDate.toISOString() : undefined,
-        deletedAt: e.deletedAt ? e.deletedAt.toISOString() : (e.updatedAt ? e.updatedAt.toISOString() : new Date().toISOString()),
+        originalDate: e.expenseDate ? new Date(e.expenseDate).toISOString() : undefined,
+        deletedAt: e.deletedAt
+          ? new Date(e.deletedAt).toISOString()
+          : e.updatedAt
+          ? new Date(e.updatedAt).toISOString()
+          : new Date().toISOString(),
         deletedBy: e.deletedBy || "Admin",
       });
     }
@@ -95,11 +184,18 @@ export const recycleBinRouter = router({
   }),
 
   counts: approvedProcedure.query(async () => {
-    const [ordersCount, customersCount, expensesCount] = await Promise.all([
-      Order.countDocuments({ isDeleted: true }),
+    const [deletedOrders, deletedBillsArchive, customersCount, expensesCount] = await Promise.all([
+      Order.find({ isDeleted: true }, { _id: 1 }).lean(),
+      DeletedBill.find({ action: { $ne: "restored" } }, { orderId: 1 }).lean(),
       Customer.countDocuments({ isDeleted: true }),
       Expense.countDocuments({ isDeleted: true }),
     ]);
+
+    const orderIdSet = new Set<string>();
+    for (const o of deletedOrders) orderIdSet.add(String(o._id));
+    for (const db of deletedBillsArchive) orderIdSet.add(String(db.orderId));
+
+    const ordersCount = orderIdSet.size;
 
     return {
       total: ordersCount + customersCount + expensesCount,

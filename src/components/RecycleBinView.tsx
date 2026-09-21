@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { trpc, type RecycleBinItem, type RecycleBinItemType } from "@/lib/trpc";
 import { useAccessControl } from "@/contexts/AccessControlContext";
+import InvoiceModal from "./InvoiceModal";
 import {
   Trash2,
   RotateCcw,
@@ -19,6 +20,9 @@ import {
   CheckCircle2,
   X,
   FileText,
+  Eye,
+  ExternalLink,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,6 +41,32 @@ export default function RecycleBinView() {
   const [itemToRestore, setItemToRestore] = useState<RecycleBinItem | null>(null);
   const [itemToDeleteForever, setItemToDeleteForever] = useState<RecycleBinItem | null>(null);
   const [showEmptyBinModal, setShowEmptyBinModal] = useState(false);
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
+  const [selectedDetailItem, setSelectedDetailItem] = useState<RecycleBinItem | null>(null);
+
+  const handleOpenItem = (item: RecycleBinItem) => {
+    if (item.recordType === "order") {
+      setSelectedInvoiceOrder({
+        id: item.id,
+        customerId: item.customerId || null,
+        createdAt: item.originalDate || item.deletedAt,
+        dueAt: item.dueAt || null,
+        due: item.dueAt ? `Due ${new Date(item.dueAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "—",
+        customer: item.customerName || "Customer",
+        phone: item.phone || "",
+        customerType: item.customerType || "Normal",
+        serviceType: item.serviceType || "Standard Laundry",
+        status: (item.status as any) || "Received",
+        totalAmount: item.amount || 0,
+        amountPaid: item.amountPaid || 0,
+        discount: item.discount || 0,
+        structuredItems: item.itemsList || [],
+        items: item.itemsSummary || `${(item.itemsList || []).length} items`,
+      });
+    } else {
+      setSelectedDetailItem(item);
+    }
+  };
 
   // Mutations
   const restoreMutation = trpc.recycleBin.restore.useMutation({
@@ -381,10 +411,21 @@ export default function RecycleBinView() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredItems.map((item) => {
                     return (
-                      <tr key={`${item.recordType}-${item.id}`} className="hover:bg-slate-50/60 transition">
+                      <tr
+                        key={`${item.recordType}-${item.id}`}
+                        onClick={() => handleOpenItem(item)}
+                        className="hover:bg-slate-50/80 transition cursor-pointer group"
+                      >
                         {/* Title & Details */}
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-800 text-sm">{item.title}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="font-bold text-slate-800 text-sm group-hover:text-[#0F4C5C] transition">
+                              {item.title}
+                            </div>
+                            <span className="opacity-0 group-hover:opacity-100 transition text-[10px] text-[#0F4C5C] font-semibold bg-[#0F4C5C]/10 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                              <Eye className="size-3" /> View
+                            </span>
+                          </div>
                           {item.subtitle && (
                             <div className="text-[11px] text-slate-500 font-medium mt-0.5">{item.subtitle}</div>
                           )}
@@ -396,7 +437,7 @@ export default function RecycleBinView() {
                         </td>
 
                         {/* Type Badge */}
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
                           <span
                             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
                               item.recordType === "order"
@@ -421,6 +462,7 @@ export default function RecycleBinView() {
                               {item.phone && (
                                 <a
                                   href={`tel:${item.phone}`}
+                                  onClick={(e) => e.stopPropagation()}
                                   className="text-[11px] text-[#0F4C5C] hover:underline inline-flex items-center gap-1 mt-0.5"
                                 >
                                   <Phone className="size-3" /> {item.phone}
@@ -467,8 +509,18 @@ export default function RecycleBinView() {
                         </td>
 
                         {/* Actions */}
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <div className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenItem(item)}
+                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1 shadow-2xs active:scale-95"
+                              title="Inspect deleted record"
+                            >
+                              <Eye className="size-3.5 text-[#0F4C5C]" />
+                              {item.recordType === "order" ? "View Bill" : "Open"}
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => setItemToRestore(item)}
@@ -505,7 +557,8 @@ export default function RecycleBinView() {
             {filteredItems.map((item) => (
               <div
                 key={`${item.recordType}-${item.id}`}
-                className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs space-y-3 flex flex-col justify-between"
+                onClick={() => handleOpenItem(item)}
+                className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs space-y-3 flex flex-col justify-between cursor-pointer hover:border-[#0F4C5C]/40 transition active:scale-[0.99]"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
@@ -554,7 +607,11 @@ export default function RecycleBinView() {
                     {item.phone && (
                       <div className="flex justify-between items-center">
                         <span className="text-slate-400">Phone:</span>
-                        <a href={`tel:${item.phone}`} className="font-medium text-[#0F4C5C] hover:underline">
+                        <a
+                          href={`tel:${item.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-medium text-[#0F4C5C] hover:underline"
+                        >
                           {item.phone}
                         </a>
                       </div>
@@ -582,7 +639,15 @@ export default function RecycleBinView() {
                 </div>
 
                 {/* Mobile Actions */}
-                <div className="flex gap-2 pt-2 border-t border-slate-100">
+                <div className="flex gap-2 pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenItem(item)}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1 active:scale-95 min-h-[38px]"
+                  >
+                    <Eye className="size-3.5 text-[#0F4C5C]" /> View
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setItemToRestore(item)}
@@ -605,6 +670,139 @@ export default function RecycleBinView() {
             ))}
           </div>
         </>
+      )}
+
+      {/* INVOICE MODAL FOR DELETED BILLS */}
+      {selectedInvoiceOrder && (
+        <InvoiceModal
+          order={selectedInvoiceOrder}
+          onClose={() => setSelectedInvoiceOrder(null)}
+          onDelete={() => {
+            if (!canDelete) {
+              toast.error("Permission Denied");
+              return;
+            }
+            setItemToDeleteForever(
+              filteredItems.find((i) => i.id === selectedInvoiceOrder.id) || null
+            );
+            setSelectedInvoiceOrder(null);
+          }}
+          canDelete={canDelete}
+        />
+      )}
+
+      {/* CUSTOMER / EXPENSE DETAIL PREVIEW MODAL */}
+      {selectedDetailItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-4 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`size-9 rounded-xl flex items-center justify-center ${
+                    selectedDetailItem.recordType === "customer"
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-purple-100 text-purple-800"
+                  }`}
+                >
+                  {selectedDetailItem.recordType === "customer" ? (
+                    <UsersRound className="size-5" />
+                  ) : (
+                    <WalletCards className="size-5" />
+                  )}
+                </span>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">{selectedDetailItem.title}</h3>
+                  <p className="text-[11px] text-slate-500 uppercase font-bold tracking-wider">
+                    Deleted {selectedDetailItem.recordType}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedDetailItem(null)}
+                className="size-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5 text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-100">
+              {selectedDetailItem.customerName && (
+                <div className="flex justify-between py-1 border-b border-slate-200/60">
+                  <span className="text-slate-400">Name:</span>
+                  <span className="font-bold text-slate-800">{selectedDetailItem.customerName}</span>
+                </div>
+              )}
+              {selectedDetailItem.phone && (
+                <div className="flex justify-between py-1 border-b border-slate-200/60">
+                  <span className="text-slate-400">Phone:</span>
+                  <a href={`tel:${selectedDetailItem.phone}`} className="font-semibold text-[#0F4C5C]">
+                    {selectedDetailItem.phone}
+                  </a>
+                </div>
+              )}
+              {selectedDetailItem.amount !== undefined && (
+                <div className="flex justify-between py-1 border-b border-slate-200/60">
+                  <span className="text-slate-400">Amount:</span>
+                  <span className="font-bold text-slate-800">
+                    ₹{Number(selectedDetailItem.amount).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              )}
+              {selectedDetailItem.subtitle && (
+                <div className="flex justify-between py-1 border-b border-slate-200/60">
+                  <span className="text-slate-400">Details:</span>
+                  <span className="font-medium text-slate-700">{selectedDetailItem.subtitle}</span>
+                </div>
+              )}
+              {selectedDetailItem.itemsSummary && (
+                <div className="py-1">
+                  <span className="text-slate-400 block mb-1">Notes / Address:</span>
+                  <p className="p-2 bg-white rounded-lg border border-slate-200/60 text-slate-700 italic">
+                    {selectedDetailItem.itemsSummary}
+                  </p>
+                </div>
+              )}
+              <div className="flex justify-between py-1 pt-2 text-[11px] text-slate-400">
+                <span>Deleted by: <strong className="text-slate-600">{selectedDetailItem.deletedBy}</strong></span>
+                <span>
+                  {new Date(selectedDetailItem.deletedAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  const item = selectedDetailItem;
+                  setSelectedDetailItem(null);
+                  setItemToRestore(item);
+                }}
+                className="flex-1 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 active:scale-95"
+              >
+                <RotateCcw className="size-4" /> Restore
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const item = selectedDetailItem;
+                  setSelectedDetailItem(null);
+                  setItemToDeleteForever(item);
+                }}
+                disabled={!canDelete}
+                className="flex-1 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50"
+              >
+                <Trash2 className="size-4" /> Delete Forever
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* RESTORE CONFIRMATION MODAL */}

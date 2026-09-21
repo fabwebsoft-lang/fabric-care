@@ -126,13 +126,25 @@ export interface RecycleBinItem {
   title: string;
   subtitle?: string;
   customerName?: string;
+  customerId?: string | null;
   phone?: string;
+  customerType?: "Normal" | "Premium";
+  clothesCode?: string | null;
+  serviceType?: string;
+  status?: string;
+  deliveryType?: string | null;
+  dueAt?: string | null;
   amount?: number;
+  amountPaid?: number;
+  discount?: number;
   outstandingAmount?: number;
   itemsSummary?: string;
+  itemsList?: Array<{ name: string; quantity: number; price: number; clothTags?: string[] }>;
   originalDate?: string;
   deletedAt: string;
   deletedBy: string;
+  reason?: string;
+  action?: string;
 }
 
 
