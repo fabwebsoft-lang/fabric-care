@@ -36,8 +36,25 @@ export interface RecycleBinItem {
   action?: string;
 }
 
+async function runAutoCleanup() {
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    await Promise.all([
+      Order.deleteMany({ isDeleted: true, deletedAt: { $lt: thirtyDaysAgo } }),
+      DeletedBill.deleteMany({ deletedAt: { $lt: thirtyDaysAgo } }),
+      Customer.deleteMany({ isDeleted: true, deletedAt: { $lt: thirtyDaysAgo } }),
+      Expense.deleteMany({ isDeleted: true, deletedAt: { $lt: thirtyDaysAgo } }),
+    ]);
+  } catch (err) {
+    console.error("Recycle bin auto-cleanup error:", err);
+  }
+}
+
 export const recycleBinRouter = router({
   list: approvedProcedure.query(async (): Promise<RecycleBinItem[]> => {
+    // Run automated 30-day cleanup
+    await runAutoCleanup();
+
     const [deletedOrders, deletedBillsArchive, deletedCustomers, deletedExpenses] = await Promise.all([
       Order.find({ isDeleted: true }).sort({ deletedAt: -1, updatedAt: -1 }).lean(),
       DeletedBill.find({ action: { $ne: "restored" } }).sort({ deletedAt: -1 }).lean(),
@@ -226,6 +243,31 @@ export const recycleBinRouter = router({
             { new: true }
           );
         }
+        if (!restored) {
+          // If the order was only in DeletedBill archive, restore it into Order collection
+          const deletedBillDoc = await DeletedBill.findOne({ orderId: input.id });
+          if (deletedBillDoc) {
+            restored = await Order.create({
+              _id: deletedBillDoc.orderId,
+              customerId: deletedBillDoc.customerId,
+              customer: deletedBillDoc.customer,
+              phone: deletedBillDoc.phone,
+              customerType: deletedBillDoc.customerType || "Normal",
+              clothesCode: deletedBillDoc.clothesCode || null,
+              serviceType: deletedBillDoc.serviceType || "Standard Laundry",
+              status: deletedBillDoc.status || "Received",
+              deliveryType: deletedBillDoc.deliveryType || null,
+              dueAt: deletedBillDoc.dueAt,
+              totalAmount: deletedBillDoc.totalAmount,
+              amountPaid: deletedBillDoc.amountPaid || 0,
+              discount: deletedBillDoc.discount || 0,
+              items: deletedBillDoc.items || [],
+              isDeleted: false,
+              deletedAt: null,
+              deletedBy: null,
+            });
+          }
+        }
         if (!restored) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
 
         // Update DeletedBill record if it exists
@@ -283,49 +325,13 @@ export const recycleBinRouter = router({
     )
     .mutation(async ({ input }) => {
       if (input.type === "order") {
-        let orderToPermanentlyDelete = await Order.findById(input.id);
-        if (!orderToPermanentlyDelete) {
-          orderToPermanentlyDelete = await Order.findOne({ _id: input.id.trim() });
-        }
-
-        if (orderToPermanentlyDelete) {
-          // Ensure DeletedBill has complete archive snapshot before removing from active table
-          try {
-            await DeletedBill.findOneAndUpdate(
-              { orderId: orderToPermanentlyDelete._id },
-              {
-                orderId: orderToPermanentlyDelete._id,
-                customerId: orderToPermanentlyDelete.customerId,
-                customer: orderToPermanentlyDelete.customer,
-                phone: orderToPermanentlyDelete.phone,
-                customerType: orderToPermanentlyDelete.customerType,
-                clothesCode: orderToPermanentlyDelete.clothesCode,
-                serviceType: orderToPermanentlyDelete.serviceType,
-                status: orderToPermanentlyDelete.status,
-                deliveryType: orderToPermanentlyDelete.deliveryType,
-                dueAt: orderToPermanentlyDelete.dueAt,
-                totalAmount: orderToPermanentlyDelete.totalAmount,
-                amountPaid: orderToPermanentlyDelete.amountPaid,
-                discount: orderToPermanentlyDelete.discount,
-                items: orderToPermanentlyDelete.items,
-                originalCreatedAt: orderToPermanentlyDelete.createdAt,
-                deletedAt: orderToPermanentlyDelete.deletedAt || new Date(),
-                deletedBy: orderToPermanentlyDelete.deletedBy || "Admin",
-                action: "permanently_deleted",
-              },
-              { upsert: true, new: true }
-            );
-          } catch (e) {
-            console.error("Failed to archive DeletedBill on deleteForever:", e);
-          }
-        }
-
+        await DeletedBill.deleteMany({ orderId: input.id });
         let deleted = await Order.findByIdAndDelete(input.id);
         if (!deleted) {
           deleted = await Order.findOneAndDelete({ _id: input.id.trim() });
         }
-        if (!deleted && !orderToPermanentlyDelete) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+        if (!deleted && mongoose.isValidObjectId(input.id)) {
+          deleted = await Order.findByIdAndDelete(new mongoose.Types.ObjectId(input.id));
         }
         return { success: true, message: `Order ${input.id} permanently deleted` };
       }

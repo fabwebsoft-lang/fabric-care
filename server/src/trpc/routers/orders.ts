@@ -263,6 +263,14 @@ export const ordersRouter = router({
       if (!order) {
         order = await Order.findOne({ _id: input.id.trim() });
       }
+      if (!order) {
+        order = await Order.findOne({
+          $or: [
+            { _id: { $regex: `^${input.id.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } },
+            ...(mongoose.isValidObjectId(input.id.trim()) ? [{ _id: new mongoose.Types.ObjectId(input.id.trim()) as any }] : []),
+          ],
+        });
+      }
 
       if (!order) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
