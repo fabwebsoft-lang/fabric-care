@@ -1,6 +1,6 @@
 {
   "framework": "vite",
-  "buildCommand": "pnpm build",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
     {
