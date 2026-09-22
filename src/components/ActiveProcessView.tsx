@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import {
   WashingMachine,
@@ -68,8 +68,8 @@ const WORKFLOW_STEPS = [
     status: "Ironing" as OrderStatus,
     shortName: "Ironing",
     title: "Ironing & Pressing",
-    subtitle: "Steam pressing & folding",
-    icon: Sparkles,
+    subtitle: "Steam iron & garment finishing",
+    icon: Flame,
     color: "purple",
     badgeBg: "bg-purple-500",
     lightBg: "bg-purple-50",
@@ -81,8 +81,8 @@ const WORKFLOW_STEPS = [
     status: "Ready" as OrderStatus,
     shortName: "Collection / Delivery",
     title: "Shop Collection / Delivery",
-    subtitle: "Ready for pickup / dispatch",
-    icon: PackageCheck,
+    subtitle: "Ready for customer handover",
+    icon: ShoppingBag,
     color: "emerald",
     badgeBg: "bg-emerald-500",
     lightBg: "bg-emerald-50",
@@ -92,21 +92,29 @@ const WORKFLOW_STEPS = [
   {
     step: 5,
     status: "Collected" as OrderStatus,
-    shortName: "Payment Settle",
-    title: "Payment Collection",
-    subtitle: "Payment settled & handover complete",
-    icon: CreditCard,
+    shortName: "Payment Settled",
+    title: "Payment Settled & Delivered",
+    subtitle: "Handed over & payment collected",
+    icon: Truck,
     color: "slate",
-    badgeBg: "bg-teal-600",
+    badgeBg: "bg-slate-500",
     lightBg: "bg-slate-50",
     border: "border-slate-200",
     text: "text-slate-700",
   },
 ];
 
-type TabType = "All" | "Received" | "Processing" | "Ironing" | "Ready" | "Collected";
+type TabType = "All" | OrderStatus;
 
-export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => void }) {
+export default function ActiveProcessView({
+  onNewOrder,
+  onNavigateToOrders,
+  onNavigateToProducts,
+}: {
+  onNewOrder?: () => void;
+  onNavigateToOrders?: () => void;
+  onNavigateToProducts?: () => void;
+}) {
   const utils = trpc.useUtils();
   const { data: orders = [], isLoading } = trpc.orders.list.useQuery();
 
@@ -160,9 +168,8 @@ export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => vo
     onSuccess: async (data) => {
       await utils.orders.list.invalidate();
       await utils.dashboard.stats.invalidate();
-      toast.success(`Order ${data.id} updated`, {
-        description: `Advanced to ${data.status}`,
-      });
+      toast.success(`Order ${data.id} moved to ${data.status}`);
+      setSelectedOrderForPickup(null);
     },
     onError: (err) => {
       toast.error("Failed to update status", { description: err.message });
@@ -171,32 +178,37 @@ export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => vo
 
   const settlePaymentMutation = trpc.orders.settlePayment.useMutation({
     onSuccess: async (data) => {
-      // Also update status to Collected if not already
-      if (data.status !== "Collected") {
-        await updateStatusMutation.mutateAsync({ id: data.id, status: "Collected" });
-      }
       await utils.orders.list.invalidate();
       await utils.dashboard.stats.invalidate();
-      toast.success(`Order ${data.id} completed!`, {
-        description: `Payment settled & marked as Step 5: Completed.`,
+      toast.success(`Payment settled for Order ${data.id}`, {
+        description: `Collected remaining balance · Order completed`,
       });
       setSelectedOrderForPickup(null);
     },
     onError: (err) => {
-      toast.error("Failed to settle order", { description: err.message });
+      toast.error("Failed to settle payment", { description: err.message });
     },
   });
 
+  // Filter orders
   const activeOrders = orders.filter((o) => o.status !== "Collected");
+  const filteredOrders = orders.filter((order) => {
+    // Stage Filter
+    if (activeTab === "All") {
+      if (order.status === "Collected") return false;
+    } else {
+      if (order.status !== activeTab) return false;
+    }
 
-  const filteredOrders = orders.filter((o) => {
-    const matchesTab =
-      activeTab === "All"
-        ? o.status !== "Collected" // "All Active" shows in-process items
-        : o.status === activeTab;
-    const matchesQuery =
-      `${o.id} ${o.customer} ${o.phone}`.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTab && matchesQuery;
+    // Search query filter
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      order.id.toLowerCase().includes(q) ||
+      order.customer.toLowerCase().includes(q) ||
+      order.phone.toLowerCase().includes(q) ||
+      (order.customerId && order.customerId.toLowerCase().includes(q))
+    );
   });
 
   const counts = {
@@ -226,7 +238,7 @@ export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => vo
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
@@ -392,37 +404,40 @@ export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => vo
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1.5 sm:gap-2 pb-1 overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
-        {[
-          { key: "All" as TabType, label: "All Active", count: counts.All },
-          { key: "Received" as TabType, label: "1. Collect from Customer", count: counts.Received },
-          { key: "Processing" as TabType, label: "2. Wash / Dry Clean", count: counts.Processing },
-          { key: "Ironing" as TabType, label: "3. Ironing", count: counts.Ironing },
-          { key: "Ready" as TabType, label: "4. Collection / Delivery", count: counts.Ready },
-          { key: "Collected" as TabType, label: "5. Payment Settled", count: counts.Collected },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition whitespace-nowrap ${
-              activeTab === tab.key
-                ? "bg-[#0F4C5C] text-white shadow-xs"
-                : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/80"
-            }`}
-          >
-            {tab.label}
-            <span
-              className={`px-1.5 py-0.5 text-[10px] rounded-full font-bold ${
+      {/* Tabs - Horizontally scrollable independently with no-page-overflow containment */}
+      <div className="w-full min-w-0 overflow-x-auto overscroll-x-contain py-1 no-scrollbar">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap min-w-max pb-0.5">
+          {[
+            { key: "All" as TabType, label: "All Active", shortLabel: "All Active", count: counts.All },
+            { key: "Received" as TabType, label: "1. Collect from Customer", shortLabel: "1. Collect", count: counts.Received },
+            { key: "Processing" as TabType, label: "2. Wash / Dry Clean", shortLabel: "2. Wash", count: counts.Processing },
+            { key: "Ironing" as TabType, label: "3. Ironing", shortLabel: "3. Iron", count: counts.Ironing },
+            { key: "Ready" as TabType, label: "4. Collection / Delivery", shortLabel: "4. Delivery", count: counts.Ready },
+            { key: "Collected" as TabType, label: "5. Payment Settled", shortLabel: "5. Settled", count: counts.Collected },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex-shrink-0 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold transition whitespace-nowrap active:scale-95 ${
                 activeTab === tab.key
-                  ? "bg-white/20 text-white"
-                  : "bg-slate-100 text-slate-600"
+                  ? "bg-[#0F4C5C] text-white shadow-xs"
+                  : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/80"
               }`}
             >
-              {tab.count}
-            </span>
-          </button>
-        ))}
+              <span className="sm:hidden">{tab.shortLabel}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span
+                className={`px-1.5 py-0.5 text-[10px] rounded-full font-bold ${
+                  activeTab === tab.key
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Orders List */}
@@ -653,6 +668,7 @@ export default function ActiveProcessView({ onNewOrder }: { onNewOrder: () => vo
           onComplete={(orderId, staffId, ratesOverride) =>
             completeIroningMutation.mutate({ orderId, staffId, ratesOverride })
           }
+          onNavigateToProducts={onNavigateToProducts}
           isPending={completeIroningMutation.isPending}
         />
       )}
@@ -796,7 +812,7 @@ function StartIroningModal({
                   <option value="">-- Choose Active Staff --</option>
                   {staffList.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} ({s.role}) {s.phone ? `· ${s.phone}` : ""}
+                      {s.name} ({s.role}) {(s as any).phone ? `· ${(s as any).phone}` : ""}
                     </option>
                   ))}
                 </select>
@@ -841,11 +857,13 @@ function CompleteIroningModal({
   order,
   onClose,
   onComplete,
+  onNavigateToProducts,
   isPending,
 }: {
   order: Order;
   onClose: () => void;
   onComplete: (orderId: string, staffId?: string, ratesOverride?: Record<string, number>) => void;
+  onNavigateToProducts?: () => void;
   isPending: boolean;
 }) {
   const { data: activeTask } = trpc.ironing.getActiveTask.useQuery({
@@ -857,27 +875,33 @@ function CompleteIroningModal({
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
   const [customRates, setCustomRates] = useState<Record<string, number>>({});
 
-  // Product staffIroningRate mapping
-  const productRateMap = useMemo(() => {
-    const map = new Map<string, number>();
+  // Product ID & Name to staffIroningRate mappings
+  const { productIdRateMap, productNameRateMap } = useMemo(() => {
+    const idMap = new Map<string, number>();
+    const nameMap = new Map<string, number>();
     for (const p of products) {
-      map.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
+      idMap.set(p.id, p.staffIroningRate || 0);
+      nameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
     }
-    return map;
+    return { productIdRateMap: idMap, productNameRateMap: nameMap };
   }, [products]);
 
   // Robust parsing: First check structuredItems, then fallback to parsing order.items
   const parsedGarmentItems = useMemo(() => {
     if (order.structuredItems && order.structuredItems.length > 0) {
       return order.structuredItems.map((i) => ({
+        productId: i.productId || null,
         name: i.name.trim(),
         quantity: i.quantity || 1,
+        staffIroningRate: i.staffIroningRate,
       }));
     }
     if (Array.isArray(order.items)) {
       return (order.items as any[]).map((i: any) => ({
+        productId: i.productId || null,
         name: typeof i === "string" ? i.trim() : (i.name || "Item").trim(),
         quantity: typeof i === "object" ? i.quantity || 1 : 1,
+        staffIroningRate: typeof i === "object" ? i.staffIroningRate : undefined,
       }));
     }
     if (typeof order.items === "string") {
@@ -888,42 +912,56 @@ function CompleteIroningModal({
         if (match) {
           const qty = Number(match[1]) || 1;
           const name = match[2]?.trim() || trimmed;
-          return { name, quantity: qty };
+          return { productId: null, name, quantity: qty, staffIroningRate: undefined };
         }
-        return { name: trimmed, quantity: 1 };
+        return { productId: null, name: trimmed, quantity: 1, staffIroningRate: undefined };
       });
     }
     return [];
   }, [order]);
 
-  const getItemDefaultRate = (itemName: string): number => {
-    const cleanName = itemName.toLowerCase().trim();
-    if (productRateMap.has(cleanName)) {
-      return productRateMap.get(cleanName)!;
+  const getItemDefaultRate = (item: { productId?: string | null; name: string; staffIroningRate?: number }): number => {
+    // 1. Check stable Product ID match
+    if (item.productId && productIdRateMap.has(item.productId)) {
+      return productIdRateMap.get(item.productId)!;
     }
-    for (const [pName, pRate] of productRateMap.entries()) {
-      if (cleanName.includes(pName) || pName.includes(cleanName)) {
-        return pRate;
+    // 2. Check snapshot rate saved on order item
+    if (item.staffIroningRate !== undefined && item.staffIroningRate > 0) {
+      return item.staffIroningRate;
+    }
+    // 3. Exact name match against products catalog
+    const cleanName = item.name.toLowerCase().trim();
+    if (productNameRateMap.has(cleanName)) {
+      return productNameRateMap.get(cleanName)!;
+    }
+    // 4. Fuzzy name match fallback
+    let matchedRate = 0;
+    productNameRateMap.forEach((pRate, pName) => {
+      if (matchedRate === 0 && (cleanName.includes(pName) || pName.includes(cleanName))) {
+        matchedRate = pRate;
       }
-    }
-    return 0;
+    });
+    return matchedRate;
   };
 
   const calculatedItems = parsedGarmentItems.map((item) => {
     const rate =
       customRates[item.name] !== undefined
         ? customRates[item.name]
-        : getItemDefaultRate(item.name);
+        : getItemDefaultRate(item);
     return {
+      productId: item.productId,
       name: item.name,
       quantity: item.quantity,
       staffRate: rate,
       staffEarning: item.quantity * rate,
+      isMissingRate: rate === 0,
     };
   });
 
-  const totalPieces = calculatedItems.reduce((acc, i) => acc + i.quantity, 0);
-  const totalEarnings = calculatedItems.reduce((acc, i) => acc + i.staffEarning, 0);
+  const unconfiguredItems = calculatedItems.filter((i) => i.staffRate === 0);
+  const totalPieces = calculatedItems.reduce((acc: number, i) => acc + i.quantity, 0);
+  const totalEarnings = calculatedItems.reduce((acc: number, i) => acc + i.staffEarning, 0);
 
   const effectiveStaffId = activeTask?.staffId || selectedStaffId;
   const effectiveStaffName =
@@ -947,6 +985,9 @@ function CompleteIroningModal({
     const ratesOverride: Record<string, number> = {};
     calculatedItems.forEach((i) => {
       ratesOverride[i.name] = i.staffRate;
+      if (i.productId) {
+        ratesOverride[i.productId] = i.staffRate;
+      }
     });
 
     onComplete(order.id, activeTask ? undefined : effectiveStaffId, ratesOverride);
@@ -978,6 +1019,38 @@ function CompleteIroningModal({
             <X className="size-4" />
           </button>
         </div>
+
+        {/* Warning banner if any items have ₹0 rate */}
+        {unconfiguredItems.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="size-4.5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-amber-950">
+                  {unconfiguredItems.length === 1
+                    ? `Rate missing for "${unconfiguredItems[0].name}" (₹0/pc)`
+                    : `Rates missing for ${unconfiguredItems.length} items (₹0/pc)`}
+                </p>
+                <p className="text-[11px] text-amber-800 mt-0.5">
+                  Enter the staff rate per piece below for this order, or set it permanently in Items / Services.
+                </p>
+              </div>
+            </div>
+            {onNavigateToProducts && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onNavigateToProducts();
+                }}
+                className="shrink-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-[11px] transition flex items-center justify-center gap-1 shadow-xs"
+              >
+                Go to Items / Services
+                <ChevronRight className="size-3.5" />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Staff details or fallback prompt */}
         {activeTask ? (
@@ -1031,16 +1104,21 @@ function CompleteIroningModal({
               <div className="col-span-3 text-right">Labour Earning</div>
             </div>
 
-            <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
+            <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto">
               {calculatedItems.length === 0 ? (
                 <div className="p-4 text-center text-slate-400 text-xs">
                   {order.items || "Standard Laundry items"}
                 </div>
               ) : (
                 calculatedItems.map((item, idx) => (
-                  <div key={idx} className="grid grid-cols-12 px-3 py-2 items-center text-slate-700 gap-1">
-                    <div className="col-span-5 font-semibold truncate" title={item.name}>
-                      {item.name}
+                  <div key={idx} className={`grid grid-cols-12 px-3 py-2 items-center text-slate-700 gap-1 ${item.isMissingRate ? "bg-amber-50/40" : ""}`}>
+                    <div className="col-span-5 truncate" title={item.name}>
+                      <p className="font-semibold text-slate-800 truncate">{item.name}</p>
+                      {item.isMissingRate && (
+                        <span className="inline-block text-[10px] font-bold text-amber-700">
+                          ⚠️ Rate missing (₹0)
+                        </span>
+                      )}
                     </div>
                     <div className="col-span-2 text-center font-mono font-bold">
                       {item.quantity}
@@ -1055,7 +1133,11 @@ function CompleteIroningModal({
                           min="0"
                           value={item.staffRate}
                           onChange={(e) => handleRateChange(item.name, e.target.value)}
-                          className="w-full pl-4 pr-1 py-1 text-xs text-right font-mono font-bold bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          className={`w-full pl-4 pr-1 py-1 text-xs text-right font-mono font-bold rounded-lg focus:outline-none focus:ring-1 ${
+                            item.isMissingRate
+                              ? "bg-amber-50 border border-amber-300 focus:ring-amber-500 text-amber-900"
+                              : "bg-slate-50 border border-slate-200 focus:ring-emerald-500 text-slate-800"
+                          }`}
                         />
                       </div>
                     </div>

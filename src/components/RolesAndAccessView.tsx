@@ -179,7 +179,7 @@ export default function RolesAndAccessView() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-5xl">
+    <div className="space-y-4 sm:space-y-6 max-w-5xl w-full max-w-full overflow-x-hidden">
       {/* Header & Role Switcher Banner */}
       <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 border-b border-slate-100 pb-4">

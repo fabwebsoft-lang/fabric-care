@@ -5,23 +5,29 @@ import { Product } from "../../models/Product.js";
 import { Order } from "../../models/Order.js";
 
 const DEFAULT_PRODUCTS = [
-  { name: "Shirt", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, status: "Active" },
-  { name: "Pant", category: "Men's Wear", serviceType: "Wash & Iron", price: 60, status: "Active" },
-  { name: "Vasti / Dhoti", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, status: "Active" },
-  { name: "Suit (2-pc)", category: "Men's Wear", serviceType: "Dry Clean", price: 180, status: "Active" },
-  { name: "Saree", category: "Women's Wear", serviceType: "Dry Clean", price: 120, status: "Active" },
-  { name: "Dress", category: "Women's Wear", serviceType: "Wash & Iron", price: 100, status: "Active" },
-  { name: "Blanket", category: "Household", serviceType: "Wash & Fold", price: 200, status: "Active" },
-  { name: "Curtain", category: "Household", serviceType: "Wash & Fold", price: 150, status: "Active" },
+  { name: "Shirt", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffIroningRate: 10, status: "Active" },
+  { name: "Pant", category: "Men's Wear", serviceType: "Wash & Iron", price: 60, staffIroningRate: 10, status: "Active" },
+  { name: "Vasti / Dhoti", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffIroningRate: 10, status: "Active" },
+  { name: "Suit (2-pc)", category: "Men's Wear", serviceType: "Dry Clean", price: 180, staffIroningRate: 30, status: "Active" },
+  { name: "Saree", category: "Women's Wear", serviceType: "Dry Clean", price: 120, staffIroningRate: 25, status: "Active" },
+  { name: "Dress", category: "Women's Wear", serviceType: "Wash & Iron", price: 100, staffIroningRate: 15, status: "Active" },
+  { name: "Blanket", category: "Household", serviceType: "Wash & Fold", price: 200, staffIroningRate: 0, status: "Active" },
+  { name: "Curtain", category: "Household", serviceType: "Wash & Fold", price: 150, staffIroningRate: 20, status: "Active" },
+  { name: "Standard Laundry", category: "Other", serviceType: "Wash & Iron", price: 60, staffIroningRate: 10, status: "Active" },
 ];
 
 async function ensureDefaultProducts() {
-  const count = await Product.countDocuments();
-  if (count === 0) {
-    try {
-      await Product.insertMany(DEFAULT_PRODUCTS);
-    } catch {
-      // Ignore if concurrent insert happens
+  for (const def of DEFAULT_PRODUCTS) {
+    const existing = await Product.findOne({
+      name: { $regex: new RegExp(`^${def.name}$`, "i") },
+      isArchived: { $ne: true },
+    });
+    if (!existing) {
+      try {
+        await Product.create(def);
+      } catch {
+        // Ignore if concurrent insert happens
+      }
     }
   }
 }

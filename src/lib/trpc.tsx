@@ -399,6 +399,8 @@ export const trpc = {
       },
       workers: {
         list: { invalidate: () => qc.invalidateQueries({ queryKey: ["workers.list"] }) },
+        activeStaffList: { invalidate: () => qc.invalidateQueries({ queryKey: ["workers.activeStaffList"] }) },
+        staffList: { invalidate: () => qc.invalidateQueries({ queryKey: ["workers.staffList"] }) },
       },
       devices: {
         list: { invalidate: () => qc.invalidateQueries({ queryKey: ["devices.list"] }) },
@@ -414,6 +416,11 @@ export const trpc = {
       },
       dashboard: {
         stats: { invalidate: () => qc.invalidateQueries({ queryKey: ["dashboard.stats"] }) },
+      },
+      ironing: {
+        todayStats: { invalidate: () => qc.invalidateQueries({ queryKey: ["ironing.todayStats"] }) },
+        getActiveTask: { invalidate: () => qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] }) },
+        reports: { invalidate: () => qc.invalidateQueries({ queryKey: ["ironing.reports"] }) },
       },
       reports: {
         businessStatements: {

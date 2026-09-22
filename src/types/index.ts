@@ -4,9 +4,11 @@ export type DeliveryType = "Shop Collection" | "Home Delivery";
 export type UserRole = "admin" | "manager" | "staff" | "owner" | "worker";
 
 export interface OrderItem {
+  productId?: string | null;
   name: string;
   quantity: number;
   price: number;
+  staffIroningRate?: number;
   clothTags?: string[];
 }
 

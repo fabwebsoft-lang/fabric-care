@@ -363,9 +363,9 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs w-full max-w-full">
         <div>
           <h2 className="font-display text-lg sm:text-xl font-bold text-[#0F4C5C] flex items-center gap-2">
             <FileText className="size-5 sm:size-6 text-[#0F4C5C]" />
@@ -376,9 +376,9 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
           </p>
         </div>
 
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto min-w-0">
           {/* Search Box */}
-          <div className="relative flex-1 sm:w-60">
+          <div className="relative w-full sm:w-60 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
             <input
               type="text"
@@ -390,7 +390,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
           </div>
 
           {/* Date Filter Trigger */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <button
               onClick={() => setShowDatePicker((prev) => !prev)}
               className={`px-3 py-2 text-xs font-semibold rounded-xl border transition flex items-center gap-1.5 whitespace-nowrap active:scale-95 ${
@@ -406,7 +406,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
 
             {/* Date Filter Dropdown Popover */}
             {showDatePicker && (
-              <div className="absolute right-0 sm:left-0 top-11 z-40 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl space-y-2 text-xs">
+              <div className="absolute right-0 sm:left-0 top-11 z-40 w-64 max-w-[calc(100vw-32px)] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl space-y-2 text-xs">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <span className="font-bold text-slate-800 text-xs">Filter by Date (IST)</span>
                   {dateFilter !== "all" && (
@@ -493,7 +493,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
           {/* New Order Button */}
           <button
             onClick={onNewOrder}
-            className="px-4 py-2 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95"
+            className="px-4 py-2 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shrink-0"
           >
             + New Order
           </button>
@@ -501,16 +501,16 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
       </div>
 
       {/* Filter Tabs & Summary Row */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 w-full min-w-0">
         {/* Status & Branch Pills */}
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto min-w-0 max-w-full">
           {/* Status Pills */}
-          <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0 max-w-full">
+          <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 max-w-full no-scrollbar shrink-0 min-w-0">
             {["All", "Received", "Processing", "Ironing", "Ready", "Collected"].map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap shrink-0 ${
                   statusFilter === st
                     ? "bg-[#0F4C5C] text-white shadow-xs"
                     : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
@@ -522,11 +522,11 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
           </div>
 
           {/* Branch Filter Selector */}
-          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200/80 text-[11px] font-semibold shrink-0">
+          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200/80 text-[11px] font-semibold max-w-full overflow-x-auto no-scrollbar shrink-0">
             <button
               type="button"
               onClick={() => setBranchFilter("All")}
-              className={`px-2.5 py-1 rounded-lg transition ${
+              className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap shrink-0 ${
                 branchFilter === "All"
                   ? "bg-[#0F4C5C] text-white shadow-xs font-bold"
                   : "text-slate-600 hover:text-slate-900"
@@ -539,7 +539,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                 key={b.id}
                 type="button"
                 onClick={() => setBranchFilter(b.shortName)}
-                className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap ${
+                className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap shrink-0 ${
                   branchFilter === b.shortName
                     ? "bg-[#0F4C5C] text-white shadow-xs font-bold"
                     : "text-slate-600 hover:text-slate-900"
@@ -552,7 +552,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
         </div>
 
         {/* Filter Summary Badge */}
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 font-medium">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 font-medium w-full sm:w-auto min-w-0">
           <span className="font-bold text-slate-800">{summary.count} bills</span>
           <span>·</span>
           <span>₹{summary.totalBilled.toLocaleString("en-IN")} billed</span>
@@ -587,7 +587,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
             <button
               type="button"
               onClick={areAllExpanded ? handleCollapseAll : handleExpandAll}
-              className="ml-auto sm:ml-2 px-2.5 py-1 bg-white hover:bg-slate-50 text-[#0F4C5C] border border-slate-200/90 rounded-lg font-bold text-[10px] flex items-center gap-1 transition shadow-2xs active:scale-95 whitespace-nowrap"
+              className="ml-auto sm:ml-2 px-2.5 py-1 bg-white hover:bg-slate-50 text-[#0F4C5C] border border-slate-200/90 rounded-lg font-bold text-[10px] flex items-center gap-1 transition shadow-2xs active:scale-95 whitespace-nowrap shrink-0"
               title={areAllExpanded ? "Collapse all bills" : "Expand all bills"}
             >
               {areAllExpanded ? (
@@ -606,7 +606,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
 
       {/* FEATURE 1: Sticky Bulk Action Bar */}
       {selectedIds.length > 0 && (
-        <div className="sticky top-2 z-30 bg-[#0F4C5C] text-white p-2.5 sm:p-3.5 rounded-2xl shadow-xl flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-2 duration-200 border border-white/10">
+        <div className="sticky top-2 z-30 bg-[#0F4C5C] text-white p-2.5 sm:p-3.5 rounded-2xl shadow-xl flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-2 duration-200 border border-white/10 w-full max-w-full overflow-x-hidden">
           <div className="flex items-center gap-2 shrink-0">
             <span className="size-6 sm:size-7 rounded-full bg-white/20 grid place-items-center font-bold text-[11px] sm:text-xs">
               {selectedIds.length}
@@ -616,7 +616,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Mark as Paid Button */}
             <button
               onClick={() => setBulkConfirmPaidIds(selectedIds)}
@@ -652,7 +652,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
       ) : filteredOrders.length === 0 ? (
         <div className="bg-white rounded-2xl p-8 sm:p-12 text-center border border-slate-200/80 shadow-xs">
           <FileText className="size-10 sm:size-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm sm:text-base font-bold text-slate-700">No bills found</p>
+          <p className="text-sm sm:base font-bold text-slate-700">No bills found</p>
           <p className="text-xs text-slate-500 mt-1">
             Try adjusting your search query, status tab, or date range filter
           </p>
@@ -660,7 +660,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
       ) : (
         <>
           {/* Mobile Cards View (< md) with 200ms collapsible animation */}
-          <div className="grid gap-2.5 sm:gap-3 grid-cols-1 md:hidden">
+          <div className="grid gap-2.5 sm:gap-3 grid-cols-1 md:hidden w-full max-w-full">
             {filteredOrders.map((order) => {
               const isSelected = selectedIds.includes(order.id);
               const dueAmount = Math.max(0, order.totalAmount - order.amountPaid);
@@ -670,7 +670,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
               return (
                 <div
                   key={order.id}
-                  className={`bg-white rounded-2xl border shadow-xs transition-all duration-200 overflow-hidden relative ${
+                  className={`bg-white rounded-2xl border shadow-xs transition-all duration-200 overflow-hidden relative w-full max-w-full ${
                     isSelected
                       ? "border-[#0F4C5C] ring-2 ring-[#0F4C5C]/20 bg-[#0F4C5C]/5"
                       : "border-slate-200 hover:border-[#0F4C5C]/40"
@@ -679,16 +679,16 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                   {/* Card Header (One compact row - Always visible) */}
                   <div
                     onClick={(e) => toggleOrderExpanded(order.id, e)}
-                    className="p-3 sm:p-3.5 flex items-center justify-between gap-2 cursor-pointer select-none active:bg-slate-50 transition-colors"
+                    className="p-3 sm:p-3.5 flex items-start sm:items-center justify-between gap-2 cursor-pointer select-none active:bg-slate-50 transition-colors w-full min-w-0"
                   >
                     {/* Left: Checkbox + Order ID + Customer Name */}
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="flex items-start sm:items-center gap-2 min-w-0 flex-1">
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={(e) => handleToggleRow(order.id, e as any)}
                         onClick={(e) => e.stopPropagation()}
-                        className="size-4.5 rounded text-[#0F4C5C] focus:ring-[#0F4C5C] cursor-pointer shrink-0"
+                        className="size-4.5 mt-0.5 sm:mt-0 rounded text-[#0F4C5C] focus:ring-[#0F4C5C] cursor-pointer shrink-0"
                         aria-label={`Select order ${order.id}`}
                       />
                       <div className="min-w-0 flex-1">
@@ -696,17 +696,17 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                           <span className="font-mono text-xs font-bold text-[#0F4C5C] truncate">
                             {order.id}
                           </span>
-                          <span className="text-[10px] text-slate-400">{orderDateIST}</span>
-                          <span className="text-[10px] text-slate-300">·</span>
-                          <span className="text-[9.5px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded flex items-center gap-1">
-                            <Building2 className="size-2.5 text-[#0F4C5C]" />
-                            {order.branch || (order.branchAddress?.includes("SKT") ? "SKT Dindigul" : "Pandian Nagar")}
+                          <span className="text-[10px] text-slate-400 shrink-0">{orderDateIST}</span>
+                          <span className="text-[10px] text-slate-300 shrink-0">·</span>
+                          <span className="text-[9.5px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0 max-w-[130px] truncate">
+                            <Building2 className="size-2.5 text-[#0F4C5C] shrink-0" />
+                            <span className="truncate">{order.branch || (order.branchAddress?.includes("SKT") ? "SKT Dindigul" : "Pandian Nagar")}</span>
                           </span>
                         </div>
-                        <h3 className="font-bold text-slate-800 text-xs sm:text-sm truncate mt-0.5 flex items-center gap-1.5 flex-wrap">
-                          <span>{order.customer}</span>
+                        <h3 className="font-bold text-slate-800 text-xs sm:text-sm truncate mt-0.5 flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">{order.customer}</span>
                           {order.customerId && (
-                            <span className="text-[10px] font-mono font-medium text-[#0F4C5C] bg-[#0F4C5C]/10 px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] font-mono font-medium text-[#0F4C5C] bg-[#0F4C5C]/10 px-1.5 py-0.5 rounded shrink-0">
                               ID: {order.customerId}
                             </span>
                           )}
@@ -715,10 +715,10 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                     </div>
 
                     {/* Right: Total Amount + Paid/Due label + Status Badge + Chevron */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="text-right">
-                        <div className="text-xs font-bold text-slate-800">{order.amount}</div>
-                        <div className="text-[10px] font-bold">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                      <div className="text-right shrink-0">
+                        <div className="text-xs font-bold text-slate-800 whitespace-nowrap">{order.amount}</div>
+                        <div className="text-[10px] font-bold whitespace-nowrap">
                           {dueAmount > 0 ? (
                             <span className="text-rose-600">₹{dueAmount} due</span>
                           ) : (
@@ -728,7 +728,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                       </div>
 
                       <span
-                        className={`px-2 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-full border shrink-0 ${
+                        className={`px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-full border shrink-0 whitespace-nowrap ${
                           statusStyles[order.status]
                         }`}
                       >
@@ -738,7 +738,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                       <button
                         type="button"
                         onClick={(e) => toggleOrderExpanded(order.id, e)}
-                        className="p-1 -mr-1 text-slate-400 hover:text-[#0F4C5C] hover:bg-slate-100 rounded-lg transition-transform duration-200"
+                        className="p-1 -mr-1 text-slate-400 hover:text-[#0F4C5C] hover:bg-slate-100 rounded-lg transition-transform duration-200 shrink-0"
                         aria-label={expanded ? "Collapse order" : "Expand order"}
                       >
                         <ChevronDown
@@ -756,8 +756,8 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                       expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                     }`}
                   >
-                    <div className="overflow-hidden min-h-0">
-                      <div className="px-3 pb-3 sm:px-3.5 sm:pb-3.5 pt-0 space-y-2.5 border-t border-slate-100">
+                    <div className="overflow-hidden min-h-0 w-full max-w-full">
+                      <div className="px-3 pb-3 sm:px-3.5 sm:pb-3.5 pt-0 space-y-2.5 border-t border-slate-100 w-full max-w-full">
                         {/* Phone Number */}
                         <div className="pt-2">
                           <a
@@ -766,12 +766,12 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                             className="text-[11px] text-[#0F4C5C] hover:underline inline-flex items-center gap-1 font-medium bg-[#0F4C5C]/5 px-2 py-1 rounded-lg"
                             title="Tap to call customer"
                           >
-                            <Phone className="size-3" /> {order.phone || "No phone"}
+                            <Phone className="size-3 shrink-0" /> {order.phone || "No phone"}
                           </a>
                         </div>
 
                         {/* Garments Box */}
-                        <div className="bg-slate-50 p-2.5 rounded-xl text-xs text-slate-600 font-medium border border-slate-100">
+                        <div className="bg-slate-50 p-2.5 rounded-xl text-xs text-slate-600 font-medium border border-slate-100 w-full max-w-full overflow-hidden">
                           <span className="text-[10px] text-slate-400 block mb-0.5 font-bold uppercase tracking-wider">
                             Garments:
                           </span>
@@ -786,24 +786,24 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                         />
 
                         {/* Action Row (SMS, Share, View) */}
-                        <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs gap-2">
-                          <div className="text-[11px] text-slate-500">
+                        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between pt-2 border-t border-slate-100 text-xs gap-2 min-w-0">
+                          <div className="text-[11px] text-slate-500 min-w-0">
                             <span>Total: </span>
                             <strong className="text-slate-800 font-bold">{order.amount}</strong>
                             <span className="ml-1.5">
                               {dueAmount > 0 ? (
-                                <span className="text-rose-600 font-bold">₹{dueAmount} due</span>
+                                <span className="text-rose-600 font-bold whitespace-nowrap">₹{dueAmount} due</span>
                               ) : (
-                                <span className="text-emerald-600 font-bold">Paid</span>
+                                <span className="text-emerald-600 font-bold whitespace-nowrap">Paid</span>
                               )}
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
                             <button
                               type="button"
                               onClick={(e) => handleSendSingleSms(order, e)}
-                              className="p-1.5 sm:p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs active:scale-95 transition"
+                              className="p-1.5 sm:p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs active:scale-95 transition shrink-0"
                               title="Send SMS"
                             >
                               <MessageSquare className="size-3.5 text-[#0F4C5C]" />
@@ -811,7 +811,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                             <button
                               type="button"
                               onClick={(e) => handleShareOrder(order, e)}
-                              className="p-1.5 sm:p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs active:scale-95 transition"
+                              className="p-1.5 sm:p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs active:scale-95 transition shrink-0"
                               title="Share Bill"
                             >
                               <Share2 className="size-3.5 text-[#0F4C5C]" />
@@ -822,7 +822,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                                 e.stopPropagation();
                                 setSelectedOrder(order);
                               }}
-                              className="px-2.5 sm:px-3 py-1.5 bg-[#0F4C5C] text-white hover:bg-[#0F4C5C]/90 font-bold rounded-xl text-[11px] flex items-center gap-1 shadow-2xs active:scale-95 transition"
+                              className="px-2.5 sm:px-3 py-1.5 bg-[#0F4C5C] text-white hover:bg-[#0F4C5C]/90 font-bold rounded-xl text-[11px] flex items-center gap-1 shadow-2xs active:scale-95 transition shrink-0 whitespace-nowrap"
                             >
                               <Eye className="size-3.5" /> View
                             </button>

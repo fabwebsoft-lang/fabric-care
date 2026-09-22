@@ -2,9 +2,11 @@ import { Schema, model, type InferSchemaType } from "mongoose";
 
 const orderItemSchema = new Schema(
   {
+    productId: { type: String, default: null },
     name: { type: String, required: true },
     quantity: { type: Number, required: true, default: 1 },
     price: { type: Number, required: true },
+    staffIroningRate: { type: Number, default: 0 },
     clothTags: { type: [String], default: [] },
   },
   { _id: false }

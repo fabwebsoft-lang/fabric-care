@@ -98,25 +98,53 @@ export const ironingRouter = router({
         });
       }
 
-      // Fetch products to pull configured staff ironing rates
-      const productNames = (order.items || []).map((i) => i.name.trim());
+      // Fetch products to pull configured staff ironing rates (by ID first, fallback to name)
+      const productIds = (order.items || [])
+        .map((i: any) => i.productId)
+        .filter((id: any): id is string => Boolean(id) && mongoose.Types.ObjectId.isValid(id));
+      const productNames = (order.items || []).map((i: any) => i.name.trim());
+
       const products = await Product.find({
-        name: { $in: productNames.map((n) => new RegExp(`^${n}$`, "i")) },
+        $or: [
+          ...(productIds.length > 0 ? [{ _id: { $in: productIds } }] : []),
+          { name: { $in: productNames.map((n: string) => new RegExp(`^${n}$`, "i")) } },
+        ],
         isArchived: { $ne: true },
       });
 
-      const productRateMap = new Map<string, number>();
+      const productIdMap = new Map<string, number>();
+      const productNameMap = new Map<string, number>();
       for (const p of products) {
-        productRateMap.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
+        productIdMap.set(p._id.toString(), p.staffIroningRate || 0);
+        productNameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
       }
 
-      const taskItems = (order.items || []).map((item) => {
-        const rate = productRateMap.get(item.name.toLowerCase().trim()) ?? 0;
+      const taskItems = (order.items || []).map((item: any) => {
+        let rate: number | undefined;
+        if (item.productId && productIdMap.has(item.productId.toString())) {
+          rate = productIdMap.get(item.productId.toString());
+        }
+        if (rate === undefined && item.staffIroningRate !== undefined && item.staffIroningRate > 0) {
+          rate = item.staffIroningRate;
+        }
+        if (rate === undefined) {
+          const cleanName = (item.name || "").toLowerCase().trim();
+          rate = productNameMap.get(cleanName);
+          if (rate === undefined) {
+            for (const [pName, pRate] of productNameMap.entries()) {
+              if (cleanName.includes(pName) || pName.includes(cleanName)) {
+                rate = pRate;
+                break;
+              }
+            }
+          }
+        }
+        const finalRate = rate ?? 0;
         return {
           name: item.name,
           quantity: item.quantity || 1,
-          staffRate: rate,
-          staffEarning: (item.quantity || 1) * rate,
+          staffRate: finalRate,
+          staffEarning: (item.quantity || 1) * finalRate,
         };
       });
 
@@ -245,25 +273,51 @@ export const ironingRouter = router({
         });
       }
 
-      // Fetch products to pull rates
-      const productNames = (order.items || []).map((i) => i.name.trim());
+      // Fetch products to pull rates (by ID first, fallback to name)
+      const productIds = (order.items || [])
+        .map((i: any) => i.productId)
+        .filter((id: any): id is string => Boolean(id) && mongoose.Types.ObjectId.isValid(id));
+      const productNames = (order.items || []).map((i: any) => i.name.trim());
+
       const products = await Product.find({
-        name: { $in: productNames.map((n) => new RegExp(`^${n}$`, "i")) },
+        $or: [
+          ...(productIds.length > 0 ? [{ _id: { $in: productIds } }] : []),
+          { name: { $in: productNames.map((n: string) => new RegExp(`^${n}$`, "i")) } },
+        ],
         isArchived: { $ne: true },
       });
 
-      const productRateMap = new Map<string, number>();
+      const productIdMap = new Map<string, number>();
+      const productNameMap = new Map<string, number>();
       for (const p of products) {
-        productRateMap.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
+        productIdMap.set(p._id.toString(), p.staffIroningRate || 0);
+        productNameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
       }
 
       // Build task items
-      const completedItems = (order.items || []).map((item) => {
-        let rate = input.ratesOverride?.[item.name];
+      const completedItems = (order.items || []).map((item: any) => {
+        let rate = input.ratesOverride?.[item.name] ?? (item.productId ? input.ratesOverride?.[item.productId] : undefined);
         if (rate === undefined) {
-          rate = productRateMap.get(item.name.toLowerCase().trim()) ?? 0;
+          if (item.productId && productIdMap.has(item.productId.toString())) {
+            rate = productIdMap.get(item.productId.toString());
+          }
+          if (rate === undefined && item.staffIroningRate !== undefined && item.staffIroningRate > 0) {
+            rate = item.staffIroningRate;
+          }
+          if (rate === undefined) {
+            const cleanName = (item.name || "").toLowerCase().trim();
+            rate = productNameMap.get(cleanName);
+            if (rate === undefined) {
+              for (const [pName, pRate] of productNameMap.entries()) {
+                if (cleanName.includes(pName) || pName.includes(cleanName)) {
+                  rate = pRate;
+                  break;
+                }
+              }
+            }
+          }
         }
-        rate = Math.max(0, rate);
+        rate = Math.max(0, rate ?? 0);
 
         return {
           name: item.name,

@@ -290,8 +290,8 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-[#0F4C5C] selection:bg-slate-100 selection:text-[#0F4C5C]">
-      <div className="flex min-h-screen">
+    <div className="min-h-screen bg-white text-[#0F4C5C] selection:bg-slate-100 selection:text-[#0F4C5C] w-full max-w-full overflow-x-hidden">
+      <div className="flex min-h-screen w-full max-w-full overflow-x-hidden">
         <aside className="hidden w-[254px] shrink-0 flex-col justify-between bg-[#0F4C5C] px-5 py-6 text-white lg:flex">
           <div>
             <div className="mb-10 flex items-center gap-3 px-2">
@@ -380,16 +380,16 @@ export default function Home() {
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 pb-20 lg:pb-0">
-          <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl sm:px-8 lg:px-10">
+        <main className="min-w-0 flex-1 pb-20 lg:pb-0 w-full max-w-full overflow-x-hidden">
+          <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-3.5 sm:px-8 lg:px-10 backdrop-blur-xl w-full max-w-full">
             <div className="flex items-center gap-3">
-              <button className="grid size-10 place-items-center rounded-xl border border-slate-200 bg-white text-[#0F4C5C] transition hover:border-slate-300 hover:text-[#0F4C5C] lg:hidden" onClick={() => setShowMobileNav(true)} aria-label="Open navigation"><Menu className="size-[18px]" /></button>
-              <div>
+              <button className="grid size-10 place-items-center rounded-xl border border-slate-200 bg-white text-[#0F4C5C] transition hover:border-slate-300 hover:text-[#0F4C5C] lg:hidden shrink-0" onClick={() => setShowMobileNav(true)} aria-label="Open navigation"><Menu className="size-[18px]" /></button>
+              <div className="min-w-0">
                 <p className="hidden text-[11px] font-semibold uppercase tracking-[.13em] text-[#0F4C5C] sm:block">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
-                <p className="font-display text-[18px] font-semibold tracking-[-.02em] text-[#0F4C5C] sm:text-[20px]">{sectionTitle}</p>
+                <p className="font-display text-[18px] font-semibold tracking-[-.02em] text-[#0F4C5C] sm:text-[20px] truncate">{sectionTitle}</p>
               </div>
             </div>
-            <div className="relative flex items-center gap-2 sm:gap-3">
+            <div className="relative flex items-center gap-2 sm:gap-3 shrink-0">
               {/* Role badge — clickable (opens the role simulator) for admins only */}
               {canManageRoles ? (
                 <button
@@ -442,7 +442,7 @@ export default function Home() {
             </div>
           </header>
 
-          <div className="mx-auto max-w-[1480px] px-3.5 py-4 sm:px-8 sm:py-6 lg:px-10 lg:py-8">
+          <div className="mx-auto max-w-[1480px] px-3 py-4 sm:px-8 sm:py-6 lg:px-10 lg:py-8 w-full max-w-full overflow-x-hidden">
             <SectionView
               section={activeSection}
               onNewOrder={(cust?: any) => {
@@ -755,7 +755,13 @@ function ViewFallback() {
 function SectionView({ section, onNewOrder, onNavigate }: { section: Section; onNewOrder: (cust?: any) => void; onNavigate: (section: Section) => void }) {
   return (
     <Suspense fallback={<ViewFallback />}>
-      {section === "Active process" && <ActiveProcessView onNewOrder={onNewOrder} />}
+      {section === "Active process" && (
+        <ActiveProcessView
+          onNewOrder={onNewOrder}
+          onNavigateToOrders={() => onNavigate("Orders")}
+          onNavigateToProducts={() => onNavigate("Products")}
+        />
+      )}
       {section === "Orders" && <BillsView onNewOrder={onNewOrder} />}
       {section === "Staff Management" && <StaffManagementView />}
       {section === "Products" && <ProductsView onNewOrder={onNewOrder} />}

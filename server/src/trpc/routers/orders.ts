@@ -8,9 +8,11 @@ import { DeletedBill } from "../../models/DeletedBill.js";
 import { normalizePhone } from "../../lib/phone.js";
 
 const orderItemInput = z.object({
+  productId: z.string().nullable().optional(),
   name: z.string().min(1),
   quantity: z.number().int().positive(),
   price: z.number().nonnegative(),
+  staffIroningRate: z.number().min(0).optional(),
   clothTags: z.array(z.string()).optional(),
 });
 

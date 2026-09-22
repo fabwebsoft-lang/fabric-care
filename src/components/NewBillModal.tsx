@@ -32,19 +32,21 @@ import {
 import { toast } from "sonner";
 
 type OrderItemInput = {
+  productId?: string | null;
   name: string;
   quantity: number;
   price: number;
+  staffIroningRate?: number;
 };
 
 const defaultCatalog = [
-  { label: "Shirt", price: 50 },
-  { label: "Pant", price: 60 },
-  { label: "Vasti / Dhoti", price: 50 },
-  { label: "Suit (2-pc)", price: 180 },
-  { label: "Saree", price: 120 },
-  { label: "Blanket", price: 200 },
-  { label: "Curtain", price: 150 },
+  { label: "Shirt", price: 50, staffIroningRate: 10 },
+  { label: "Pant", price: 60, staffIroningRate: 10 },
+  { label: "Vasti / Dhoti", price: 50, staffIroningRate: 10 },
+  { label: "Suit (2-pc)", price: 180, staffIroningRate: 30 },
+  { label: "Saree", price: 120, staffIroningRate: 25 },
+  { label: "Blanket", price: 200, staffIroningRate: 0 },
+  { label: "Curtain", price: 150, staffIroningRate: 20 },
 ];
 
 export default function NewBillModal({
@@ -293,29 +295,50 @@ export default function NewBillModal({
     const activeDbItems = dbProducts.filter((p: any) => p.status === "Active");
     if (activeDbItems.length > 0) {
       return activeDbItems.map((p: any) => ({
+        id: p.id,
         label: p.name,
         price: p.price,
+        staffIroningRate: p.staffIroningRate ?? 0,
       }));
     }
-    return defaultCatalog;
+    return defaultCatalog.map((c) => ({
+      id: undefined,
+      label: c.label,
+      price: c.price,
+      staffIroningRate: c.staffIroningRate,
+    }));
   }, [dbProducts]);
 
-  const addItemToBill = (label: string, price: number) => {
+  const addItemToBill = (label: string, price: number, productId?: string, staffIroningRate?: number) => {
     setItems((current: OrderItemInput[]) => {
-      const existingIdx = current.findIndex((i: OrderItemInput) => i.name === label);
+      const existingIdx = current.findIndex((i: OrderItemInput) =>
+        (productId && i.productId === productId) || i.name.toLowerCase() === label.toLowerCase()
+      );
       if (existingIdx >= 0) {
         const copy = [...current];
         copy[existingIdx].quantity += 1;
         return copy;
       }
-      return [...current, { name: label, quantity: 1, price }];
+      return [
+        ...current,
+        {
+          productId: productId || null,
+          name: label,
+          quantity: 1,
+          price,
+          staffIroningRate: staffIroningRate ?? 0,
+        },
+      ];
     });
   };
 
   const handleAddCustomItem = () => {
     if (!customItemName.trim()) return;
     const priceNum = Number(customItemPrice) || 50;
-    addItemToBill(customItemName.trim(), priceNum);
+    const trimmed = customItemName.trim();
+    // Try to match against existing DB product
+    const matched = dbProducts.find((p: any) => p.name.toLowerCase() === trimmed.toLowerCase());
+    addItemToBill(trimmed, priceNum, matched?.id, matched?.staffIroningRate);
     setCustomItemName("");
     setCustomItemPrice("");
     setShowCustomInput(false);
@@ -793,11 +816,11 @@ export default function NewBillModal({
             </div>
 
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              {activeCatalog.map((cat: { label: string; price: number }) => (
+              {activeCatalog.map((cat: { id?: string; label: string; price: number; staffIroningRate?: number }) => (
                 <button
                   type="button"
                   key={cat.label}
-                  onClick={() => addItemToBill(cat.label, cat.price)}
+                  onClick={() => addItemToBill(cat.label, cat.price, cat.id, cat.staffIroningRate)}
                   className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-[#0F4C5C] hover:bg-slate-100 hover:text-[#0F4C5C] transition active:scale-95"
                 >
                   <span>{cat.label}</span>
