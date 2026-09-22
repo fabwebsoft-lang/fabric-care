@@ -50,6 +50,8 @@ const defaultCatalog = [
   { label: "Curtain", price: 150, staffIroningRate: 20 },
 ];
 
+const generateDefaultCustomerId = () => `CUST-${Math.floor(1000 + Math.random() * 9000)}`;
+
 export default function NewBillModal({
   onClose,
   onSuccess,
@@ -91,7 +93,7 @@ export default function NewBillModal({
   // Form Fields
   const [customerName, setCustomerName] = useState(initialCustomer?.name || "");
   const [phone, setPhone] = useState(initialCustomer?.phone || "");
-  const [customerId, setCustomerId] = useState(initialCustomer?.customerId || "");
+  const [customerId, setCustomerId] = useState(initialCustomer?.customerId || generateDefaultCustomerId());
   const [address, setAddress] = useState(initialCustomer?.address || "");
   const [alternatePhone, setAlternatePhone] = useState(initialCustomer?.alternatePhone || "");
   const [notes, setNotes] = useState(initialCustomer?.notes || "");
@@ -243,7 +245,7 @@ export default function NewBillModal({
     setSelectedCustomer(null);
     setCustomerName("");
     setPhone("");
-    setCustomerId("");
+    setCustomerId(generateDefaultCustomerId());
     setAddress("");
     setAlternatePhone("");
     setNotes("");
@@ -256,18 +258,19 @@ export default function NewBillModal({
     setPhone(val);
   };
 
-  const handleCreateNewFromSearch = (initialName?: string) => {
+  const handleCreateNewFromSearch = (initialSearchTerm?: string) => {
     setCustomerMode("new");
     setSelectedCustomerId(null);
     setSelectedCustomer(null);
-    if (initialName && initialName.trim()) {
+    setCustomerId(generateDefaultCustomerId());
+    if (initialSearchTerm && initialSearchTerm.trim()) {
       // If user typed digits, set as phone; otherwise set as name
-      const cleanDigits = normalizePhone(initialName);
-      if (/^\d{5,}$/.test(initialName.replace(/\s+/g, ""))) {
-        setPhone(initialName.trim());
+      const cleanDigits = normalizePhone(initialSearchTerm);
+      if (/^\d{5,}$/.test(initialSearchTerm.replace(/\s+/g, ""))) {
+        setPhone(initialSearchTerm.trim());
         setCustomerName("");
       } else {
-        setCustomerName(initialName.trim());
+        setCustomerName(initialSearchTerm.trim());
       }
     }
     setIsDropdownOpen(false);
@@ -390,23 +393,20 @@ export default function NewBillModal({
       toast.error("Mobile Number is required");
       return;
     }
-    if (!customerId.trim()) {
-      toast.error("Customer ID is required");
-      return;
-    }
+    const finalCustId = customerId.trim() || generateDefaultCustomerId();
     if (items.length === 0) {
       toast.error("Please add at least 1 cloth item to the bill");
       return;
     }
 
-    const cleanCustId = customerId.trim().toLowerCase();
+    const cleanCustId = finalCustId.toLowerCase();
     // Check if Customer ID is already used by another customer (case-insensitive & trimmed)
     const duplicateIdCust = customersData.find(
       (c) => c.customerId && c.customerId.trim().toLowerCase() === cleanCustId && c.id !== selectedCustomerId
     );
     if (duplicateIdCust) {
       toast.error("This Customer ID is already used", {
-        description: `Customer ID "${customerId.trim()}" is already assigned to ${duplicateIdCust.name} (${duplicateIdCust.phone}).`,
+        description: `Customer ID "${finalCustId}" is already assigned to ${duplicateIdCust.name} (${duplicateIdCust.phone}).`,
       });
       return;
     }
@@ -427,7 +427,7 @@ export default function NewBillModal({
 
     createOrderMutation.mutate({
       customerRefId: isExisting ? (selectedCustomerId || undefined) : undefined,
-      customerId: customerId.trim(),
+      customerId: finalCustId,
       customerName: customerName.trim(),
       phone: phone.trim() || "0000000000",
       customerType: "Normal",
@@ -578,6 +578,93 @@ export default function NewBillModal({
               </div>
             </div>
 
+            {/* Existing Customer Mode: Search Dropdown */}
+            {customerMode === "existing" && (
+              <div className="relative" ref={dropdownRef}>
+                <label className="mb-1 block text-[11px] font-semibold text-[#0F4C5C]">
+                  Search Existing Customer <span className="text-[10px] text-slate-500 font-normal">(by Name, Mobile, or Customer ID)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Type name (e.g. Rahul), mobile, or Customer ID..."
+                    value={customerSearch}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                      setCustomerSearch(e.target.value);
+                      setIsDropdownOpen(true);
+                    }}
+                    onFocus={() => {
+                      setIsDropdownOpen(true);
+                    }}
+                    onKeyDown={handleKeyDown}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 pr-9 text-xs focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
+                    autoComplete="off"
+                  />
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    <Search className="size-4" />
+                  </div>
+                </div>
+
+                {/* Autocomplete Dropdown */}
+                {isDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-[60px] z-30 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl space-y-1 animate-in fade-in zoom-in-95 duration-100">
+                    {isSearching && (
+                      <div className="py-2.5 px-3 text-center text-xs text-slate-400 flex items-center justify-center gap-1.5">
+                        <RefreshCw className="size-3.5 animate-spin text-[#0F4C5C]" /> Searching customer database...
+                      </div>
+                    )}
+
+                    {!isSearching && matchingCustomers.length === 0 ? (
+                      <div className="p-3 text-center space-y-2">
+                        <p className="text-xs text-slate-500">No matching customer found.</p>
+                        <button
+                          type="button"
+                          onClick={() => handleCreateNewFromSearch(customerSearch)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#0F4C5C] text-white text-[11px] font-bold hover:bg-[#0F4C5C]/90 transition"
+                        >
+                          <Plus className="size-3" /> Create as New Customer
+                        </button>
+                      </div>
+                    ) : (
+                      matchingCustomers.map((c, idx) => {
+                        const isHighlighted = idx === highlightedIndex;
+                        return (
+                          <button
+                            type="button"
+                            key={c.id}
+                            onClick={() => handleSelectCustomer(c)}
+                            onMouseEnter={() => setHighlightedIndex(idx)}
+                            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition ${
+                              isHighlighted ? "bg-slate-100 text-[#0F4C5C]" : "hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className="min-w-0 pr-2">
+                              <p className="font-bold text-[#0F4C5C] truncate">{c.name}</p>
+                              <p className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <span className="flex items-center gap-1">
+                                  <Phone className="size-2.5 text-slate-400" />
+                                  <span>{formatPhoneDisplay(c.phone)}</span>
+                                </span>
+                                {c.customerId && (
+                                  <span className="font-mono font-bold text-[#0F4C5C] bg-slate-100 px-1 py-0.2 rounded border border-slate-200">
+                                    ID: {c.customerId}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {selectedCustomerId === c.id && <Check className="size-3.5 text-emerald-600" />}
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Existing Customer Selected Banner */}
             {selectedCustomerId && (
               <div className="flex items-center justify-between gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs">
@@ -599,104 +686,29 @@ export default function NewBillModal({
               </div>
             )}
 
-            {/* Searchable Customer Autocomplete Field */}
-            <div className="relative" ref={dropdownRef}>
-              <label className="mb-1 block text-[11px] font-semibold text-[#0F4C5C]">
-                Customer Name * {customerMode === "existing" && <span className="text-[10px] text-slate-500 font-normal">(Searchable)</span>}
-              </label>
-              <div className="relative">
+            {/* Direct Form Fields */}
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-[11px] font-semibold text-[#0F4C5C]">
+                  Customer Name *
+                </label>
                 <input
-                  ref={searchInputRef}
                   type="text"
                   required
-                  placeholder={
-                    customerMode === "existing"
-                      ? "Search customer by name (e.g. Rahul), mobile, or Customer ID..."
-                      : "Search or type customer name (e.g. Rahul Kumar)..."
-                  }
+                  placeholder="Enter customer full name (e.g. Rahul Kumar)..."
                   value={customerName}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => {
                     setCustomerName(e.target.value);
-                    setCustomerSearch(e.target.value);
-                    setIsDropdownOpen(true);
                     if (selectedCustomerId) {
-                      // Disconnect selected customer ID if user changes name manually without reselecting
                       setSelectedCustomerId(null);
                       setSelectedCustomer(null);
                     }
                   }}
-                  onFocus={() => {
-                    setCustomerSearch(customerName);
-                    setIsDropdownOpen(true);
-                  }}
-                  onKeyDown={handleKeyDown}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 pr-9 text-xs focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
                   autoComplete="off"
                 />
-                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                  <Search className="size-4" />
-                </div>
               </div>
 
-              {/* Autocomplete Dropdown */}
-              {isDropdownOpen && (
-                <div className="absolute left-0 right-0 top-[60px] z-30 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl space-y-1 animate-in fade-in zoom-in-95 duration-100">
-                  {isSearching && (
-                    <div className="py-2.5 px-3 text-center text-xs text-slate-400 flex items-center justify-center gap-1.5">
-                      <RefreshCw className="size-3.5 animate-spin text-[#0F4C5C]" /> Searching customer database...
-                    </div>
-                  )}
-
-                  {!isSearching && matchingCustomers.length === 0 ? (
-                    <div className="p-3 text-center space-y-2">
-                      <p className="text-xs text-slate-500">No matching customer found.</p>
-                      <button
-                        type="button"
-                        onClick={() => handleCreateNewFromSearch(customerName)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#0F4C5C] text-white text-[11px] font-bold hover:bg-[#0F4C5C]/90 transition"
-                      >
-                        <Plus className="size-3" /> Create as New Customer
-                      </button>
-                    </div>
-                  ) : (
-                    matchingCustomers.map((c, idx) => {
-                      const isHighlighted = idx === highlightedIndex;
-                      return (
-                        <button
-                          type="button"
-                          key={c.id}
-                          onClick={() => handleSelectCustomer(c)}
-                          onMouseEnter={() => setHighlightedIndex(idx)}
-                          className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition ${
-                            isHighlighted ? "bg-slate-100 text-[#0F4C5C]" : "hover:bg-slate-50"
-                          }`}
-                        >
-                          <div className="min-w-0 pr-2">
-                            <p className="font-bold text-[#0F4C5C] truncate">{c.name}</p>
-                            <p className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5 flex-wrap">
-                              <span className="flex items-center gap-1">
-                                <Phone className="size-2.5 text-slate-400" />
-                                <span>{formatPhoneDisplay(c.phone)}</span>
-                              </span>
-                              {c.customerId && (
-                                <span className="font-mono font-bold text-[#0F4C5C] bg-slate-100 px-1 py-0.2 rounded border border-slate-200">
-                                  ID: {c.customerId}
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {selectedCustomerId === c.id && <Check className="size-3.5 text-emerald-600" />}
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-[11px] font-semibold text-[#0F4C5C]">Mobile Number *</label>
                 <input
@@ -712,14 +724,16 @@ export default function NewBillModal({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-[11px] font-semibold text-[#0F4C5C]">Customer ID *</label>
-                  {selectedCustomerId && selectedCustomer?.customerId && (
+                  {selectedCustomerId && selectedCustomer?.customerId ? (
                     <span className="text-[10px] text-slate-500 font-medium">Locked (Saved)</span>
+                  ) : (
+                    <span className="text-[10px] text-emerald-600 font-medium">Auto-generated</span>
                   )}
                 </div>
                 <input
                   type="text"
                   required
-                  placeholder="Enter unique customer ID"
+                  placeholder="Customer ID"
                   value={customerId}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerId(e.target.value)}
                   readOnly={Boolean(selectedCustomerId && selectedCustomer?.customerId)}
