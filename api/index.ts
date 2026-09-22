@@ -1,42 +1,23 @@
 // @ts-nocheck
 import express, { type Request, type Response, type NextFunction } from "express";
-import cors, { type CorsOptions } from "cors";
+import cors from "cors";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import mongoose from "mongoose";
 import { appRouter } from "../server/src/trpc/router.js";
 import { createContext } from "../server/src/trpc/trpc.js";
-import { Order } from "../server/src/models/Order.js";
-import { IroningTask } from "../server/src/models/IroningTask.js";
-import { Expense } from "../server/src/models/Expense.js";
-import { DeletedBill } from "../server/src/models/DeletedBill.js";
-import { Customer } from "../server/src/models/Customer.js";
-import { Product } from "../server/src/models/Product.js";
-import { Worker } from "../server/src/models/Worker.js";
-import { Shop } from "../server/src/models/Shop.js";
-import { Device } from "../server/src/models/Device.js";
-
-const DEFAULT_PRODUCTS = [
-  { name: "Shirt", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
-  { name: "Pant", category: "Men's Wear", serviceType: "Wash & Iron", price: 60, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
-  { name: "Vasti / Dhoti", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
-  { name: "Suit (2-pc)", category: "Men's Wear", serviceType: "Dry Clean", price: 180, staffWashRate: 50, staffIroningRate: 30, rateUnit: "per_piece", status: "Active" },
-  { name: "Saree", category: "Women's Wear", serviceType: "Dry Clean", price: 120, staffWashRate: 40, staffIroningRate: 25, rateUnit: "per_piece", status: "Active" },
-  { name: "Dress", category: "Women's Wear", serviceType: "Wash & Iron", price: 100, staffWashRate: 25, staffIroningRate: 15, rateUnit: "per_piece", status: "Active" },
-  { name: "Blanket", category: "Household", serviceType: "Wash & Fold", price: 200, staffWashRate: 50, staffIroningRate: 0, rateUnit: "per_piece", status: "Active" },
-  { name: "Curtain", category: "Household", serviceType: "Wash & Fold", price: 150, staffWashRate: 40, staffIroningRate: 20, rateUnit: "per_piece", status: "Active" },
-  { name: "Standard Laundry", category: "Other", serviceType: "Wash & Iron", price: 60, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
-];
 
 const app = express();
 
-// Cache DB connection across serverless invocations
-let isConnected = false;
-let lastDbError: string | null = null;
+let cachedDbPromise: Promise<typeof mongoose> | null = null;
 
 async function connectDB() {
-  if (isConnected || mongoose.connection.readyState === 1) {
-    return;
+  if (mongoose.connection.readyState === 1) {
+    return mongoose;
   }
+  if (cachedDbPromise) {
+    return cachedDbPromise;
+  }
+
   const mongoUri =
     process.env.MONGODB_URI ||
     process.env.DATABASE_URL ||
@@ -45,188 +26,87 @@ async function connectDB() {
     process.env.MONGO_URL;
 
   if (!mongoUri) {
-    lastDbError = "MONGODB_URI environment variable is not set in Vercel project settings.";
-    console.warn(lastDbError);
-    throw new Error(lastDbError);
+    throw new Error("MONGODB_URI is not set in environment variables.");
   }
-  try {
-    mongoose.set("strictQuery", true);
-    await mongoose.connect(mongoUri, {
+
+  mongoose.set("strictQuery", true);
+  cachedDbPromise = mongoose
+    .connect(mongoUri, {
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 5000,
+      maxPoolSize: 10,
+    })
+    .catch((err) => {
+      cachedDbPromise = null;
+      throw err;
     });
-    isConnected = true;
-    lastDbError = null;
-    console.log("MongoDB connected in Vercel Serverless Function");
-  } catch (err: any) {
-    lastDbError = err?.message || String(err);
-    console.error("MongoDB connection failed:", lastDbError);
-    throw err;
-  }
+
+  return cachedDbPromise;
 }
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 
-// Ensure DB is connected for every request
+// Ensure DB is connected
 app.use(async (_req: Request, _res: Response, next: NextFunction) => {
   try {
     await connectDB();
   } catch (err) {
-    // connectDB recorded error
+    console.error("DB connection error in serverless function:", err);
   }
   next();
 });
 
-// Handle custom REST endpoints before tRPC
-app.use(async (req: Request, res: Response, next: NextFunction) => {
-  if (req.url.includes("health")) {
-    const activeUri =
-      process.env.MONGODB_URI ||
-      process.env.DATABASE_URL ||
-      process.env.MONGO_URI ||
-      process.env.MONGODB_URL ||
-      process.env.MONGO_URL;
+// REST Health Check Endpoint
+app.get(["/api/health", "/health", "/api/index/health"], (_req: Request, res: Response) => {
+  const activeUri =
+    process.env.MONGODB_URI ||
+    process.env.DATABASE_URL ||
+    process.env.MONGO_URI ||
+    process.env.MONGODB_URL ||
+    process.env.MONGO_URL;
 
-    const matchedKey = process.env.MONGODB_URI
-      ? "MONGODB_URI"
-      : process.env.DATABASE_URL
-      ? "DATABASE_URL"
-      : process.env.MONGO_URI
-      ? "MONGO_URI"
-      : process.env.MONGODB_URL
-      ? "MONGODB_URL"
-      : process.env.MONGO_URL
-      ? "MONGO_URL"
-      : null;
-
-    const matchingEnvKeys = Object.keys(process.env).filter(
-      (k) =>
-        k.toUpperCase().includes("MONGO") ||
-        k.toUpperCase().includes("DATABASE") ||
-        k.toUpperCase().includes("URI") ||
-        k.toUpperCase().includes("URL") ||
-        k.toUpperCase().includes("JWT")
-    );
-
-    return res.json({
-      ok: true,
-      status: "healthy",
-      db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-      hasMongoUriEnv: Boolean(activeUri),
-      matchedKey,
-      detectedEnvKeys: matchingEnvKeys,
-      mongoHost: activeUri && activeUri.includes("@") ? activeUri.split("@")[1]?.split("/")[0] : null,
-      lastDbError,
-    });
-  }
-
-  if (req.url.includes("audit")) {
-    try {
-      await connectDB();
-
-      const [
-        ordersCount,
-        customersCount,
-        productsCount,
-        workersCount,
-        expensesCount,
-        ironingTasksCount,
-        deletedBillsCount,
-        devicesCount,
-        shopsCount,
-      ] = await Promise.all([
-        Order.countDocuments({}),
-        Customer.countDocuments({}),
-        Product.countDocuments({}),
-        Worker.countDocuments({}),
-        Expense.countDocuments({}),
-        IroningTask.countDocuments({}),
-        DeletedBill.countDocuments({}),
-        Device.countDocuments({}),
-        Shop.countDocuments({}),
-      ]);
-
-      const workers = await Worker.find({}, "name role email active").lean();
-      const shop = await Shop.findOne({}, "name address shopCode").lean();
-      const recentOrders = await Order.find({}, "orderNumber customerName status totalAmount createdAt").sort({ createdAt: -1 }).limit(10).lean();
-      const customersSample = await Customer.find({}, "name phone totalOrders").sort({ createdAt: -1 }).limit(10).lean();
-
-      return res.json({
-        success: true,
-        dbStatus: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-        counts: {
-          orders: ordersCount,
-          customers: customersCount,
-          products: productsCount,
-          workers: workersCount,
-          expenses: expensesCount,
-          ironingTasks: ironingTasksCount,
-          deletedBills_recycleBin: deletedBillsCount,
-          devices: devicesCount,
-          shops: shopsCount,
-        },
-        staffProfiles: workers.map((w: any) => ({ name: w.name, role: w.role, email: w.email || null, active: w.active })),
-        shopConfig: shop ? { name: shop.name, address: shop.address, shopCode: shop.shopCode } : null,
-        ordersSample: recentOrders.map((o: any) => ({ orderNumber: o.orderNumber, customer: o.customerName, status: o.status, amount: o.totalAmount })),
-        customersSample: customersSample.map((c: any) => ({ name: c.name, phone: c.phone, ordersCount: c.totalOrders })),
-      });
-    } catch (err: any) {
-      console.error("Audit error:", err);
-      return res.status(500).json({ success: false, error: err?.message || "Audit failed" });
-    }
-  }
-
-  if (req.url.includes("clean-reset")) {
-    try {
-      await connectDB();
-
-      await Order.deleteMany({});
-      await IroningTask.deleteMany({});
-      await Expense.deleteMany({});
-      await DeletedBill.deleteMany({});
-      await Customer.deleteMany({});
-      await Product.deleteMany({});
-
-      for (const def of DEFAULT_PRODUCTS) {
-        await Product.create(def as any);
-      }
-
-      return res.json({
-        success: true,
-        message: "Database successfully wiped and reset to clean state for client handover.",
-        resetCounts: {
-          orders: 0,
-          expenses: 0,
-          customers: 0,
-          defaultProductsCount: DEFAULT_PRODUCTS.length,
-        },
-      });
-    } catch (err: any) {
-      console.error("Clean reset error:", err);
-      return res.status(500).json({ success: false, error: err?.message || "Failed to reset database" });
-    }
-  }
-
-  next();
+  return res.json({
+    ok: true,
+    status: "healthy",
+    db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    hasMongoUriEnv: Boolean(activeUri),
+  });
 });
 
-// tRPC handlers - mount on multiple paths to handle Vercel rewrites robustly
 const trpcMiddleware = createExpressMiddleware({
   router: appRouter,
   createContext,
 });
 
-app.use("/trpc", trpcMiddleware);
-app.use("/api/trpc", trpcMiddleware);
-app.use("/api/index", trpcMiddleware);
-app.use("/api", trpcMiddleware);
+// Universal tRPC handler: strips any prefix so tRPC router matches any procedure
 app.use((req: Request, res: Response, next: NextFunction) => {
-  // If not handled yet and appears to be a tRPC call, try trpcMiddleware directly
-  if (req.url.includes("products.") || req.url.includes("orders.") || req.url.includes("ironing.") || req.url.includes("batch=")) {
-    return trpcMiddleware(req, res, next);
+  const url = req.url;
+
+  if (url.startsWith("/api/trpc/")) {
+    req.url = url.slice("/api/trpc".length);
+  } else if (url.startsWith("/api/trpc?")) {
+    req.url = "/" + url.slice("/api/trpc".length);
+  } else if (url.startsWith("/trpc/")) {
+    req.url = url.slice("/trpc".length);
+  } else if (url.startsWith("/trpc?")) {
+    req.url = "/" + url.slice("/trpc".length);
+  } else if (url.startsWith("/api/index/")) {
+    req.url = url.slice("/api/index".length);
+  } else if (url.startsWith("/api/index?")) {
+    req.url = "/" + url.slice("/api/index".length);
+  } else if (url.startsWith("/api/")) {
+    req.url = url.slice("/api".length);
+  } else if (url.startsWith("/api?")) {
+    req.url = "/" + url.slice("/api".length);
   }
-  next();
+
+  return trpcMiddleware(req, res, (err) => {
+    if (err) return next(err);
+    if (!res.headersSent) {
+      res.status(404).json({ error: "Endpoint not found", path: req.originalUrl || req.url });
+    }
+  });
 });
 
 export default app;
