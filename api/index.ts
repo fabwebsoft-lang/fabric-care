@@ -30,6 +30,7 @@ const app = express();
 
 // Cache DB connection across serverless invocations
 let isConnected = false;
+let lastDbError: string | null = null;
 
 async function connectDB() {
   if (isConnected || mongoose.connection.readyState === 1) {
@@ -37,16 +38,24 @@ async function connectDB() {
   }
   const mongoUri = process.env.MONGODB_URI;
   if (!mongoUri) {
-    console.warn("MONGODB_URI is not configured in environment.");
-    return;
+    lastDbError = "MONGODB_URI environment variable is not set in Vercel project settings.";
+    console.warn(lastDbError);
+    throw new Error(lastDbError);
   }
-  mongoose.set("strictQuery", true);
-  await mongoose.connect(mongoUri, {
-    serverSelectionTimeoutMS: 8000,
-    connectTimeoutMS: 10000,
-  });
-  isConnected = true;
-  console.log("MongoDB connected in Vercel Serverless Function");
+  try {
+    mongoose.set("strictQuery", true);
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+    });
+    isConnected = true;
+    lastDbError = null;
+    console.log("MongoDB connected in Vercel Serverless Function");
+  } catch (err: any) {
+    lastDbError = err?.message || String(err);
+    console.error("MongoDB connection failed:", lastDbError);
+    throw err;
+  }
 }
 
 app.use(cors({ origin: true, credentials: true }));
@@ -57,17 +66,20 @@ app.use(async (_req: Request, _res: Response, next: NextFunction) => {
   try {
     await connectDB();
   } catch (err) {
-    console.error("Database connection failure in serverless handler:", err);
+    // connectDB recorded error
   }
   next();
 });
 
-app.get("/health", (_req: Request, res: Response) => {
-  res.json({ ok: true, status: "healthy", db: mongoose.connection.readyState === 1 ? "connected" : "connecting" });
-});
-
-app.get("/api/health", (_req: Request, res: Response) => {
-  res.json({ ok: true, status: "healthy", db: mongoose.connection.readyState === 1 ? "connected" : "connecting" });
+app.get(["/health", "/api/health"], (_req: Request, res: Response) => {
+  res.json({
+    ok: true,
+    status: "healthy",
+    db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    hasMongoUriEnv: Boolean(process.env.MONGODB_URI),
+    mongoHost: process.env.MONGODB_URI ? process.env.MONGODB_URI.split("@")[1]?.split("/")[0] : null,
+    lastDbError,
+  });
 });
 
 // Explicit routing for audit and clean-reset to bypass any rewrite prefix ambiguity
