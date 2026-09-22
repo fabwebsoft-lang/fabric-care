@@ -208,8 +208,8 @@ export default function NewBillModal({
       await utils.customers.list.invalidate();
       await utils.customers.search.invalidate();
       await utils.dashboard.stats.invalidate();
-      toast.success(`Bill ${data.id} created successfully!`, {
-        description: `Customer: ${data.customer} ${data.customerId ? `(ID: ${data.customerId})` : ""}`,
+      toast.success(`Bill ${data.id} Created & Collected Successfully!`, {
+        description: `Customer: ${data.customer} ${data.customerId ? `(ID: ${data.customerId})` : ""} · ₹${data.totalAmount} (${data.amountPaid >= data.totalAmount ? "Full Paid" : data.amountPaid > 0 ? `₹${data.amountPaid} Advance Paid` : "Due on Delivery"})`,
       });
       onSuccess();
     },
