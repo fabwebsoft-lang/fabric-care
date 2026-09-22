@@ -54,21 +54,22 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ ok: true, status: "healthy", db: mongoose.connection.readyState === 1 ? "connected" : "connecting" });
 });
 
-// tRPC handlers
-app.use(
-  "/trpc",
-  createExpressMiddleware({
-    router: appRouter,
-    createContext,
-  })
-);
+// tRPC handlers - mount on multiple paths to handle Vercel rewrites robustly
+const trpcMiddleware = createExpressMiddleware({
+  router: appRouter,
+  createContext,
+});
 
-app.use(
-  "/api/trpc",
-  createExpressMiddleware({
-    router: appRouter,
-    createContext,
-  })
-);
+app.use("/trpc", trpcMiddleware);
+app.use("/api/trpc", trpcMiddleware);
+app.use("/api/index", trpcMiddleware);
+app.use("/api", trpcMiddleware);
+app.use((req: Request, res: Response, next: NextFunction) => {
+  // If not handled yet and appears to be a tRPC call, try trpcMiddleware directly
+  if (req.url.includes("products.") || req.url.includes("orders.") || req.url.includes("ironing.") || req.url.includes("batch=")) {
+    return trpcMiddleware(req, res, next);
+  }
+  next();
+});
 
 export default app;
