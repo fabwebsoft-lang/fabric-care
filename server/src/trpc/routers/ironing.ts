@@ -98,16 +98,43 @@ export const ironingRouter = router({
         });
       }
 
+function extractCleanGarmentName(rawName: string): { cleanName: string; extractedQty?: number } {
+  const trimmed = (rawName || "").trim();
+  const prefixMatch = trimmed.match(/^(\d+)\s*(?:items|pcs|pieces)?\s*[·\-\:]\s*(.+)$/i);
+  if (prefixMatch) {
+    return {
+      cleanName: prefixMatch[2].trim(),
+      extractedQty: Number(prefixMatch[1]) || 1,
+    };
+  }
+  const xMatch = trimmed.match(/^(\d+)\s*x\s*(.+)$/i) || trimmed.match(/^(.+)\s*x\s*(\d+)$/i);
+  if (xMatch) {
+    const qty = Number(xMatch[1]) || Number(xMatch[2]) || 1;
+    const name = (isNaN(Number(xMatch[1])) ? xMatch[1] : xMatch[2]).trim();
+    return { cleanName: name, extractedQty: qty };
+  }
+  return { cleanName: trimmed || "Standard Laundry" };
+}
+
       // Fetch products to pull configured staff ironing rates (by ID first, fallback to name)
-      const productIds = (order.items || [])
+      const rawOrderItems = (order.items && order.items.length > 0)
+        ? order.items
+        : [{ name: order.serviceType || "Standard Laundry", quantity: 1, price: order.totalAmount || 50 }];
+
+      const productIds = rawOrderItems
         .map((i: any) => i.productId)
         .filter((id: any): id is string => Boolean(id) && mongoose.Types.ObjectId.isValid(id));
-      const productNames = (order.items || []).map((i: any) => i.name.trim());
+
+      const productNames = rawOrderItems.flatMap((i: any) => {
+        const { cleanName } = extractCleanGarmentName(i.name);
+        return [i.name.trim(), cleanName];
+      });
 
       const products = await Product.find({
         $or: [
           ...(productIds.length > 0 ? [{ _id: { $in: productIds } }] : []),
           { name: { $in: productNames.map((n: string) => new RegExp(`^${n}$`, "i")) } },
+          { name: { $regex: /Standard Laundry|Shirt|Pant/i } },
         ],
         isArchived: { $ne: true },
       });
@@ -119,32 +146,41 @@ export const ironingRouter = router({
         productNameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
       }
 
-      const taskItems = (order.items || []).map((item: any) => {
+      const taskItems = rawOrderItems.map((item: any) => {
+        const { cleanName, extractedQty } = extractCleanGarmentName(item.name);
+        const qty = item.quantity && item.quantity > 0 ? item.quantity : (extractedQty || 1);
+
         let rate: number | undefined;
         if (item.productId && productIdMap.has(item.productId.toString())) {
-          rate = productIdMap.get(item.productId.toString());
+          const r = productIdMap.get(item.productId.toString());
+          if (r !== undefined && r > 0) rate = r;
         }
         if (rate === undefined && item.staffIroningRate !== undefined && item.staffIroningRate > 0) {
           rate = item.staffIroningRate;
         }
         if (rate === undefined) {
-          const cleanName = (item.name || "").toLowerCase().trim();
-          rate = productNameMap.get(cleanName);
-          if (rate === undefined) {
+          const cleanLower = cleanName.toLowerCase().trim();
+          const rawLower = (item.name || "").toLowerCase().trim();
+          if (productNameMap.has(cleanLower) && productNameMap.get(cleanLower)! > 0) {
+            rate = productNameMap.get(cleanLower);
+          } else if (productNameMap.has(rawLower) && productNameMap.get(rawLower)! > 0) {
+            rate = productNameMap.get(rawLower);
+          } else {
             for (const [pName, pRate] of productNameMap.entries()) {
-              if (cleanName.includes(pName) || pName.includes(cleanName)) {
+              if (pRate > 0 && (cleanLower.includes(pName) || pName.includes(cleanLower))) {
                 rate = pRate;
                 break;
               }
             }
           }
         }
-        const finalRate = rate ?? 0;
+        // Fallback default rate if unconfigured
+        const finalRate = rate !== undefined && rate > 0 ? rate : 10;
         return {
-          name: item.name,
-          quantity: item.quantity || 1,
+          name: cleanName,
+          quantity: qty,
           staffRate: finalRate,
-          staffEarning: (item.quantity || 1) * finalRate,
+          staffEarning: qty * finalRate,
         };
       });
 
@@ -274,15 +310,24 @@ export const ironingRouter = router({
       }
 
       // Fetch products to pull rates (by ID first, fallback to name)
-      const productIds = (order.items || [])
+      const rawOrderItems = (order.items && order.items.length > 0)
+        ? order.items
+        : [{ name: order.serviceType || "Standard Laundry", quantity: 1, price: order.totalAmount || 50 }];
+
+      const productIds = rawOrderItems
         .map((i: any) => i.productId)
         .filter((id: any): id is string => Boolean(id) && mongoose.Types.ObjectId.isValid(id));
-      const productNames = (order.items || []).map((i: any) => i.name.trim());
+
+      const productNames = rawOrderItems.flatMap((i: any) => {
+        const { cleanName } = extractCleanGarmentName(i.name);
+        return [i.name.trim(), cleanName];
+      });
 
       const products = await Product.find({
         $or: [
           ...(productIds.length > 0 ? [{ _id: { $in: productIds } }] : []),
           { name: { $in: productNames.map((n: string) => new RegExp(`^${n}$`, "i")) } },
+          { name: { $regex: /Standard Laundry|Shirt|Pant/i } },
         ],
         isArchived: { $ne: true },
       });
@@ -295,21 +340,33 @@ export const ironingRouter = router({
       }
 
       // Build task items
-      const completedItems = (order.items || []).map((item: any) => {
-        let rate = input.ratesOverride?.[item.name] ?? (item.productId ? input.ratesOverride?.[item.productId] : undefined);
+      const completedItems = rawOrderItems.map((item: any) => {
+        const { cleanName, extractedQty } = extractCleanGarmentName(item.name);
+        const qty = item.quantity && item.quantity > 0 ? item.quantity : (extractedQty || 1);
+
+        let rate =
+          input.ratesOverride?.[cleanName] ??
+          input.ratesOverride?.[item.name] ??
+          (item.productId ? input.ratesOverride?.[item.productId] : undefined);
+
         if (rate === undefined) {
           if (item.productId && productIdMap.has(item.productId.toString())) {
-            rate = productIdMap.get(item.productId.toString());
+            const r = productIdMap.get(item.productId.toString());
+            if (r !== undefined && r > 0) rate = r;
           }
           if (rate === undefined && item.staffIroningRate !== undefined && item.staffIroningRate > 0) {
             rate = item.staffIroningRate;
           }
           if (rate === undefined) {
-            const cleanName = (item.name || "").toLowerCase().trim();
-            rate = productNameMap.get(cleanName);
-            if (rate === undefined) {
+            const cleanLower = cleanName.toLowerCase().trim();
+            const rawLower = (item.name || "").toLowerCase().trim();
+            if (productNameMap.has(cleanLower) && productNameMap.get(cleanLower)! > 0) {
+              rate = productNameMap.get(cleanLower);
+            } else if (productNameMap.has(rawLower) && productNameMap.get(rawLower)! > 0) {
+              rate = productNameMap.get(rawLower);
+            } else {
               for (const [pName, pRate] of productNameMap.entries()) {
-                if (cleanName.includes(pName) || pName.includes(cleanName)) {
+                if (pRate > 0 && (cleanLower.includes(pName) || pName.includes(cleanLower))) {
                   rate = pRate;
                   break;
                 }
@@ -317,13 +374,14 @@ export const ironingRouter = router({
             }
           }
         }
-        rate = Math.max(0, rate ?? 0);
+        // Fallback default rate if unconfigured
+        const finalRate = rate !== undefined ? Math.max(0, rate) : 10;
 
         return {
-          name: item.name,
-          quantity: item.quantity || 1,
-          staffRate: rate,
-          staffEarning: (item.quantity || 1) * rate,
+          name: cleanName,
+          quantity: qty,
+          staffRate: finalRate,
+          staffEarning: qty * finalRate,
         };
       });
 

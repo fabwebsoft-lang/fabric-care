@@ -886,44 +886,64 @@ function CompleteIroningModal({
     return { productIdRateMap: idMap, productNameRateMap: nameMap };
   }, [products]);
 
-  // Robust parsing: First check structuredItems, then fallback to parsing order.items
+  // Robust parsing with full string & prefix sanitization
   const parsedGarmentItems = useMemo(() => {
+    const sanitizeItem = (rawName: string, rawQty?: number, productId?: string | null, staffRate?: number) => {
+      const trimmed = (rawName || "").trim();
+      // Check for prefix "1 items · Standard Laundry" or "3 pcs · Shirt"
+      const prefixMatch = trimmed.match(/^(\d+)\s*(?:items|pcs|pieces)?\s*[·\-\:]\s*(.+)$/i);
+      if (prefixMatch) {
+        return {
+          productId: productId || null,
+          name: prefixMatch[2].trim(),
+          quantity: rawQty && rawQty > 1 ? rawQty : (Number(prefixMatch[1]) || 1),
+          staffIroningRate: staffRate,
+        };
+      }
+      // Check for "2 x Shirt" or "Shirt x 2"
+      const xMatch = trimmed.match(/^(\d+)\s*x\s*(.+)$/i) || trimmed.match(/^(.+)\s*x\s*(\d+)$/i);
+      if (xMatch) {
+        const qty = Number(xMatch[1]) || Number(xMatch[2]) || 1;
+        const name = (isNaN(Number(xMatch[1])) ? xMatch[1] : xMatch[2]).trim();
+        return {
+          productId: productId || null,
+          name,
+          quantity: rawQty && rawQty > 1 ? rawQty : qty,
+          staffIroningRate: staffRate,
+        };
+      }
+      return {
+        productId: productId || null,
+        name: trimmed || "Standard Laundry",
+        quantity: rawQty || 1,
+        staffIroningRate: staffRate,
+      };
+    };
+
     if (order.structuredItems && order.structuredItems.length > 0) {
-      return order.structuredItems.map((i) => ({
-        productId: i.productId || null,
-        name: i.name.trim(),
-        quantity: i.quantity || 1,
-        staffIroningRate: i.staffIroningRate,
-      }));
+      return order.structuredItems.map((i) =>
+        sanitizeItem(i.name, i.quantity, i.productId, i.staffIroningRate)
+      );
     }
     if (Array.isArray(order.items)) {
-      return (order.items as any[]).map((i: any) => ({
-        productId: i.productId || null,
-        name: typeof i === "string" ? i.trim() : (i.name || "Item").trim(),
-        quantity: typeof i === "object" ? i.quantity || 1 : 1,
-        staffIroningRate: typeof i === "object" ? i.staffIroningRate : undefined,
-      }));
-    }
-    if (typeof order.items === "string") {
-      const cleaned = order.items.replace(/\s*·\s*[^,]+$/, "").trim();
-      return cleaned.split(",").map((s) => {
-        const trimmed = s.trim();
-        const match = trimmed.match(/^(\d+)\s*x\s*(.+)$/i) || trimmed.match(/^(.+)\s*x\s*(\d+)$/i);
-        if (match) {
-          const qty = Number(match[1]) || 1;
-          const name = match[2]?.trim() || trimmed;
-          return { productId: null, name, quantity: qty, staffIroningRate: undefined };
-        }
-        return { productId: null, name: trimmed, quantity: 1, staffIroningRate: undefined };
+      return (order.items as any[]).map((i: any) => {
+        if (typeof i === "string") return sanitizeItem(i);
+        return sanitizeItem(i.name, i.quantity, i.productId, i.staffIroningRate);
       });
     }
-    return [];
+    if (typeof order.items === "string" && order.items.trim()) {
+      const str = order.items.trim();
+      const parts = str.split(",");
+      return parts.map((s) => sanitizeItem(s));
+    }
+    return [sanitizeItem(order.items || "Standard Laundry", 1)];
   }, [order]);
 
   const getItemDefaultRate = (item: { productId?: string | null; name: string; staffIroningRate?: number }): number => {
     // 1. Check stable Product ID match
     if (item.productId && productIdRateMap.has(item.productId)) {
-      return productIdRateMap.get(item.productId)!;
+      const r = productIdRateMap.get(item.productId)!;
+      if (r > 0) return r;
     }
     // 2. Check snapshot rate saved on order item
     if (item.staffIroningRate !== undefined && item.staffIroningRate > 0) {
@@ -932,16 +952,21 @@ function CompleteIroningModal({
     // 3. Exact name match against products catalog
     const cleanName = item.name.toLowerCase().trim();
     if (productNameRateMap.has(cleanName)) {
-      return productNameRateMap.get(cleanName)!;
+      const r = productNameRateMap.get(cleanName)!;
+      if (r > 0) return r;
     }
     // 4. Fuzzy name match fallback
-    let matchedRate = 0;
-    productNameRateMap.forEach((pRate, pName) => {
-      if (matchedRate === 0 && (cleanName.includes(pName) || pName.includes(cleanName))) {
-        matchedRate = pRate;
+    for (const [pName, pRate] of productNameRateMap.entries()) {
+      if (pRate > 0 && (cleanName.includes(pName) || pName.includes(cleanName))) {
+        return pRate;
       }
-    });
-    return matchedRate;
+    }
+    // 5. Standard configured fallback for standard laundry/general ironing
+    if (productNameRateMap.has("standard laundry") && productNameRateMap.get("standard laundry")! > 0) {
+      return productNameRateMap.get("standard laundry")!;
+    }
+    // 6. Safe default labour rate (₹10/piece)
+    return 10;
   };
 
   const calculatedItems = parsedGarmentItems.map((item) => {
