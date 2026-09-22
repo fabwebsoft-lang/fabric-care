@@ -4,6 +4,24 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import mongoose from "mongoose";
 import { appRouter } from "../server/src/trpc/router.js";
 import { createContext } from "../server/src/trpc/trpc.js";
+import { Order } from "../server/src/models/Order.js";
+import { IroningTask } from "../server/src/models/IroningTask.js";
+import { Expense } from "../server/src/models/Expense.js";
+import { DeletedBill } from "../server/src/models/DeletedBill.js";
+import { Customer } from "../server/src/models/Customer.js";
+import { Product } from "../server/src/models/Product.js";
+
+const DEFAULT_PRODUCTS = [
+  { name: "Shirt", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+  { name: "Pant", category: "Men's Wear", serviceType: "Wash & Iron", price: 60, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+  { name: "Vasti / Dhoti", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+  { name: "Suit (2-pc)", category: "Men's Wear", serviceType: "Dry Clean", price: 180, staffWashRate: 50, staffIroningRate: 30, rateUnit: "per_piece", status: "Active" },
+  { name: "Saree", category: "Women's Wear", serviceType: "Dry Clean", price: 120, staffWashRate: 40, staffIroningRate: 25, rateUnit: "per_piece", status: "Active" },
+  { name: "Dress", category: "Women's Wear", serviceType: "Wash & Iron", price: 100, staffWashRate: 25, staffIroningRate: 15, rateUnit: "per_piece", status: "Active" },
+  { name: "Blanket", category: "Household", serviceType: "Wash & Fold", price: 200, staffWashRate: 50, staffIroningRate: 0, rateUnit: "per_piece", status: "Active" },
+  { name: "Curtain", category: "Household", serviceType: "Wash & Fold", price: 150, staffWashRate: 40, staffIroningRate: 20, rateUnit: "per_piece", status: "Active" },
+  { name: "Standard Laundry", category: "Other", serviceType: "Wash & Iron", price: 60, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+];
 
 const app = express();
 
@@ -50,12 +68,6 @@ app.get("/api/health", (_req: Request, res: Response) => {
 app.all(["/api/clean-reset", "/api/admin/clean-reset"], async (_req: Request, res: Response) => {
   try {
     await connectDB();
-    const { Order } = await import("../server/src/models/Order.js");
-    const { IroningTask } = await import("../server/src/models/IroningTask.js");
-    const { Expense } = await import("../server/src/models/Expense.js");
-    const { DeletedBill } = await import("../server/src/models/DeletedBill.js");
-    const { Customer } = await import("../server/src/models/Customer.js");
-    const { Product } = await import("../server/src/models/Product.js");
 
     await Order.deleteMany({});
     await IroningTask.deleteMany({});
@@ -64,17 +76,6 @@ app.all(["/api/clean-reset", "/api/admin/clean-reset"], async (_req: Request, re
     await Customer.deleteMany({});
     await Product.deleteMany({});
 
-    const DEFAULT_PRODUCTS = [
-      { name: "Shirt", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
-      { name: "Pant", category: "Men's Wear", serviceType: "Wash & Iron", price: 60, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
-      { name: "Vasti / Dhoti", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
-      { name: "Suit (2-pc)", category: "Men's Wear", serviceType: "Dry Clean", price: 180, staffWashRate: 50, staffIroningRate: 30, rateUnit: "per_piece", status: "Active" },
-      { name: "Saree", category: "Women's Wear", serviceType: "Dry Clean", price: 120, staffWashRate: 40, staffIroningRate: 25, rateUnit: "per_piece", status: "Active" },
-      { name: "Dress", category: "Women's Wear", serviceType: "Wash & Iron", price: 100, staffWashRate: 25, staffIroningRate: 15, rateUnit: "per_piece", status: "Active" },
-      { name: "Blanket", category: "Household", serviceType: "Wash & Fold", price: 200, staffWashRate: 50, staffIroningRate: 0, rateUnit: "per_piece", status: "Active" },
-      { name: "Curtain", category: "Household", serviceType: "Wash & Fold", price: 150, staffWashRate: 40, staffIroningRate: 20, rateUnit: "per_piece", status: "Active" },
-      { name: "Standard Laundry", category: "Other", serviceType: "Wash & Iron", price: 60, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
-    ];
     for (const def of DEFAULT_PRODUCTS) {
       await Product.create(def);
     }
