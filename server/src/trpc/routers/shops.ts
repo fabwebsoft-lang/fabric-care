@@ -8,6 +8,7 @@ import { DeletedBill } from "../../models/DeletedBill.js";
 import { Customer } from "../../models/Customer.js";
 import { Product } from "../../models/Product.js";
 import { Device } from "../../models/Device.js";
+import { Worker } from "../../models/Worker.js";
 
 type DefaultProductDef = {
   name: string;
@@ -65,6 +66,53 @@ export const shopsRouter = router({
   list: approvedProcedure.query(async () => {
     const shop = await getOrCreateShop();
     return [toApiShop(shop)];
+  }),
+
+  audit: approvedProcedure.query(async () => {
+    const [
+      ordersCount,
+      customersCount,
+      productsCount,
+      workersCount,
+      expensesCount,
+      ironingTasksCount,
+      deletedBillsCount,
+      devicesCount,
+      shopsCount,
+    ] = await Promise.all([
+      Order.countDocuments({}),
+      Customer.countDocuments({}),
+      Product.countDocuments({}),
+      Worker.countDocuments({}),
+      Expense.countDocuments({}),
+      IroningTask.countDocuments({}),
+      DeletedBill.countDocuments({}),
+      Device.countDocuments({}),
+      Shop.countDocuments({}),
+    ]);
+
+    const workers = await Worker.find({}, "name role email active").lean();
+    const shop = await Shop.findOne({}, "name address shopCode").lean();
+    const recentOrders = await Order.find({}, "orderNumber customerName status totalAmount createdAt").sort({ createdAt: -1 }).limit(10).lean();
+    const customersSample = await Customer.find({}, "name phone totalOrders").sort({ createdAt: -1 }).limit(10).lean();
+
+    return {
+      counts: {
+        orders: ordersCount,
+        customers: customersCount,
+        products: productsCount,
+        workers: workersCount,
+        expenses: expensesCount,
+        ironingTasks: ironingTasksCount,
+        deletedBills_recycleBin: deletedBillsCount,
+        devices: devicesCount,
+        shops: shopsCount,
+      },
+      staffProfiles: workers.map((w: any) => ({ name: w.name, role: w.role, email: w.email || null, active: w.active })),
+      shopConfig: shop ? { name: shop.name, address: shop.address, shopCode: shop.shopCode } : null,
+      ordersSample: recentOrders.map((o: any) => ({ orderNumber: o.orderNumber, customer: o.customerName, status: o.status, amount: o.totalAmount })),
+      customersSample: customersSample.map((c: any) => ({ name: c.name, phone: c.phone, ordersCount: c.totalOrders })),
+    };
   }),
 
   updateSettings: requirePermission("canManageSettings")

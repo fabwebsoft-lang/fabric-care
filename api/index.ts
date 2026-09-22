@@ -70,93 +70,96 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ ok: true, status: "healthy", db: mongoose.connection.readyState === 1 ? "connected" : "connecting" });
 });
 
-// Full database audit endpoint for pre-handover verification
-app.get(["/api/audit", "/api/admin/audit"], async (_req: Request, res: Response) => {
-  try {
-    await connectDB();
+// Explicit routing for audit and clean-reset to bypass any rewrite prefix ambiguity
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+  if (req.url.includes("audit")) {
+    try {
+      await connectDB();
 
-    const [
-      ordersCount,
-      customersCount,
-      productsCount,
-      workersCount,
-      expensesCount,
-      ironingTasksCount,
-      deletedBillsCount,
-      devicesCount,
-      shopsCount,
-    ] = await Promise.all([
-      Order.countDocuments({}),
-      Customer.countDocuments({}),
-      Product.countDocuments({}),
-      Worker.countDocuments({}),
-      Expense.countDocuments({}),
-      IroningTask.countDocuments({}),
-      DeletedBill.countDocuments({}),
-      Device.countDocuments({}),
-      Shop.countDocuments({}),
-    ]);
+      const [
+        ordersCount,
+        customersCount,
+        productsCount,
+        workersCount,
+        expensesCount,
+        ironingTasksCount,
+        deletedBillsCount,
+        devicesCount,
+        shopsCount,
+      ] = await Promise.all([
+        Order.countDocuments({}),
+        Customer.countDocuments({}),
+        Product.countDocuments({}),
+        Worker.countDocuments({}),
+        Expense.countDocuments({}),
+        IroningTask.countDocuments({}),
+        DeletedBill.countDocuments({}),
+        Device.countDocuments({}),
+        Shop.countDocuments({}),
+      ]);
 
-    const workers = await Worker.find({}, "name role email active").lean();
-    const shop = await Shop.findOne({}, "name address shopCode").lean();
-    const recentOrders = await Order.find({}, "orderNumber customerName status totalAmount createdAt").sort({ createdAt: -1 }).limit(10).lean();
-    const customersSample = await Customer.find({}, "name phone totalOrders").sort({ createdAt: -1 }).limit(10).lean();
+      const workers = await Worker.find({}, "name role email active").lean();
+      const shop = await Shop.findOne({}, "name address shopCode").lean();
+      const recentOrders = await Order.find({}, "orderNumber customerName status totalAmount createdAt").sort({ createdAt: -1 }).limit(10).lean();
+      const customersSample = await Customer.find({}, "name phone totalOrders").sort({ createdAt: -1 }).limit(10).lean();
 
-    return res.json({
-      success: true,
-      dbStatus: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-      counts: {
-        orders: ordersCount,
-        customers: customersCount,
-        products: productsCount,
-        workers: workersCount,
-        expenses: expensesCount,
-        ironingTasks: ironingTasksCount,
-        deletedBills_recycleBin: deletedBillsCount,
-        devices: devicesCount,
-        shops: shopsCount,
-      },
-      staffProfiles: workers.map((w: any) => ({ name: w.name, role: w.role, email: w.email || null, active: w.active })),
-      shopConfig: shop ? { name: shop.name, address: shop.address, shopCode: shop.shopCode } : null,
-      ordersSample: recentOrders.map((o: any) => ({ orderNumber: o.orderNumber, customer: o.customerName, status: o.status, amount: o.totalAmount })),
-      customersSample: customersSample.map((c: any) => ({ name: c.name, phone: c.phone, ordersCount: c.totalOrders })),
-    });
-  } catch (err: any) {
-    console.error("Audit error:", err);
-    return res.status(500).json({ success: false, error: err?.message || "Audit failed" });
-  }
-});
-
-// One-touch reset endpoint to clean all test data for client handover
-app.all(["/api/clean-reset", "/api/admin/clean-reset"], async (_req: Request, res: Response) => {
-  try {
-    await connectDB();
-
-    await Order.deleteMany({});
-    await IroningTask.deleteMany({});
-    await Expense.deleteMany({});
-    await DeletedBill.deleteMany({});
-    await Customer.deleteMany({});
-    await Product.deleteMany({});
-
-    for (const def of DEFAULT_PRODUCTS) {
-      await Product.create(def as any);
+      return res.json({
+        success: true,
+        dbStatus: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+        counts: {
+          orders: ordersCount,
+          customers: customersCount,
+          products: productsCount,
+          workers: workersCount,
+          expenses: expensesCount,
+          ironingTasks: ironingTasksCount,
+          deletedBills_recycleBin: deletedBillsCount,
+          devices: devicesCount,
+          shops: shopsCount,
+        },
+        staffProfiles: workers.map((w: any) => ({ name: w.name, role: w.role, email: w.email || null, active: w.active })),
+        shopConfig: shop ? { name: shop.name, address: shop.address, shopCode: shop.shopCode } : null,
+        ordersSample: recentOrders.map((o: any) => ({ orderNumber: o.orderNumber, customer: o.customerName, status: o.status, amount: o.totalAmount })),
+        customersSample: customersSample.map((c: any) => ({ name: c.name, phone: c.phone, ordersCount: c.totalOrders })),
+      });
+    } catch (err: any) {
+      console.error("Audit error:", err);
+      return res.status(500).json({ success: false, error: err?.message || "Audit failed" });
     }
-
-    return res.json({
-      success: true,
-      message: "Database successfully wiped and reset to clean state for client handover.",
-      resetCounts: {
-        orders: 0,
-        expenses: 0,
-        customers: 0,
-        defaultProductsCount: DEFAULT_PRODUCTS.length,
-      },
-    });
-  } catch (err: any) {
-    console.error("Clean reset error:", err);
-    return res.status(500).json({ success: false, error: err?.message || "Failed to reset database" });
   }
+
+  if (req.url.includes("clean-reset")) {
+    try {
+      await connectDB();
+
+      await Order.deleteMany({});
+      await IroningTask.deleteMany({});
+      await Expense.deleteMany({});
+      await DeletedBill.deleteMany({});
+      await Customer.deleteMany({});
+      await Product.deleteMany({});
+
+      for (const def of DEFAULT_PRODUCTS) {
+        await Product.create(def as any);
+      }
+
+      return res.json({
+        success: true,
+        message: "Database successfully wiped and reset to clean state for client handover.",
+        resetCounts: {
+          orders: 0,
+          expenses: 0,
+          customers: 0,
+          defaultProductsCount: DEFAULT_PRODUCTS.length,
+        },
+      });
+    } catch (err: any) {
+      console.error("Clean reset error:", err);
+      return res.status(500).json({ success: false, error: err?.message || "Failed to reset database" });
+    }
+  }
+
+  next();
 });
 
 // tRPC handlers - mount on multiple paths to handle Vercel rewrites robustly
