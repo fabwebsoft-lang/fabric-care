@@ -8,6 +8,9 @@ import { createContext } from "../server/src/trpc/trpc.js";
 
 const app = express();
 
+const DEFAULT_MONGO_URI =
+  "mongodb+srv://fabwebsoft_db_user:fab-web-123@cluster0.2tsyfd7.mongodb.net/fabric_care?retryWrites=true&w=majority&appName=Cluster0";
+
 let cachedDbPromise: Promise<typeof mongoose> | null = null;
 
 async function connectDB() {
@@ -23,17 +26,16 @@ async function connectDB() {
     process.env.DATABASE_URL ||
     process.env.MONGO_URI ||
     process.env.MONGODB_URL ||
-    process.env.MONGO_URL;
-
-  if (!mongoUri) {
-    throw new Error("MONGODB_URI is not set in environment variables.");
-  }
+    process.env.MONGO_URL ||
+    DEFAULT_MONGO_URI;
 
   mongoose.set("strictQuery", true);
+  mongoose.set("bufferCommands", false);
+
   cachedDbPromise = mongoose
     .connect(mongoUri, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
       maxPoolSize: 10,
     })
     .catch((err) => {
@@ -47,14 +49,21 @@ async function connectDB() {
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 
-// Ensure DB is connected
-app.use(async (_req: Request, _res: Response, next: NextFunction) => {
+// Ensure DB is connected before any API or tRPC route handles the request
+app.use(async (_req: Request, res: Response, next: NextFunction) => {
   try {
     await connectDB();
-  } catch (err) {
+    next();
+  } catch (err: any) {
     console.error("DB connection error in serverless function:", err);
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: "Database connection failed",
+        message: err.message,
+        hint: "Check that MongoDB Atlas Network Access allows 0.0.0.0/0 (allow from anywhere) for Vercel serverless functions.",
+      });
+    }
   }
-  next();
 });
 
 // REST Health Check & Root Endpoints
