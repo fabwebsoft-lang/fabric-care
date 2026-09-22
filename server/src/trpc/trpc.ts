@@ -6,11 +6,12 @@ import type { SessionTokenPayload, RoleTokenPayload } from "../lib/auth.js";
 import { ROLE_PERMISSIONS, type RoleName, type RolePermissions } from "../lib/permissions.js";
 import { Worker } from "../models/Worker.js";
 
-export async function createContext({ req }: { req: Request; res?: Response } | CreateExpressContextOptions | any) {
-  const reqObj = req as Request;
+export async function createContext(opts?: any) {
+  const reqObj: any = opts?.req || opts;
+  const rawHeaders = reqObj?.headers || {};
   const authHeader =
-    reqObj?.headers?.authorization ||
-    (reqObj?.headers as any)?.Authorization ||
+    rawHeaders.authorization ||
+    rawHeaders.Authorization ||
     (typeof reqObj?.header === "function" ? reqObj.header("authorization") : undefined);
   const sessionToken = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
   const session = sessionToken ? verifyToken<SessionTokenPayload>(sessionToken) : null;
@@ -64,8 +65,8 @@ export async function createContext({ req }: { req: Request; res?: Response } | 
   }
 
   const roleHeader =
-    reqObj?.headers?.["x-role-token"] ||
-    (reqObj?.headers as any)?.["X-Role-Token"] ||
+    rawHeaders["x-role-token"] ||
+    rawHeaders["X-Role-Token"] ||
     (typeof reqObj?.header === "function" ? reqObj.header("x-role-token") : undefined);
   const roleTokenStr = Array.isArray(roleHeader) ? roleHeader[0] : roleHeader;
   const roleToken = typeof roleTokenStr === "string" ? verifyToken<RoleTokenPayload>(roleTokenStr) : null;
