@@ -4,7 +4,18 @@ import { router, approvedProcedure, requirePermission } from "../trpc.js";
 import { Product } from "../../models/Product.js";
 import { Order } from "../../models/Order.js";
 
-const DEFAULT_PRODUCTS = [
+type DefaultProductDef = {
+  name: string;
+  category: "Men's Wear" | "Women's Wear" | "Kids Wear" | "Household" | "Other";
+  serviceType: "Wash & Fold" | "Wash & Iron" | "Dry Clean" | "Iron Only" | "Steam Iron" | "Other";
+  price: number;
+  staffWashRate: number;
+  staffIroningRate: number;
+  rateUnit: "per_piece" | "per_order" | "per_kg";
+  status: "Active" | "Inactive";
+};
+
+const DEFAULT_PRODUCTS: DefaultProductDef[] = [
   { name: "Shirt", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
   { name: "Pant", category: "Men's Wear", serviceType: "Wash & Iron", price: 60, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
   { name: "Vasti / Dhoti", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
