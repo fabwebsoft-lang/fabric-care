@@ -28,6 +28,7 @@ const DEFAULT_PRODUCTS: DefaultProductDef[] = [
 ];
 
 async function ensureDefaultProducts() {
+  // 1. Seed or repair default products
   for (const def of DEFAULT_PRODUCTS) {
     const existing = await Product.findOne({
       name: { $regex: new RegExp(`^${def.name}$`, "i") },
@@ -50,23 +51,96 @@ async function ensureDefaultProducts() {
     }
   }
 
-  // Also check any other unarchived products in database and ensure they have a numeric staffIroningRate
+  // 2. Resolve duplicates and ensure valid numeric rates
   try {
-    const unconfigured = await Product.find({
-      $or: [
-        { staffIroningRate: { $exists: false } },
-        { staffIroningRate: null },
-      ],
-      isArchived: { $ne: true },
-    });
-    for (const p of unconfigured) {
-      p.staffIroningRate = 10;
-      if (p.staffWashRate === undefined || p.staffWashRate === null) {
-        p.staffWashRate = 15;
+    const allActive = await Product.find({ isArchived: { $ne: true } }).sort({ updatedAt: -1 });
+    const seenNames = new Set<string>();
+
+    for (const p of allActive) {
+      const norm = p.name.toLowerCase().trim();
+      if (seenNames.has(norm)) {
+        // Mark redundant duplicate as archived
+        p.isArchived = true;
+        await p.save();
+      } else {
+        seenNames.add(norm);
+        if (p.staffIroningRate === undefined || p.staffIroningRate === null) {
+          p.staffIroningRate = 10;
+          if (p.staffWashRate === undefined || p.staffWashRate === null) {
+            p.staffWashRate = 15;
+          }
+          await p.save();
+        }
       }
-      await p.save();
     }
-  } catch {}
+  } catch (err) {
+    console.error("Failed to clean duplicate products:", err);
+  }
+
+  // 3. Auto-migrate and re-link existing stuck/active orders
+  try {
+    const products = await Product.find({ isArchived: { $ne: true } });
+    const productMap = new Map<string, any>();
+    for (const p of products) {
+      productMap.set(p.name.toLowerCase().trim(), p);
+    }
+    const defaultProduct = productMap.get("standard laundry") || products[0];
+
+    const activeOrders = await Order.find({
+      status: { $in: ["Received", "Processing", "Ironing"] },
+      isDeleted: { $ne: true },
+    });
+
+    for (const order of activeOrders) {
+      let modified = false;
+      if (order.items && order.items.length > 0) {
+        for (const item of order.items) {
+          const rawName = (item.name || "").trim();
+          const prefixMatch = rawName.match(/^(\d+)\s*(?:items|pcs|pieces)?\s*[·\.\:\-\*x\s]\s*(.+)$/i);
+          let cleanName = rawName;
+          if (prefixMatch) {
+            cleanName = prefixMatch[2].trim();
+            if (!item.quantity || item.quantity <= 1) {
+              item.quantity = Number(prefixMatch[1]) || 1;
+              modified = true;
+            }
+          }
+          const matched =
+            productMap.get(cleanName.toLowerCase()) ||
+            Array.from(productMap.values()).find(
+              (p) =>
+                p.name.toLowerCase().includes(cleanName.toLowerCase()) ||
+                cleanName.toLowerCase().includes(p.name.toLowerCase())
+            ) ||
+            defaultProduct;
+
+          if (matched) {
+            if (item.name !== cleanName) {
+              item.name = cleanName;
+              modified = true;
+            }
+            if (!item.productId || item.productId !== matched._id.toString()) {
+              item.productId = matched._id.toString();
+              modified = true;
+            }
+            if (
+              item.staffIroningRate === undefined ||
+              item.staffIroningRate === null ||
+              item.staffIroningRate === 0
+            ) {
+              item.staffIroningRate = matched.staffIroningRate ?? 10;
+              modified = true;
+            }
+          }
+        }
+      }
+      if (modified) {
+        await order.save();
+      }
+    }
+  } catch (err) {
+    console.error("Auto-migration of orders error:", err);
+  }
 }
 
 function toApiProduct(p: any) {

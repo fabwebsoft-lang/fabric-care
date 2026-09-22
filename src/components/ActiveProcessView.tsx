@@ -883,8 +883,10 @@ function CompleteIroningModal({
     const idMap = new Map<string, number>();
     const nameMap = new Map<string, number>();
     for (const p of products) {
-      idMap.set(p.id, p.staffIroningRate !== undefined ? p.staffIroningRate : 10);
-      nameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate !== undefined ? p.staffIroningRate : 10);
+      const rate = p.staffIroningRate !== undefined && p.staffIroningRate !== null ? p.staffIroningRate : 10;
+      if (p.id) idMap.set(String(p.id), rate);
+      if ((p as any)._id) idMap.set(String((p as any)._id), rate);
+      if (p.name) nameMap.set(p.name.toLowerCase().trim(), rate);
     }
     return { productIdRateMap: idMap, productNameRateMap: nameMap };
   }, [products]);
@@ -892,33 +894,30 @@ function CompleteIroningModal({
   // Robust parsing with full string & prefix sanitization
   const parsedGarmentItems = useMemo(() => {
     const sanitizeItem = (rawName: string, rawQty?: number, productId?: string | null, staffRate?: number) => {
-      const trimmed = (rawName || "").trim();
-      // Check for prefix "1 items · Standard Laundry" or "3 pcs · Shirt"
-      const prefixMatch = trimmed.match(/^(\d+)\s*(?:items|pcs|pieces)?\s*[·\-\:]\s*(.+)$/i);
+      let trimmed = (rawName || "").trim();
+      let qty = rawQty && rawQty > 0 ? rawQty : 1;
+
+      // Handle "5 items · Standard Laundry" or "5 pcs - Shirt" or "5 · Standard Laundry"
+      const prefixMatch = trimmed.match(/^(\d+)\s*(?:items|pcs|pieces|garments|cloths|clothes)?\s*[·\.\:\-\*x\s]\s*(.+)$/i);
       if (prefixMatch) {
-        return {
-          productId: productId || null,
-          name: prefixMatch[2].trim(),
-          quantity: rawQty && rawQty > 1 ? rawQty : (Number(prefixMatch[1]) || 1),
-          staffIroningRate: staffRate,
-        };
+        qty = rawQty && rawQty > 1 ? rawQty : (Number(prefixMatch[1]) || 1);
+        trimmed = prefixMatch[2].trim();
       }
-      // Check for "2 x Shirt" or "Shirt x 2"
-      const xMatch = trimmed.match(/^(\d+)\s*x\s*(.+)$/i) || trimmed.match(/^(.+)\s*x\s*(\d+)$/i);
-      if (xMatch) {
-        const qty = Number(xMatch[1]) || Number(xMatch[2]) || 1;
-        const name = (isNaN(Number(xMatch[1])) ? xMatch[1] : xMatch[2]).trim();
-        return {
-          productId: productId || null,
-          name,
-          quantity: rawQty && rawQty > 1 ? rawQty : qty,
-          staffIroningRate: staffRate,
-        };
+
+      // Handle "Standard Laundry · 5 items" or "Shirt x 5"
+      const suffixMatch = trimmed.match(/^(.+?)\s*[·\.\:\-\*x\s]\s*(\d+)\s*(?:items|pcs|pieces)?$/i);
+      if (suffixMatch) {
+        qty = rawQty && rawQty > 1 ? rawQty : (Number(suffixMatch[2]) || 1);
+        trimmed = suffixMatch[1].trim();
       }
+
+      // Remove any leftover prefix
+      trimmed = trimmed.replace(/^\d+\s*(?:items|pcs|pieces)?\s*[·\.\:\-\*]\s*/i, "").trim();
+
       return {
         productId: productId || null,
         name: trimmed || "Standard Laundry",
-        quantity: rawQty || 1,
+        quantity: qty,
         staffIroningRate: staffRate,
       };
     };
@@ -943,22 +942,20 @@ function CompleteIroningModal({
   }, [order]);
 
   const getItemRateAndSource = (item: { productId?: string | null; name: string; staffIroningRate?: number }): { rate: number; source: "product" | "order_snapshot" | "shop_default" | "missing" } => {
-    // 1. Check stable Product ID match (including 0)
-    if (item.productId && productIdRateMap.has(item.productId)) {
-      const r = productIdRateMap.get(item.productId)!;
+    // 1. Check stable Product ID match from live catalog (including 0)
+    if (item.productId && productIdRateMap.has(String(item.productId))) {
+      const r = productIdRateMap.get(String(item.productId))!;
       return { rate: r, source: "product" };
     }
-    // 2. Check snapshot rate saved on order item (including 0)
-    if (item.staffIroningRate !== undefined && item.staffIroningRate !== null) {
-      return { rate: item.staffIroningRate, source: "order_snapshot" };
-    }
-    // 3. Exact name match against products catalog (including 0)
+
+    // 2. Exact name match against live products catalog (including 0)
     const cleanName = item.name.toLowerCase().trim();
     if (productNameRateMap.has(cleanName)) {
       const r = productNameRateMap.get(cleanName)!;
       return { rate: r, source: "product" };
     }
-    // 4. Fuzzy name match fallback
+
+    // 3. Fuzzy / substring name match against live products catalog
     let fuzzyMatch: number | null = null;
     productNameRateMap.forEach((pRate, pName) => {
       if (fuzzyMatch === null && (cleanName.includes(pName) || pName.includes(cleanName))) {
@@ -967,12 +964,17 @@ function CompleteIroningModal({
     });
     if (fuzzyMatch !== null) return { rate: fuzzyMatch, source: "product" };
 
-    // 5. Standard configured fallback for standard laundry/general ironing
+    // 4. Standard configured fallback for standard laundry / general ironing
     if (productNameRateMap.has("standard laundry")) {
       return { rate: productNameRateMap.get("standard laundry")!, source: "product" };
     }
 
-    // 6. Settings default fallback
+    // 5. Positive snapshot rate saved on order item (if custom / positive)
+    if (item.staffIroningRate !== undefined && item.staffIroningRate !== null && item.staffIroningRate > 0) {
+      return { rate: item.staffIroningRate, source: "order_snapshot" };
+    }
+
+    // 6. Shop default fallback from settings
     if (shopFallbackRate !== undefined && shopFallbackRate !== null && shopFallbackRate > 0) {
       return { rate: shopFallbackRate, source: "shop_default" };
     }

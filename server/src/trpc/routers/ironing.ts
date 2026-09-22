@@ -74,21 +74,27 @@ function getISTDateRange(
 }
 
 function extractCleanGarmentName(rawName: string): { cleanName: string; extractedQty?: number } {
-  const trimmed = (rawName || "").trim();
-  const prefixMatch = trimmed.match(/^(\d+)\s*(?:items|pcs|pieces)?\s*[·\-\:]\s*(.+)$/i);
+  let trimmed = (rawName || "").trim();
+  let extractedQty: number | undefined = undefined;
+
+  // Handle "5 items · Standard Laundry" or "5 pcs - Shirt" or "5 · Standard Laundry"
+  const prefixMatch = trimmed.match(/^(\d+)\s*(?:items|pcs|pieces|garments|cloths|clothes)?\s*[·\.\:\-\*x\s]\s*(.+)$/i);
   if (prefixMatch) {
-    return {
-      cleanName: prefixMatch[2].trim(),
-      extractedQty: Number(prefixMatch[1]) || 1,
-    };
+    extractedQty = Number(prefixMatch[1]) || 1;
+    trimmed = prefixMatch[2].trim();
   }
-  const xMatch = trimmed.match(/^(\d+)\s*x\s*(.+)$/i) || trimmed.match(/^(.+)\s*x\s*(\d+)$/i);
-  if (xMatch) {
-    const qty = Number(xMatch[1]) || Number(xMatch[2]) || 1;
-    const name = (isNaN(Number(xMatch[1])) ? xMatch[1] : xMatch[2]).trim();
-    return { cleanName: name, extractedQty: qty };
+
+  // Handle "Standard Laundry · 5 items" or "Shirt x 5"
+  const suffixMatch = trimmed.match(/^(.+?)\s*[·\.\:\-\*x\s]\s*(\d+)\s*(?:items|pcs|pieces)?$/i);
+  if (suffixMatch) {
+    extractedQty = Number(suffixMatch[2]) || 1;
+    trimmed = suffixMatch[1].trim();
   }
-  return { cleanName: trimmed || "Standard Laundry" };
+
+  // Remove any leftover prefix
+  trimmed = trimmed.replace(/^\d+\s*(?:items|pcs|pieces)?\s*[·\.\:\-\*]\s*/i, "").trim();
+
+  return { cleanName: trimmed || "Standard Laundry", extractedQty };
 }
 
 export const ironingRouter = router({
