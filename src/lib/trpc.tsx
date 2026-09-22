@@ -568,9 +568,9 @@ export const trpc = {
     updateStatus: {
       useMutation: (options?: { onSuccess?: (data: Order) => void; onError?: (err: Error) => void }) =>
         useMutation({
-          mutationFn: async (input: { id: string; status: Order["status"] }) => {
+          mutationFn: async (input: { id: string; status: Order["status"]; deliveryType?: "Shop Collection" | "Home Delivery" }) => {
             try {
-              const res = await client.orders.updateStatus.mutate(input);
+              const res = await client.orders.updateStatus.mutate(input as any);
               if (input.status === "Ironing") {
                 setIroningOrderId(input.id, true);
               } else {

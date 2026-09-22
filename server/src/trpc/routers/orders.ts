@@ -206,12 +206,17 @@ export const ordersRouter = router({
       z.object({
         id: z.string(),
         status: z.enum(["Received", "Processing", "Ironing", "Ready", "Collected"]),
+        deliveryType: z.enum(["Shop Collection", "Home Delivery"]).optional(),
       })
     )
     .mutation(async ({ input }) => {
+      const updateData: any = { status: input.status };
+      if (input.deliveryType) {
+        updateData.deliveryType = input.deliveryType;
+      }
       const order = await Order.findByIdAndUpdate(
         input.id,
-        { status: input.status },
+        updateData,
         { new: true }
       );
       if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
@@ -251,12 +256,20 @@ export const ordersRouter = router({
       z.object({
         id: z.string(),
         amount: z.number().positive(),
+        deliveryType: z.enum(["Shop Collection", "Home Delivery"]).optional(),
+        markCollected: z.boolean().optional(),
       })
     )
     .mutation(async ({ input }) => {
       const order = await Order.findById(input.id);
       if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
       order.amountPaid = Math.min(order.totalAmount, order.amountPaid + input.amount);
+      if (input.deliveryType) {
+        order.deliveryType = input.deliveryType;
+      }
+      if (input.markCollected || order.amountPaid >= order.totalAmount) {
+        order.status = "Collected";
+      }
       await order.save();
       return toApiOrder(order);
     }),

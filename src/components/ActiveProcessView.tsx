@@ -678,11 +678,11 @@ export default function ActiveProcessView({
         <PickupModal
           order={selectedOrderForPickup}
           onClose={() => setSelectedOrderForPickup(null)}
-          onSettle={(id, amountPaid) =>
-            settlePaymentMutation.mutate({ id, amount: amountPaid })
+          onSettle={(id, amountPaid, deliveryType) =>
+            settlePaymentMutation.mutate({ id, amount: amountPaid, deliveryType, markCollected: true })
           }
-          onCompleteWithoutPayment={(id) =>
-            updateStatusMutation.mutate({ id, status: "Collected" }, {
+          onCompleteWithoutPayment={(id, deliveryType) =>
+            updateStatusMutation.mutate({ id, status: "Collected", deliveryType }, {
               onSuccess: () => setSelectedOrderForPickup(null),
             })
           }
@@ -1274,19 +1274,22 @@ function PickupModal({
 }: {
   order: Order;
   onClose: () => void;
-  onSettle: (id: string, amountPaid: number) => void;
-  onCompleteWithoutPayment: (id: string) => void;
+  onSettle: (id: string, amountPaid: number, deliveryType: "Shop Collection" | "Home Delivery") => void;
+  onCompleteWithoutPayment: (id: string, deliveryType: "Shop Collection" | "Home Delivery") => void;
   isPending: boolean;
 }) {
   const dueAmount = Math.max(0, order.totalAmount - order.amountPaid);
   const [collectionAmount, setCollectionAmount] = useState<number>(dueAmount);
+  const [deliveryType, setDeliveryType] = useState<"Shop Collection" | "Home Delivery">(
+    (order.deliveryType as any) || "Shop Collection"
+  );
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI");
 
   const handleSubmit = () => {
     if (dueAmount > 0 && collectionAmount > 0) {
-      onSettle(order.id, collectionAmount);
+      onSettle(order.id, collectionAmount, deliveryType);
     } else {
-      onCompleteWithoutPayment(order.id);
+      onCompleteWithoutPayment(order.id, deliveryType);
     }
   };
 
@@ -1297,15 +1300,15 @@ function PickupModal({
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-[#0F4C5C] text-white">
-                STEP 5 OF 5
+                STEP 4 ➔ 5
               </span>
-              <span className="text-[10px] font-semibold text-slate-500">FINAL STAGE</span>
+              <span className="text-[10px] font-semibold text-slate-500">COLLECTION & PAYMENT</span>
             </div>
             <h3 className="text-base sm:text-lg font-bold text-[#0F4C5C]">
               Shop Collection / Delivery & Payment
             </h3>
             <p className="text-[11px] sm:text-xs text-slate-500">
-              Collect outstanding payment & complete customer handover
+              Collect payment & handover garments to move to Step 5 (Payment Settled)
             </p>
           </div>
           <button
@@ -1326,10 +1329,6 @@ function PickupModal({
             <span className="font-bold text-slate-800">{order.customer} ({order.phone})</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-500">Delivery Method:</span>
-            <span className="font-bold text-slate-800">{order.deliveryType || "Shop Collection"}</span>
-          </div>
-          <div className="flex justify-between">
             <span className="text-slate-500">Total Bill Amount:</span>
             <span className="font-bold text-slate-800">₹{order.totalAmount}</span>
           </div>
@@ -1342,6 +1341,39 @@ function PickupModal({
             <span className={`font-bold ${dueAmount > 0 ? "text-rose-600" : "text-emerald-600"}`}>
               ₹{dueAmount}
             </span>
+          </div>
+        </div>
+
+        {/* Handover / Delivery Method Selector */}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bold text-slate-700">
+            Handover Method
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setDeliveryType("Shop Collection")}
+              className={`py-2 px-3 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 transition ${
+                deliveryType === "Shop Collection"
+                  ? "bg-[#0F4C5C] text-white border-[#0F4C5C] shadow-2xs"
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              <ShoppingBag className="size-3.5" />
+              Shop Collection
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeliveryType("Home Delivery")}
+              className={`py-2 px-3 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 transition ${
+                deliveryType === "Home Delivery"
+                  ? "bg-[#0F4C5C] text-white border-[#0F4C5C] shadow-2xs"
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              <Truck className="size-3.5" />
+              Home Delivery
+            </button>
           </div>
         </div>
 
