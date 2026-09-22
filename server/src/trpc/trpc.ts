@@ -6,14 +6,22 @@ import type { SessionTokenPayload, RoleTokenPayload } from "../lib/auth.js";
 import { ROLE_PERMISSIONS, type RoleName, type RolePermissions } from "../lib/permissions.js";
 import { Worker } from "../models/Worker.js";
 
+function getHeader(req: any, headerName: string): string | undefined {
+  if (!req) return undefined;
+  const headers = req.headers || {};
+  const lower = headerName.toLowerCase();
+  const value = headers[lower] ?? headers[headerName];
+  if (Array.isArray(value)) return value[0];
+  if (typeof value === "string") return value;
+  if (typeof req.get === "function") return req.get(headerName);
+  if (typeof req.header === "function") return req.header(headerName);
+  return undefined;
+}
+
 export async function createContext(opts?: any) {
-  const reqObj: any = opts?.req || opts;
-  const rawHeaders = reqObj?.headers || {};
-  const authHeader =
-    rawHeaders.authorization ||
-    rawHeaders.Authorization ||
-    (typeof reqObj?.header === "function" ? reqObj.header("authorization") : undefined);
-  const sessionToken = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+  const req = opts?.req || opts;
+  const authHeader = getHeader(req, "authorization");
+  const sessionToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
   const session = sessionToken ? verifyToken<SessionTokenPayload>(sessionToken) : null;
 
   let selfRole: RoleName | "pending" | null = null;
@@ -64,12 +72,8 @@ export async function createContext(opts?: any) {
     }
   }
 
-  const roleHeader =
-    rawHeaders["x-role-token"] ||
-    rawHeaders["X-Role-Token"] ||
-    (typeof reqObj?.header === "function" ? reqObj.header("x-role-token") : undefined);
-  const roleTokenStr = Array.isArray(roleHeader) ? roleHeader[0] : roleHeader;
-  const roleToken = typeof roleTokenStr === "string" ? verifyToken<RoleTokenPayload>(roleTokenStr) : null;
+  const roleTokenStr = getHeader(req, "x-role-token");
+  const roleToken = roleTokenStr ? verifyToken<RoleTokenPayload>(roleTokenStr) : null;
 
   const activeRole: RoleName | "pending" = roleToken?.role ?? selfRole ?? "admin";
 
