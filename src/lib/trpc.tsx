@@ -75,6 +75,12 @@ export type Expense = {
   paymentMethod: string;
   expenseDate: string;
   notes: string | null;
+  reference?: string | null;
+  staffId?: string | null;
+  taskId?: string | null;
+  orderId?: string | null;
+  isSystemGenerated?: boolean;
+  expenseType?: string;
   createdAt: string;
 };
 
@@ -84,6 +90,9 @@ export type Shop = {
   address: string;
   customerNotifications: number;
   pricingTier: string;
+  defaultStaffIroningRate?: number;
+  defaultStaffWashRate?: number;
+  defaultRateUnit?: "per_piece" | "per_order" | "per_kg";
   shopCode: string;
   lastBackupAt: string | null;
   createdAt: string;
@@ -114,7 +123,9 @@ export type Product = {
   category: "Men's Wear" | "Women's Wear" | "Kids Wear" | "Household" | "Other" | string;
   serviceType: "Wash & Fold" | "Wash & Iron" | "Dry Clean" | "Iron Only" | "Steam Iron" | "Other" | string;
   price: number;
+  staffWashRate?: number;
   staffIroningRate?: number;
+  rateUnit?: "per_piece" | "per_order" | "per_kg";
   status: "Active" | "Inactive";
   isArchived?: boolean;
   createdAt: string;
