@@ -943,37 +943,37 @@ function CompleteIroningModal({
   }, [order]);
 
   const getItemRateAndSource = (item: { productId?: string | null; name: string; staffIroningRate?: number }): { rate: number; source: "product" | "order_snapshot" | "shop_default" | "missing" } => {
-    // 1. Check stable Product ID match
+    // 1. Check stable Product ID match (including 0)
     if (item.productId && productIdRateMap.has(item.productId)) {
       const r = productIdRateMap.get(item.productId)!;
-      if (r > 0) return { rate: r, source: "product" };
+      return { rate: r, source: "product" };
     }
-    // 2. Check snapshot rate saved on order item
-    if (item.staffIroningRate !== undefined && item.staffIroningRate > 0) {
+    // 2. Check snapshot rate saved on order item (including 0)
+    if (item.staffIroningRate !== undefined && item.staffIroningRate !== null) {
       return { rate: item.staffIroningRate, source: "order_snapshot" };
     }
-    // 3. Exact name match against products catalog
+    // 3. Exact name match against products catalog (including 0)
     const cleanName = item.name.toLowerCase().trim();
     if (productNameRateMap.has(cleanName)) {
       const r = productNameRateMap.get(cleanName)!;
-      if (r > 0) return { rate: r, source: "product" };
+      return { rate: r, source: "product" };
     }
     // 4. Fuzzy name match fallback
-    let fuzzyMatch = 0;
+    let fuzzyMatch: number | null = null;
     productNameRateMap.forEach((pRate, pName) => {
-      if (fuzzyMatch === 0 && pRate > 0 && (cleanName.includes(pName) || pName.includes(cleanName))) {
+      if (fuzzyMatch === null && (cleanName.includes(pName) || pName.includes(cleanName))) {
         fuzzyMatch = pRate;
       }
     });
-    if (fuzzyMatch > 0) return { rate: fuzzyMatch, source: "product" };
+    if (fuzzyMatch !== null) return { rate: fuzzyMatch, source: "product" };
 
     // 5. Standard configured fallback for standard laundry/general ironing
-    if (productNameRateMap.has("standard laundry") && productNameRateMap.get("standard laundry")! > 0) {
+    if (productNameRateMap.has("standard laundry")) {
       return { rate: productNameRateMap.get("standard laundry")!, source: "product" };
     }
 
     // 6. Settings default fallback
-    if (shopFallbackRate > 0) {
+    if (shopFallbackRate !== undefined && shopFallbackRate !== null && shopFallbackRate > 0) {
       return { rate: shopFallbackRate, source: "shop_default" };
     }
 
@@ -992,7 +992,7 @@ function CompleteIroningModal({
         staffEarning: item.quantity * customVal,
         source: "custom" as const,
         isUsingDefaultRate: false,
-        isMissingRate: customVal === 0,
+        isMissingRate: false,
       };
     }
     const { rate, source } = getItemRateAndSource(item);
@@ -1004,7 +1004,7 @@ function CompleteIroningModal({
       staffEarning: item.quantity * rate,
       source,
       isUsingDefaultRate: source === "shop_default",
-      isMissingRate: rate === 0,
+      isMissingRate: source === "missing",
     };
   });
 
@@ -1177,7 +1177,12 @@ function CompleteIroningModal({
                       )}
                       {item.isMissingRate && (
                         <span className="inline-block text-[9px] font-bold text-rose-700 bg-rose-100/80 px-1.5 py-0.5 rounded mt-0.5">
-                          ❌ Rate missing (₹0)
+                          ❌ Rate missing — configure in Items/Services
+                        </span>
+                      )}
+                      {!item.isMissingRate && !item.isUsingDefaultRate && item.staffRate === 0 && (
+                        <span className="inline-block text-[9px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded mt-0.5">
+                          ₹0/pc (Explicit rate)
                         </span>
                       )}
                     </div>

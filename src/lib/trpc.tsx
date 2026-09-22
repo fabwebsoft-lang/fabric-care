@@ -1254,7 +1254,13 @@ export const trpc = {
             ratesOverride?: Record<string, number>;
           }) => {
             try {
-              return await client.ironing.completeIroning.mutate(input);
+              const res = await client.ironing.completeIroning.mutate(input);
+              setIroningOrderId(input.orderId, false);
+              // Optimistically advance order status to Ready in cache for instant UI feedback
+              qc.setQueryData(["orders.list"], (old: Order[] | undefined) =>
+                (old || []).map((ord) => (ord.id === input.orderId ? { ...ord, status: "Ready" } : ord))
+              );
+              return res;
             } catch (err) {
               throw new Error(errorMessage(err));
             }

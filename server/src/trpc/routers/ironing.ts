@@ -146,8 +146,10 @@ export const ironingRouter = router({
       const productIdMap = new Map<string, number>();
       const productNameMap = new Map<string, number>();
       for (const p of products) {
-        productIdMap.set(p._id.toString(), p.staffIroningRate !== undefined ? p.staffIroningRate : fallbackDefaultRate);
-        productNameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate !== undefined ? p.staffIroningRate : fallbackDefaultRate);
+        if (p.staffIroningRate !== undefined && p.staffIroningRate !== null) {
+          productIdMap.set(p._id.toString(), p.staffIroningRate);
+          productNameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate);
+        }
       }
 
       const taskItems = rawOrderItems.map((item: any) => {
@@ -157,28 +159,31 @@ export const ironingRouter = router({
         let rate: number | undefined;
         if (item.productId && productIdMap.has(item.productId.toString())) {
           const r = productIdMap.get(item.productId.toString());
-          if (r !== undefined && r > 0) rate = r;
+          if (r !== undefined && r !== null) rate = r;
         }
-        if (rate === undefined && item.staffIroningRate !== undefined && item.staffIroningRate > 0) {
+        if (rate === undefined && item.staffIroningRate !== undefined && item.staffIroningRate !== null) {
           rate = item.staffIroningRate;
         }
         if (rate === undefined) {
           const cleanLower = cleanName.toLowerCase().trim();
           const rawLower = (item.name || "").toLowerCase().trim();
-          if (productNameMap.has(cleanLower) && productNameMap.get(cleanLower)! > 0) {
+          if (productNameMap.has(cleanLower)) {
             rate = productNameMap.get(cleanLower);
-          } else if (productNameMap.has(rawLower) && productNameMap.get(rawLower)! > 0) {
+          } else if (productNameMap.has(rawLower)) {
             rate = productNameMap.get(rawLower);
           } else {
             productNameMap.forEach((pRate, pName) => {
-              if (rate === undefined && pRate > 0 && (cleanLower.includes(pName) || pName.includes(cleanLower))) {
+              if (rate === undefined && (cleanLower.includes(pName) || pName.includes(cleanLower))) {
                 rate = pRate;
               }
             });
           }
         }
+        if (rate === undefined && productNameMap.has("standard laundry")) {
+          rate = productNameMap.get("standard laundry");
+        }
         // Fallback default rate if unconfigured
-        const finalRate = rate !== undefined && rate > 0 ? rate : fallbackDefaultRate;
+        const finalRate = rate !== undefined && rate !== null ? Math.max(0, rate) : fallbackDefaultRate;
         return {
           name: cleanName,
           quantity: qty,
@@ -341,8 +346,10 @@ export const ironingRouter = router({
       const productIdMap = new Map<string, number>();
       const productNameMap = new Map<string, number>();
       for (const p of products) {
-        productIdMap.set(p._id.toString(), p.staffIroningRate !== undefined ? p.staffIroningRate : fallbackDefaultRate);
-        productNameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate !== undefined ? p.staffIroningRate : fallbackDefaultRate);
+        if (p.staffIroningRate !== undefined && p.staffIroningRate !== null) {
+          productIdMap.set(p._id.toString(), p.staffIroningRate);
+          productNameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate);
+        }
       }
 
       // Build task items
@@ -358,29 +365,32 @@ export const ironingRouter = router({
         if (rate === undefined) {
           if (item.productId && productIdMap.has(item.productId.toString())) {
             const r = productIdMap.get(item.productId.toString());
-            if (r !== undefined && r > 0) rate = r;
+            if (r !== undefined && r !== null) rate = r;
           }
-          if (rate === undefined && item.staffIroningRate !== undefined && item.staffIroningRate > 0) {
+          if (rate === undefined && item.staffIroningRate !== undefined && item.staffIroningRate !== null) {
             rate = item.staffIroningRate;
           }
           if (rate === undefined) {
             const cleanLower = cleanName.toLowerCase().trim();
             const rawLower = (item.name || "").toLowerCase().trim();
-            if (productNameMap.has(cleanLower) && productNameMap.get(cleanLower)! > 0) {
+            if (productNameMap.has(cleanLower)) {
               rate = productNameMap.get(cleanLower);
-            } else if (productNameMap.has(rawLower) && productNameMap.get(rawLower)! > 0) {
+            } else if (productNameMap.has(rawLower)) {
               rate = productNameMap.get(rawLower);
             } else {
               productNameMap.forEach((pRate, pName) => {
-                if (rate === undefined && pRate > 0 && (cleanLower.includes(pName) || pName.includes(cleanLower))) {
+                if (rate === undefined && (cleanLower.includes(pName) || pName.includes(cleanLower))) {
                   rate = pRate;
                 }
               });
             }
           }
+          if (rate === undefined && productNameMap.has("standard laundry")) {
+            rate = productNameMap.get("standard laundry");
+          }
         }
         // Fallback default rate if unconfigured
-        const finalRate = rate !== undefined ? Math.max(0, rate) : fallbackDefaultRate;
+        const finalRate = rate !== undefined && rate !== null ? Math.max(0, rate) : fallbackDefaultRate;
 
         return {
           name: cleanName,

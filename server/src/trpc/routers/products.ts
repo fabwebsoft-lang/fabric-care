@@ -28,8 +28,34 @@ async function ensureDefaultProducts() {
       } catch {
         // Ignore if concurrent insert happens
       }
+    } else if (existing.staffIroningRate === undefined || existing.staffIroningRate === null) {
+      existing.staffIroningRate = def.staffIroningRate;
+      if (existing.staffWashRate === undefined || existing.staffWashRate === null) {
+        existing.staffWashRate = def.staffWashRate;
+      }
+      try {
+        await existing.save();
+      } catch {}
     }
   }
+
+  // Also check any other unarchived products in database and ensure they have a numeric staffIroningRate
+  try {
+    const unconfigured = await Product.find({
+      $or: [
+        { staffIroningRate: { $exists: false } },
+        { staffIroningRate: null },
+      ],
+      isArchived: { $ne: true },
+    });
+    for (const p of unconfigured) {
+      p.staffIroningRate = 10;
+      if (p.staffWashRate === undefined || p.staffWashRate === null) {
+        p.staffWashRate = 15;
+      }
+      await p.save();
+    }
+  } catch {}
 }
 
 function toApiProduct(p: any) {
