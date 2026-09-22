@@ -225,10 +225,10 @@ const API_URL = (() => {
     if (host === "localhost" || host === "127.0.0.1") {
       return "http://localhost:4000";
     }
-    // Production Render backend
-    return "https://fabric-care.onrender.com";
+    // In production web deployment (e.g. Vercel), use relative URL to call the built-in serverless backend
+    return "";
   }
-  return "https://fabric-care.onrender.com";
+  return "";
 })();
 
 const client: any = createTRPCClient({
