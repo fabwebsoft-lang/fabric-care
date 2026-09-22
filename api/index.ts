@@ -36,7 +36,13 @@ async function connectDB() {
   if (isConnected || mongoose.connection.readyState === 1) {
     return;
   }
-  const mongoUri = process.env.MONGODB_URI;
+  const mongoUri =
+    process.env.MONGODB_URI ||
+    process.env.DATABASE_URL ||
+    process.env.MONGO_URI ||
+    process.env.MONGODB_URL ||
+    process.env.MONGO_URL;
+
   if (!mongoUri) {
     lastDbError = "MONGODB_URI environment variable is not set in Vercel project settings.";
     console.warn(lastDbError);
@@ -74,12 +80,42 @@ app.use(async (_req: Request, _res: Response, next: NextFunction) => {
 // Handle custom REST endpoints before tRPC
 app.use(async (req: Request, res: Response, next: NextFunction) => {
   if (req.url.includes("health")) {
+    const activeUri =
+      process.env.MONGODB_URI ||
+      process.env.DATABASE_URL ||
+      process.env.MONGO_URI ||
+      process.env.MONGODB_URL ||
+      process.env.MONGO_URL;
+
+    const matchedKey = process.env.MONGODB_URI
+      ? "MONGODB_URI"
+      : process.env.DATABASE_URL
+      ? "DATABASE_URL"
+      : process.env.MONGO_URI
+      ? "MONGO_URI"
+      : process.env.MONGODB_URL
+      ? "MONGODB_URL"
+      : process.env.MONGO_URL
+      ? "MONGO_URL"
+      : null;
+
+    const matchingEnvKeys = Object.keys(process.env).filter(
+      (k) =>
+        k.toUpperCase().includes("MONGO") ||
+        k.toUpperCase().includes("DATABASE") ||
+        k.toUpperCase().includes("URI") ||
+        k.toUpperCase().includes("URL") ||
+        k.toUpperCase().includes("JWT")
+    );
+
     return res.json({
       ok: true,
       status: "healthy",
       db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-      hasMongoUriEnv: Boolean(process.env.MONGODB_URI),
-      mongoHost: process.env.MONGODB_URI ? process.env.MONGODB_URI.split("@")[1]?.split("/")[0] : null,
+      hasMongoUriEnv: Boolean(activeUri),
+      matchedKey,
+      detectedEnvKeys: matchingEnvKeys,
+      mongoHost: activeUri && activeUri.includes("@") ? activeUri.split("@")[1]?.split("/")[0] : null,
       lastDbError,
     });
   }
