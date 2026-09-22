@@ -25,15 +25,7 @@ async function connectDB() {
   console.log("MongoDB connected in Vercel Serverless Function");
 }
 
-const corsOptions: CorsOptions = {
-  origin: (origin, callback) => {
-    // Allow all origins for the laundry management app
-    callback(null, true);
-  },
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 
 // Ensure DB is connected for every request
