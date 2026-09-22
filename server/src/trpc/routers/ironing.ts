@@ -238,7 +238,13 @@ export const ironingRouter = router({
       if (!task) return null;
 
       // If in progress, dynamically refresh item rates from live Product catalog
-      let displayItems = task.items;
+      let displayItems: Array<{ name: string; quantity: number; staffRate: number; staffEarning: number }> =
+        (task.items || []).map((i: any) => ({
+          name: i.name,
+          quantity: i.quantity,
+          staffRate: i.staffRate,
+          staffEarning: i.staffEarning,
+        }));
       let displayTotalPieces = task.totalPieces;
       let displayTotalEarning = task.totalEarning;
 
