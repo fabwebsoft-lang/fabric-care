@@ -10,6 +10,9 @@ import { Expense } from "../server/src/models/Expense.js";
 import { DeletedBill } from "../server/src/models/DeletedBill.js";
 import { Customer } from "../server/src/models/Customer.js";
 import { Product } from "../server/src/models/Product.js";
+import { Worker } from "../server/src/models/Worker.js";
+import { Shop } from "../server/src/models/Shop.js";
+import { Device } from "../server/src/models/Device.js";
 
 const DEFAULT_PRODUCTS = [
   { name: "Shirt", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
@@ -38,7 +41,10 @@ async function connectDB() {
     return;
   }
   mongoose.set("strictQuery", true);
-  await mongoose.connect(mongoUri);
+  await mongoose.connect(mongoUri, {
+    serverSelectionTimeoutMS: 8000,
+    connectTimeoutMS: 10000,
+  });
   isConnected = true;
   console.log("MongoDB connected in Vercel Serverless Function");
 }
@@ -62,6 +68,63 @@ app.get("/health", (_req: Request, res: Response) => {
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ ok: true, status: "healthy", db: mongoose.connection.readyState === 1 ? "connected" : "connecting" });
+});
+
+// Full database audit endpoint for pre-handover verification
+app.get(["/api/audit", "/api/admin/audit"], async (_req: Request, res: Response) => {
+  try {
+    await connectDB();
+
+    const [
+      ordersCount,
+      customersCount,
+      productsCount,
+      workersCount,
+      expensesCount,
+      ironingTasksCount,
+      deletedBillsCount,
+      devicesCount,
+      shopsCount,
+    ] = await Promise.all([
+      Order.countDocuments({}),
+      Customer.countDocuments({}),
+      Product.countDocuments({}),
+      Worker.countDocuments({}),
+      Expense.countDocuments({}),
+      IroningTask.countDocuments({}),
+      DeletedBill.countDocuments({}),
+      Device.countDocuments({}),
+      Shop.countDocuments({}),
+    ]);
+
+    const workers = await Worker.find({}, "name role email active").lean();
+    const shop = await Shop.findOne({}, "name address shopCode").lean();
+    const recentOrders = await Order.find({}, "orderNumber customerName status totalAmount createdAt").sort({ createdAt: -1 }).limit(10).lean();
+    const customersSample = await Customer.find({}, "name phone totalOrders").sort({ createdAt: -1 }).limit(10).lean();
+
+    return res.json({
+      success: true,
+      dbStatus: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+      counts: {
+        orders: ordersCount,
+        customers: customersCount,
+        products: productsCount,
+        workers: workersCount,
+        expenses: expensesCount,
+        ironingTasks: ironingTasksCount,
+        deletedBills_recycleBin: deletedBillsCount,
+        devices: devicesCount,
+        shops: shopsCount,
+      },
+      staffProfiles: workers.map((w: any) => ({ name: w.name, role: w.role, email: w.email || null, active: w.active })),
+      shopConfig: shop ? { name: shop.name, address: shop.address, shopCode: shop.shopCode } : null,
+      ordersSample: recentOrders.map((o: any) => ({ orderNumber: o.orderNumber, customer: o.customerName, status: o.status, amount: o.totalAmount })),
+      customersSample: customersSample.map((c: any) => ({ name: c.name, phone: c.phone, ordersCount: c.totalOrders })),
+    });
+  } catch (err: any) {
+    console.error("Audit error:", err);
+    return res.status(500).json({ success: false, error: err?.message || "Audit failed" });
+  }
 });
 
 // One-touch reset endpoint to clean all test data for client handover
