@@ -71,19 +71,19 @@ app.use(async (_req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
-app.get(["/health", "/api/health"], (_req: Request, res: Response) => {
-  res.json({
-    ok: true,
-    status: "healthy",
-    db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-    hasMongoUriEnv: Boolean(process.env.MONGODB_URI),
-    mongoHost: process.env.MONGODB_URI ? process.env.MONGODB_URI.split("@")[1]?.split("/")[0] : null,
-    lastDbError,
-  });
-});
-
-// Explicit routing for audit and clean-reset to bypass any rewrite prefix ambiguity
+// Handle custom REST endpoints before tRPC
 app.use(async (req: Request, res: Response, next: NextFunction) => {
+  if (req.url.includes("health")) {
+    return res.json({
+      ok: true,
+      status: "healthy",
+      db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+      hasMongoUriEnv: Boolean(process.env.MONGODB_URI),
+      mongoHost: process.env.MONGODB_URI ? process.env.MONGODB_URI.split("@")[1]?.split("/")[0] : null,
+      lastDbError,
+    });
+  }
+
   if (req.url.includes("audit")) {
     try {
       await connectDB();
