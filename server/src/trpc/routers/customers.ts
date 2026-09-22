@@ -284,4 +284,9 @@ export const customersRouter = router({
       }
       return { success: true };
     }),
+
+  deleteAll: requirePermission("canDeleteCustomers").mutation(async () => {
+    await Customer.deleteMany({});
+    return { success: true };
+  }),
 });

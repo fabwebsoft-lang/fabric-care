@@ -28,54 +28,36 @@ const DEFAULT_PRODUCTS: DefaultProductDef[] = [
 ];
 
 async function ensureDefaultProducts() {
-  // 1. Seed or repair default products
-  for (const def of DEFAULT_PRODUCTS) {
-    const existing = await Product.findOne({
-      name: { $regex: new RegExp(`^${def.name}$`, "i") },
-      isArchived: { $ne: true },
-    });
-    if (!existing) {
+  const activeCount = await Product.countDocuments({ isArchived: { $ne: true } });
+  if (activeCount === 0) {
+    for (const def of DEFAULT_PRODUCTS) {
       try {
         await Product.create(def);
-      } catch {
-        // Ignore if concurrent insert happens
-      }
-    } else if (existing.staffIroningRate === undefined || existing.staffIroningRate === null) {
-      existing.staffIroningRate = def.staffIroningRate;
-      if (existing.staffWashRate === undefined || existing.staffWashRate === null) {
-        existing.staffWashRate = def.staffWashRate;
-      }
-      try {
-        await existing.save();
       } catch {}
     }
   }
 
-  // 2. Resolve duplicates and ensure valid numeric rates
+  // Ensure valid numeric rates
   try {
-    const allActive = await Product.find({ isArchived: { $ne: true } }).sort({ updatedAt: -1 });
-    const seenNames = new Set<string>();
-
+    const allActive = await Product.find({ isArchived: { $ne: true } });
     for (const p of allActive) {
-      const norm = p.name.toLowerCase().trim();
-      if (seenNames.has(norm)) {
-        // Mark redundant duplicate as archived
-        p.isArchived = true;
+      let modified = false;
+      if (p.staffIroningRate === undefined || p.staffIroningRate === null) {
+        p.staffIroningRate = 10;
+        modified = true;
+      }
+      if (p.staffWashRate === undefined || p.staffWashRate === null) {
+        p.staffWashRate = 15;
+        modified = true;
+      }
+      if (modified) {
         await p.save();
-      } else {
-        seenNames.add(norm);
-        if (p.staffIroningRate === undefined || p.staffIroningRate === null) {
-          p.staffIroningRate = 10;
-          if (p.staffWashRate === undefined || p.staffWashRate === null) {
-            p.staffWashRate = 15;
-          }
-          await p.save();
-        }
       }
     }
   } catch (err) {
-    console.error("Failed to clean duplicate products:", err);
+    console.error("Failed to verify product rates:", err);
   }
+}
 
   // 3. Auto-migrate and re-link existing stuck/active orders
   try {
@@ -331,4 +313,17 @@ export const productsRouter = router({
         return { success: true, archived: false };
       }
     }),
+
+  deleteAll: requirePermission("canManageSettings").mutation(async () => {
+    await Product.deleteMany({});
+    return { success: true };
+  }),
+
+  resetDefaults: requirePermission("canManageSettings").mutation(async () => {
+    await Product.deleteMany({});
+    for (const def of DEFAULT_PRODUCTS) {
+      await Product.create(def);
+    }
+    return { success: true };
+  }),
 });

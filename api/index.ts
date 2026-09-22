@@ -46,6 +46,55 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ ok: true, status: "healthy", db: mongoose.connection.readyState === 1 ? "connected" : "connecting" });
 });
 
+// One-touch reset endpoint to clean all test data for client handover
+app.all(["/api/clean-reset", "/api/admin/clean-reset"], async (_req: Request, res: Response) => {
+  try {
+    await connectDB();
+    const { Order } = await import("../server/src/models/Order.js");
+    const { IroningTask } = await import("../server/src/models/IroningTask.js");
+    const { Expense } = await import("../server/src/models/Expense.js");
+    const { DeletedBill } = await import("../server/src/models/DeletedBill.js");
+    const { Customer } = await import("../server/src/models/Customer.js");
+    const { Product } = await import("../server/src/models/Product.js");
+
+    await Order.deleteMany({});
+    await IroningTask.deleteMany({});
+    await Expense.deleteMany({});
+    await DeletedBill.deleteMany({});
+    await Customer.deleteMany({});
+    await Product.deleteMany({});
+
+    const DEFAULT_PRODUCTS = [
+      { name: "Shirt", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+      { name: "Pant", category: "Men's Wear", serviceType: "Wash & Iron", price: 60, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+      { name: "Vasti / Dhoti", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+      { name: "Suit (2-pc)", category: "Men's Wear", serviceType: "Dry Clean", price: 180, staffWashRate: 50, staffIroningRate: 30, rateUnit: "per_piece", status: "Active" },
+      { name: "Saree", category: "Women's Wear", serviceType: "Dry Clean", price: 120, staffWashRate: 40, staffIroningRate: 25, rateUnit: "per_piece", status: "Active" },
+      { name: "Dress", category: "Women's Wear", serviceType: "Wash & Iron", price: 100, staffWashRate: 25, staffIroningRate: 15, rateUnit: "per_piece", status: "Active" },
+      { name: "Blanket", category: "Household", serviceType: "Wash & Fold", price: 200, staffWashRate: 50, staffIroningRate: 0, rateUnit: "per_piece", status: "Active" },
+      { name: "Curtain", category: "Household", serviceType: "Wash & Fold", price: 150, staffWashRate: 40, staffIroningRate: 20, rateUnit: "per_piece", status: "Active" },
+      { name: "Standard Laundry", category: "Other", serviceType: "Wash & Iron", price: 60, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+    ];
+    for (const def of DEFAULT_PRODUCTS) {
+      await Product.create(def);
+    }
+
+    return res.json({
+      success: true,
+      message: "Database successfully wiped and reset to clean state for client handover.",
+      resetCounts: {
+        orders: 0,
+        expenses: 0,
+        customers: 0,
+        defaultProductsCount: DEFAULT_PRODUCTS.length,
+      },
+    });
+  } catch (err: any) {
+    console.error("Clean reset error:", err);
+    return res.status(500).json({ success: false, error: err?.message || "Failed to reset database" });
+  }
+});
+
 // tRPC handlers - mount on multiple paths to handle Vercel rewrites robustly
 const trpcMiddleware = createExpressMiddleware({
   router: appRouter,

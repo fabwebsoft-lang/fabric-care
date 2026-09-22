@@ -121,4 +121,9 @@ export const expensesRouter = router({
       }
       return { success: true };
     }),
+
+  deleteAll: requirePermission("canDeleteExpenses").mutation(async () => {
+    await Expense.deleteMany({});
+    return { success: true };
+  }),
 });

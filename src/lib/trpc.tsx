@@ -728,6 +728,32 @@ export const trpc = {
         });
       },
     },
+    deleteAll: {
+      useMutation: (options?: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async () => {
+            clearLocalDeletedBills("order");
+            try {
+              return await client.orders.deleteAll.mutate();
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: async () => {
+            qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["ironing.reports"] });
+            qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
+            qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            options?.onSuccess?.();
+          },
+          onError: options?.onError,
+        });
+      },
+    },
   },
 
   customers: {
@@ -801,6 +827,29 @@ export const trpc = {
           onError: options?.onError,
         }),
     },
+    deleteAll: {
+      useMutation: (options?: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async () => {
+            clearLocalDeletedBills("customer");
+            try {
+              return await client.customers.deleteAll.mutate();
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: async () => {
+            qc.invalidateQueries({ queryKey: ["customers.list"] });
+            qc.invalidateQueries({ queryKey: ["customers.search"] });
+            qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
+            qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
+            options?.onSuccess?.();
+          },
+          onError: options?.onError,
+        });
+      },
+    },
   },
 
   expenses: {
@@ -855,6 +904,29 @@ export const trpc = {
           onError: options?.onError,
         }),
     },
+    deleteAll: {
+      useMutation: (options?: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async () => {
+            clearLocalDeletedBills("expense");
+            try {
+              return await client.expenses.deleteAll.mutate();
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: async () => {
+            qc.invalidateQueries({ queryKey: ["expenses.list"] });
+            qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
+            qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            options?.onSuccess?.();
+          },
+          onError: options?.onError,
+        });
+      },
+    },
   },
 
   shops: {
@@ -894,6 +966,49 @@ export const trpc = {
           onSuccess: options?.onSuccess,
           onError: options?.onError,
         }),
+    },
+    resetAllData: {
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input?: {
+            resetProductsToDefault?: boolean;
+            clearAllProducts?: boolean;
+            clearOrders?: boolean;
+            clearExpenses?: boolean;
+            clearCustomers?: boolean;
+            clearRecycleBin?: boolean;
+            clearDevices?: boolean;
+          }) => {
+            clearLocalDeletedBills("all");
+            try {
+              return await client.shops.resetAllData.mutate(input || {});
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: async (data) => {
+            await Promise.all([
+              qc.invalidateQueries({ queryKey: ["orders.list"] }),
+              qc.invalidateQueries({ queryKey: ["products.list"] }),
+              qc.invalidateQueries({ queryKey: ["products.activeList"] }),
+              qc.invalidateQueries({ queryKey: ["expenses.list"] }),
+              qc.invalidateQueries({ queryKey: ["customers.list"] }),
+              qc.invalidateQueries({ queryKey: ["customers.search"] }),
+              qc.invalidateQueries({ queryKey: ["dashboard.stats"] }),
+              qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] }),
+              qc.invalidateQueries({ queryKey: ["ironing.todayStats"] }),
+              qc.invalidateQueries({ queryKey: ["ironing.reports"] }),
+              qc.invalidateQueries({ queryKey: ["recycleBin.list"] }),
+              qc.invalidateQueries({ queryKey: ["recycleBin.counts"] }),
+              qc.invalidateQueries({ queryKey: ["reports.businessStatements"] }),
+              qc.invalidateQueries({ queryKey: ["shops.list"] }),
+            ]);
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
     },
   },
 
@@ -1205,6 +1320,46 @@ export const trpc = {
             qc.invalidateQueries({ queryKey: ["products.list"] });
             qc.invalidateQueries({ queryKey: ["products.activeList"] });
             options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+    deleteAll: {
+      useMutation: (options?: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async () => {
+            try {
+              return await client.products.deleteAll.mutate();
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["products.list"] });
+            qc.invalidateQueries({ queryKey: ["products.activeList"] });
+            options?.onSuccess?.();
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+    resetDefaults: {
+      useMutation: (options?: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async () => {
+            try {
+              return await client.products.resetDefaults.mutate();
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["products.list"] });
+            qc.invalidateQueries({ queryKey: ["products.activeList"] });
+            options?.onSuccess?.();
           },
           onError: options?.onError,
         });

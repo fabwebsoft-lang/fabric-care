@@ -20,6 +20,10 @@ import {
   Percent,
   Download,
   HelpCircle,
+  Trash2,
+  AlertTriangle,
+  RefreshCw,
+  Database,
 } from "lucide-react";
 import { toast } from "sonner";
 import { usePWAInstall, IOSInstallGuideModal } from "./InstallModal";
@@ -35,8 +39,80 @@ export default function SettingsView({
   const utils = trpc.useUtils();
   const { installed, showIOSGuide, setShowIOSGuide, handleInstallClick } = usePWAInstall();
   const [showHelp, setShowHelp] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [resetScope, setResetScope] = useState<"all" | "orders" | "expenses" | "customers" | "products">("all");
 
   const [activeTab, setActiveTab] = useState<"general" | "invoice" | "roles" | "devices" | "account">(initialTab);
+
+  const resetAllDataMutation = trpc.shops.resetAllData.useMutation({
+    onSuccess: (data) => {
+      setShowResetModal(false);
+      setResetConfirmText("");
+      toast.success("Database Reset Complete", {
+        description: data.message || "All selected data has been wiped cleanly for client handover.",
+      });
+    },
+    onError: (err) => {
+      toast.error("Failed to reset database", { description: err.message });
+    },
+  });
+
+  const handleExecuteReset = () => {
+    if (resetConfirmText.trim().toLowerCase() !== "reset") {
+      toast.error("Confirmation Mismatch", {
+        description: 'Please type "RESET" in the confirmation box to proceed.',
+      });
+      return;
+    }
+
+    if (resetScope === "all") {
+      resetAllDataMutation.mutate({
+        resetProductsToDefault: true,
+        clearAllProducts: false,
+        clearOrders: true,
+        clearExpenses: true,
+        clearCustomers: true,
+        clearRecycleBin: true,
+      });
+    } else if (resetScope === "orders") {
+      resetAllDataMutation.mutate({
+        resetProductsToDefault: false,
+        clearAllProducts: false,
+        clearOrders: true,
+        clearExpenses: false,
+        clearCustomers: false,
+        clearRecycleBin: true,
+      });
+    } else if (resetScope === "expenses") {
+      resetAllDataMutation.mutate({
+        resetProductsToDefault: false,
+        clearAllProducts: false,
+        clearOrders: false,
+        clearExpenses: true,
+        clearCustomers: false,
+        clearRecycleBin: false,
+      });
+    } else if (resetScope === "customers") {
+      resetAllDataMutation.mutate({
+        resetProductsToDefault: false,
+        clearAllProducts: false,
+        clearOrders: false,
+        clearExpenses: false,
+        clearCustomers: true,
+        clearRecycleBin: false,
+      });
+    } else if (resetScope === "products") {
+      resetAllDataMutation.mutate({
+        resetProductsToDefault: true,
+        clearAllProducts: false,
+        clearOrders: false,
+        clearExpenses: false,
+        clearCustomers: false,
+        clearRecycleBin: false,
+      });
+    }
+  };
 
   const { data: shops = [] } = trpc.shops.list.useQuery();
   const shop = shops[0];
@@ -623,6 +699,71 @@ export default function SettingsView({
             </div>
           </div>
 
+          {/* Danger Zone: Clean Slate & Reset for Client Handover */}
+          {canManageSettings && (
+            <div className="bg-rose-50/60 border border-rose-200 p-4 sm:p-5 rounded-2xl shadow-xs space-y-3">
+              <div className="flex items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-rose-100 text-rose-700 rounded-xl shrink-0">
+                    <Trash2 className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-rose-950 text-sm">Client Handover / Factory Data Reset</h3>
+                    <p className="text-[11px] sm:text-xs text-rose-700 mt-0.5">
+                      Wipe all test orders, expenses, customer records, and reset the catalog for clean client delivery
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-rose-200/80">
+                <button
+                  onClick={() => {
+                    setResetScope("all");
+                    setResetConfirmText("");
+                    setShowResetModal(true);
+                  }}
+                  className="w-full py-2.5 px-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition shadow-xs flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                >
+                  <RefreshCw className="size-3.5" /> Full Clean Reset (All Features)
+                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setResetScope("orders");
+                      setResetConfirmText("");
+                      setShowResetModal(true);
+                    }}
+                    className="flex-1 py-2.5 px-2.5 bg-white border border-rose-300 hover:bg-rose-100 text-rose-800 font-semibold text-xs rounded-xl transition active:scale-95 cursor-pointer text-center"
+                  >
+                    Clear Orders
+                  </button>
+                  <button
+                    onClick={() => {
+                      setResetScope("expenses");
+                      setResetConfirmText("");
+                      setShowResetModal(true);
+                    }}
+                    className="flex-1 py-2.5 px-2.5 bg-white border border-rose-300 hover:bg-rose-100 text-rose-800 font-semibold text-xs rounded-xl transition active:scale-95 cursor-pointer text-center"
+                  >
+                    Clear Expenses
+                  </button>
+                  <button
+                    onClick={() => {
+                      setResetScope("customers");
+                      setResetConfirmText("");
+                      setShowResetModal(true);
+                    }}
+                    className="flex-1 py-2.5 px-2.5 bg-white border border-rose-300 hover:bg-rose-100 text-rose-800 font-semibold text-xs rounded-xl transition active:scale-95 cursor-pointer text-center"
+                  >
+                    Clear Customers
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Install PWA section if not already installed */}
           {!installed && (
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
@@ -657,6 +798,85 @@ export default function SettingsView({
                 className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-[#0F4C5C] text-xs font-bold rounded-xl transition active:scale-95"
               >
                 Contact Us
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Resetting Database */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="p-3 bg-rose-100 rounded-2xl">
+                <AlertTriangle className="size-6 text-rose-600" />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900 text-base">
+                  {resetScope === "all"
+                    ? "Full Project & Data Reset"
+                    : `Reset ${resetScope.charAt(0).toUpperCase() + resetScope.slice(1)} Data`}
+                </h4>
+                <p className="text-xs text-slate-500">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <div className="bg-rose-50 border border-rose-200/80 rounded-2xl p-4 text-xs text-rose-900 space-y-2">
+              <p className="font-semibold">
+                {resetScope === "all"
+                  ? "Are you sure you want to clean-reset the entire project data for client handover?"
+                  : `Are you sure you want to delete all ${resetScope}?`}
+              </p>
+              {resetScope === "all" && (
+                <ul className="list-disc pl-4 space-y-1 text-rose-800 text-[11px]">
+                  <li>All test orders & active processes will be permanently deleted.</li>
+                  <li>All shop expenses and staff labour records will be wiped.</li>
+                  <li>All test customer accounts will be cleared.</li>
+                  <li>The product catalog will be cleanly reset to the standard 9 item default template.</li>
+                  <li>Recycle bin and temporary caches will be cleared.</li>
+                </ul>
+              )}
+            </div>
+
+            <div className="space-y-1.5 text-xs">
+              <label className="block text-slate-700 font-bold">
+                Type <span className="text-rose-600 font-mono font-extrabold tracking-wider">RESET</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                placeholder="RESET"
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono font-bold text-center tracking-widest text-slate-800 uppercase"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowResetModal(false)}
+                disabled={resetAllDataMutation.isPending}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteReset}
+                disabled={resetConfirmText.trim().toLowerCase() !== "reset" || resetAllDataMutation.isPending}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition shadow-xs flex items-center justify-center gap-2"
+              >
+                {resetAllDataMutation.isPending ? (
+                  <>
+                    <RefreshCw className="size-3.5 animate-spin" /> Resetting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="size-3.5" /> Confirm Reset
+                  </>
+                )}
               </button>
             </div>
           </div>

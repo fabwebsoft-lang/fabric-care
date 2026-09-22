@@ -384,4 +384,11 @@ export const ordersRouter = router({
 
       return { success: true };
     }),
+
+  deleteAll: requirePermission("canDeleteOrders").mutation(async () => {
+    await Order.deleteMany({});
+    await IroningTask.deleteMany({});
+    await DeletedBill.deleteMany({});
+    return { success: true };
+  }),
 });

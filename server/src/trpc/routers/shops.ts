@@ -1,6 +1,36 @@
 import { z } from "zod";
 import { router, approvedProcedure, requirePermission } from "../trpc.js";
 import { Shop } from "../../models/Shop.js";
+import { Order } from "../../models/Order.js";
+import { IroningTask } from "../../models/IroningTask.js";
+import { Expense } from "../../models/Expense.js";
+import { DeletedBill } from "../../models/DeletedBill.js";
+import { Customer } from "../../models/Customer.js";
+import { Product } from "../../models/Product.js";
+import { Device } from "../../models/Device.js";
+
+type DefaultProductDef = {
+  name: string;
+  category: "Men's Wear" | "Women's Wear" | "Kids Wear" | "Household" | "Other";
+  serviceType: "Wash & Fold" | "Wash & Iron" | "Dry Clean" | "Iron Only" | "Steam Iron" | "Other";
+  price: number;
+  staffWashRate: number;
+  staffIroningRate: number;
+  rateUnit: "per_piece" | "per_order" | "per_kg";
+  status: "Active" | "Inactive";
+};
+
+const DEFAULT_PRODUCTS: DefaultProductDef[] = [
+  { name: "Shirt", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+  { name: "Pant", category: "Men's Wear", serviceType: "Wash & Iron", price: 60, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+  { name: "Vasti / Dhoti", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+  { name: "Suit (2-pc)", category: "Men's Wear", serviceType: "Dry Clean", price: 180, staffWashRate: 50, staffIroningRate: 30, rateUnit: "per_piece", status: "Active" },
+  { name: "Saree", category: "Women's Wear", serviceType: "Dry Clean", price: 120, staffWashRate: 40, staffIroningRate: 25, rateUnit: "per_piece", status: "Active" },
+  { name: "Dress", category: "Women's Wear", serviceType: "Wash & Iron", price: 100, staffWashRate: 25, staffIroningRate: 15, rateUnit: "per_piece", status: "Active" },
+  { name: "Blanket", category: "Household", serviceType: "Wash & Fold", price: 200, staffWashRate: 50, staffIroningRate: 0, rateUnit: "per_piece", status: "Active" },
+  { name: "Curtain", category: "Household", serviceType: "Wash & Fold", price: 150, staffWashRate: 40, staffIroningRate: 20, rateUnit: "per_piece", status: "Active" },
+  { name: "Standard Laundry", category: "Other", serviceType: "Wash & Iron", price: 60, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+];
 
 async function getOrCreateShop() {
   let shop = await Shop.findOne();
@@ -68,4 +98,63 @@ export const shopsRouter = router({
     await shop.save();
     return { lastBackupAt: shop.lastBackupAt.toISOString() };
   }),
+
+  resetAllData: requirePermission("canManageSettings")
+    .input(
+      z
+        .object({
+          resetProductsToDefault: z.boolean().default(true),
+          clearAllProducts: z.boolean().default(false),
+          clearOrders: z.boolean().default(true),
+          clearExpenses: z.boolean().default(true),
+          clearCustomers: z.boolean().default(true),
+          clearRecycleBin: z.boolean().default(true),
+          clearDevices: z.boolean().default(false),
+        })
+        .optional()
+    )
+    .mutation(async ({ input }) => {
+      const resetProducts = input?.resetProductsToDefault ?? true;
+      const clearProducts = input?.clearAllProducts ?? false;
+      const clearOrders = input?.clearOrders ?? true;
+      const clearExpenses = input?.clearExpenses ?? true;
+      const clearCustomers = input?.clearCustomers ?? true;
+      const clearRecycleBin = input?.clearRecycleBin ?? true;
+      const clearDevices = input?.clearDevices ?? false;
+
+      if (clearOrders) {
+        await Order.deleteMany({});
+        await IroningTask.deleteMany({});
+      }
+
+      if (clearExpenses) {
+        await Expense.deleteMany({});
+      }
+
+      if (clearRecycleBin) {
+        await DeletedBill.deleteMany({});
+      }
+
+      if (clearCustomers) {
+        await Customer.deleteMany({});
+      }
+
+      if (clearDevices) {
+        await Device.deleteMany({});
+      }
+
+      if (clearProducts) {
+        await Product.deleteMany({});
+      } else if (resetProducts) {
+        await Product.deleteMany({});
+        for (const def of DEFAULT_PRODUCTS) {
+          await Product.create(def);
+        }
+      }
+
+      return {
+        success: true,
+        message: "All selected data has been completely cleared and reset.",
+      };
+    }),
 });
