@@ -148,7 +148,7 @@ export const shopsRouter = router({
       } else if (resetProducts) {
         await Product.deleteMany({});
         for (const def of DEFAULT_PRODUCTS) {
-          await Product.create(def);
+          await Product.create(def as any);
         }
       }
 

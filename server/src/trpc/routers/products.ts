@@ -32,7 +32,7 @@ async function ensureDefaultProducts() {
   if (activeCount === 0) {
     for (const def of DEFAULT_PRODUCTS) {
       try {
-        await Product.create(def);
+        await Product.create(def as any);
       } catch {}
     }
   }
@@ -57,7 +57,6 @@ async function ensureDefaultProducts() {
   } catch (err) {
     console.error("Failed to verify product rates:", err);
   }
-}
 
   // 3. Auto-migrate and re-link existing stuck/active orders
   try {
@@ -322,7 +321,7 @@ export const productsRouter = router({
   resetDefaults: requirePermission("canManageSettings").mutation(async () => {
     await Product.deleteMany({});
     for (const def of DEFAULT_PRODUCTS) {
-      await Product.create(def);
+      await Product.create(def as any);
     }
     return { success: true };
   }),

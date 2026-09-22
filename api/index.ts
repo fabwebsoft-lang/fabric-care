@@ -77,7 +77,7 @@ app.all(["/api/clean-reset", "/api/admin/clean-reset"], async (_req: Request, re
     await Product.deleteMany({});
 
     for (const def of DEFAULT_PRODUCTS) {
-      await Product.create(def);
+      await Product.create(def as any);
     }
 
     return res.json({
