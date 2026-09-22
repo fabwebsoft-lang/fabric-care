@@ -331,7 +331,7 @@ export const recycleBinRouter = router({
           deleted = await Order.findOneAndDelete({ _id: input.id.trim() });
         }
         if (!deleted && mongoose.isValidObjectId(input.id)) {
-          deleted = await Order.findByIdAndDelete(new mongoose.Types.ObjectId(input.id));
+          deleted = await Order.findByIdAndDelete(new (mongoose.Types.ObjectId as any)(input.id));
         }
         return { success: true, message: `Order ${input.id} permanently deleted` };
       }

@@ -616,7 +616,7 @@ export const ironingRouter = router({
       };
 
       if (input?.staffId && input.staffId !== "all") {
-        filter.staffId = new mongoose.Types.ObjectId(input.staffId);
+        filter.staffId = new (mongoose.Types.ObjectId as any)(input.staffId);
       }
 
       const tasks = await IroningTask.find(filter).sort({ completedAt: -1 }).lean();

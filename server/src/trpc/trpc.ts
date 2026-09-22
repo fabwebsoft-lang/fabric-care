@@ -1,12 +1,14 @@
 import { initTRPC, TRPCError } from "@trpc/server";
+import type { Request, Response } from "express";
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import { verifyToken } from "../lib/auth.js";
 import type { SessionTokenPayload, RoleTokenPayload } from "../lib/auth.js";
 import { ROLE_PERMISSIONS, type RoleName, type RolePermissions } from "../lib/permissions.js";
 import { Worker } from "../models/Worker.js";
 
-export async function createContext({ req }: CreateExpressContextOptions) {
-  const authHeader = req.headers.authorization;
+export async function createContext({ req }: { req: Request; res?: Response } | CreateExpressContextOptions | any) {
+  const reqObj = req as Request;
+  const authHeader = reqObj?.headers?.authorization;
   const sessionToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
   const session = sessionToken ? verifyToken<SessionTokenPayload>(sessionToken) : null;
 
@@ -31,7 +33,7 @@ export async function createContext({ req }: CreateExpressContextOptions) {
     }
   }
 
-  const roleHeader = req.headers["x-role-token"];
+  const roleHeader = reqObj?.headers?.["x-role-token"];
   const roleTokenStr = Array.isArray(roleHeader) ? roleHeader[0] : roleHeader;
   const roleToken = roleTokenStr ? verifyToken<RoleTokenPayload>(roleTokenStr) : null;
 

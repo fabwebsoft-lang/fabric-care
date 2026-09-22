@@ -336,7 +336,7 @@ export const ordersRouter = router({
         order = await Order.findOne({
           $or: [
             { _id: { $regex: `^${input.id.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } },
-            ...(mongoose.isValidObjectId(input.id.trim()) ? [{ _id: new mongoose.Types.ObjectId(input.id.trim()) as any }] : []),
+            ...(mongoose.isValidObjectId(input.id.trim()) ? [{ _id: new (mongoose.Types.ObjectId as any)(input.id.trim()) }] : []),
           ],
         });
       }
