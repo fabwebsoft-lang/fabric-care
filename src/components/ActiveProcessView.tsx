@@ -956,11 +956,13 @@ function CompleteIroningModal({
       if (r > 0) return r;
     }
     // 4. Fuzzy name match fallback
-    for (const [pName, pRate] of productNameRateMap.entries()) {
-      if (pRate > 0 && (cleanName.includes(pName) || pName.includes(cleanName))) {
-        return pRate;
+    let fuzzyMatch = 0;
+    productNameRateMap.forEach((pRate, pName) => {
+      if (fuzzyMatch === 0 && pRate > 0 && (cleanName.includes(pName) || pName.includes(cleanName))) {
+        fuzzyMatch = pRate;
       }
-    }
+    });
+    if (fuzzyMatch > 0) return fuzzyMatch;
     // 5. Standard configured fallback for standard laundry/general ironing
     if (productNameRateMap.has("standard laundry") && productNameRateMap.get("standard laundry")! > 0) {
       return productNameRateMap.get("standard laundry")!;

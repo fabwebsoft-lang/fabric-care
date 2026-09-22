@@ -72,6 +72,24 @@ function getISTDateRange(
   return { start, end };
 }
 
+function extractCleanGarmentName(rawName: string): { cleanName: string; extractedQty?: number } {
+  const trimmed = (rawName || "").trim();
+  const prefixMatch = trimmed.match(/^(\d+)\s*(?:items|pcs|pieces)?\s*[·\-\:]\s*(.+)$/i);
+  if (prefixMatch) {
+    return {
+      cleanName: prefixMatch[2].trim(),
+      extractedQty: Number(prefixMatch[1]) || 1,
+    };
+  }
+  const xMatch = trimmed.match(/^(\d+)\s*x\s*(.+)$/i) || trimmed.match(/^(.+)\s*x\s*(\d+)$/i);
+  if (xMatch) {
+    const qty = Number(xMatch[1]) || Number(xMatch[2]) || 1;
+    const name = (isNaN(Number(xMatch[1])) ? xMatch[1] : xMatch[2]).trim();
+    return { cleanName: name, extractedQty: qty };
+  }
+  return { cleanName: trimmed || "Standard Laundry" };
+}
+
 export const ironingRouter = router({
   /**
    * Start ironing stage for an order by assigning an active staff member.
@@ -97,24 +115,6 @@ export const ironingRouter = router({
           message: "Please select an active staff member.",
         });
       }
-
-function extractCleanGarmentName(rawName: string): { cleanName: string; extractedQty?: number } {
-  const trimmed = (rawName || "").trim();
-  const prefixMatch = trimmed.match(/^(\d+)\s*(?:items|pcs|pieces)?\s*[·\-\:]\s*(.+)$/i);
-  if (prefixMatch) {
-    return {
-      cleanName: prefixMatch[2].trim(),
-      extractedQty: Number(prefixMatch[1]) || 1,
-    };
-  }
-  const xMatch = trimmed.match(/^(\d+)\s*x\s*(.+)$/i) || trimmed.match(/^(.+)\s*x\s*(\d+)$/i);
-  if (xMatch) {
-    const qty = Number(xMatch[1]) || Number(xMatch[2]) || 1;
-    const name = (isNaN(Number(xMatch[1])) ? xMatch[1] : xMatch[2]).trim();
-    return { cleanName: name, extractedQty: qty };
-  }
-  return { cleanName: trimmed || "Standard Laundry" };
-}
 
       // Fetch products to pull configured staff ironing rates (by ID first, fallback to name)
       const rawOrderItems = (order.items && order.items.length > 0)
@@ -166,12 +166,11 @@ function extractCleanGarmentName(rawName: string): { cleanName: string; extracte
           } else if (productNameMap.has(rawLower) && productNameMap.get(rawLower)! > 0) {
             rate = productNameMap.get(rawLower);
           } else {
-            for (const [pName, pRate] of productNameMap.entries()) {
-              if (pRate > 0 && (cleanLower.includes(pName) || pName.includes(cleanLower))) {
+            productNameMap.forEach((pRate, pName) => {
+              if (rate === undefined && pRate > 0 && (cleanLower.includes(pName) || pName.includes(cleanLower))) {
                 rate = pRate;
-                break;
               }
-            }
+            });
           }
         }
         // Fallback default rate if unconfigured
@@ -365,12 +364,11 @@ function extractCleanGarmentName(rawName: string): { cleanName: string; extracte
             } else if (productNameMap.has(rawLower) && productNameMap.get(rawLower)! > 0) {
               rate = productNameMap.get(rawLower);
             } else {
-              for (const [pName, pRate] of productNameMap.entries()) {
-                if (pRate > 0 && (cleanLower.includes(pName) || pName.includes(cleanLower))) {
+              productNameMap.forEach((pRate, pName) => {
+                if (rate === undefined && pRate > 0 && (cleanLower.includes(pName) || pName.includes(cleanLower))) {
                   rate = pRate;
-                  break;
                 }
-              }
+              });
             }
           }
         }
