@@ -433,7 +433,7 @@ export const recycleBinRouter = router({
 
   archivedBills: approvedProcedure.query(async () => {
     const records = await DeletedBill.find().sort({ deletedAt: -1 }).lean();
-    return records.map((r) => ({
+    return records.map((r: any) => ({
       orderId: r.orderId,
       customerId: r.customerId,
       customer: r.customer,

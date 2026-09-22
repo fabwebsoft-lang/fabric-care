@@ -1,4 +1,4 @@
-import mongoose, { Schema, model, type InferSchemaType } from "mongoose";
+import mongoose, { Schema, model, type InferSchemaType, type Model } from "mongoose";
 import { normalizePhone } from "../lib/phone.js";
 
 const customerSchema = new Schema(
@@ -31,5 +31,5 @@ customerSchema.pre("save", function (this: any) {
 });
 
 export type CustomerDoc = InferSchemaType<typeof customerSchema>;
-export const Customer = (mongoose.models.Customer as any) || model("Customer", customerSchema);
+export const Customer: Model<CustomerDoc> = (mongoose.models.Customer as Model<CustomerDoc>) || model<CustomerDoc>("Customer", customerSchema);
 

@@ -1,4 +1,4 @@
-import mongoose, { Schema, model, type InferSchemaType } from "mongoose";
+import mongoose, { Schema, model, type InferSchemaType, type Model } from "mongoose";
 
 const deletedOrderItemSchema = new Schema(
   {
@@ -44,4 +44,4 @@ const deletedBillSchema = new Schema(
 );
 
 export type DeletedBillDoc = InferSchemaType<typeof deletedBillSchema>;
-export const DeletedBill = (mongoose.models.DeletedBill as any) || model("DeletedBill", deletedBillSchema);
+export const DeletedBill: Model<DeletedBillDoc> = (mongoose.models.DeletedBill as Model<DeletedBillDoc>) || model<DeletedBillDoc>("DeletedBill", deletedBillSchema);

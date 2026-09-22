@@ -1239,7 +1239,9 @@ export const trpc = {
             category: string;
             serviceType: string;
             price: number;
+            staffWashRate?: number;
             staffIroningRate?: number;
+            rateUnit?: "per_piece" | "per_order" | "per_kg";
             status?: "Active" | "Inactive";
           }) => {
             try {
@@ -1267,7 +1269,9 @@ export const trpc = {
             category?: string;
             serviceType?: string;
             price?: number;
+            staffWashRate?: number;
             staffIroningRate?: number;
+            rateUnit?: "per_piece" | "per_order" | "per_kg";
             status?: "Active" | "Inactive";
           }) => {
             try {

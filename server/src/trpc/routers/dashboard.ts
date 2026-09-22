@@ -17,9 +17,9 @@ export const dashboardRouter = router({
     };
 
     const todayOrders = orders.filter((o) => isToday(o.createdAt));
-    const todaysRevenue = todayOrders.reduce((s, o) => s + (o.totalAmount || 0), 0);
-    const collectedToday = todayOrders.reduce((s, o) => s + (o.amountPaid || 0), 0);
-    const pendingDues = orders.reduce((s, o) => s + Math.max(0, (o.totalAmount || 0) - (o.amountPaid || 0)), 0);
+    const todaysRevenue = todayOrders.reduce((s: number, o) => s + (o.totalAmount || 0), 0);
+    const collectedToday = todayOrders.reduce((s: number, o) => s + (o.amountPaid || 0), 0);
+    const pendingDues = orders.reduce((s: number, o) => s + Math.max(0, (o.totalAmount || 0) - (o.amountPaid || 0)), 0);
     const ordersReceived = orders.filter((o) => o.status === "Received").length;
     const processingCount = orders.filter((o) => o.status === "Processing").length;
     const ironingCount = orders.filter((o) => o.status === "Ironing").length;
@@ -27,7 +27,7 @@ export const dashboardRouter = router({
     const collectedCount = orders.filter((o) => o.status === "Collected").length;
     const itemsInProcess = orders
       .filter((o) => o.status === "Processing" || o.status === "Ironing")
-      .reduce((sum, o) => sum + o.items.reduce((acc, item) => acc + (item.quantity || 0), 0), 0);
+      .reduce((sum: number, o) => sum + (o.items || []).reduce((acc: number, item) => acc + (item.quantity || 0), 0), 0);
 
     return {
       todaysRevenue,

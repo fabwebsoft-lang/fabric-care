@@ -66,8 +66,8 @@ export const reportsRouter = router({
         expenseDate: { $gte: start, $lte: end },
       }).sort({ expenseDate: 1 });
 
-      const totalRevenue = orders.reduce((s, o) => s + (o.totalAmount || 0), 0);
-      const totalCollected = orders.reduce((s, o) => s + (o.amountPaid || 0), 0);
+      const totalRevenue = orders.reduce((s: number, o) => s + (o.totalAmount || 0), 0);
+      const totalCollected = orders.reduce((s: number, o) => s + (o.amountPaid || 0), 0);
       const totalPending = totalRevenue - totalCollected;
 
       let totalLabourCost = 0;

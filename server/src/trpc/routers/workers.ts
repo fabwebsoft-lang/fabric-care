@@ -14,7 +14,7 @@ export const workersRouter = router({
   // Admin-only: this list includes pending signups and email addresses.
   list: requirePermission("canManageRoles").query(async () => {
     const workers = await Worker.find().sort({ createdAt: 1 });
-    return workers.map((w) => ({
+    return workers.map((w: any) => ({
       id: w._id.toString(),
       name: w.name,
       email: w.email ?? null,
@@ -28,7 +28,7 @@ export const workersRouter = router({
   // Public within app: active staff dropdown for assignment (non-pending)
   activeStaffList: approvedProcedure.query(async () => {
     const workers = await Worker.find({ active: true, role: { $ne: "pending" } }).sort({ name: 1 });
-    return workers.map((w) => ({
+    return workers.map((w: any) => ({
       id: w._id.toString(),
       name: w.name,
       role: w.role,
@@ -39,7 +39,7 @@ export const workersRouter = router({
   // Full staff list with active/inactive status for Staff Management view
   staffList: approvedProcedure.query(async () => {
     const workers = await Worker.find({ role: { $ne: "pending" } }).sort({ active: -1, name: 1 });
-    return workers.map((w) => ({
+    return workers.map((w: any) => ({
       id: w._id.toString(),
       name: w.name,
       email: w.email ?? null,

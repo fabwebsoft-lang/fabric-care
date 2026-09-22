@@ -6,7 +6,7 @@ import { Expense } from "../../models/Expense.js";
 export const expensesRouter = router({
   list: approvedProcedure.query(async () => {
     const expenses = await Expense.find({ isDeleted: { $ne: true } }).sort({ expenseDate: -1 });
-    return expenses.map((e) => ({
+    return expenses.map((e: any) => ({
       id: e._id.toString(),
       title: e.title,
       category: e.category,
