@@ -1,4 +1,4 @@
-import { Schema, model, type InferSchemaType } from "mongoose";
+import mongoose, { Schema, model, type InferSchemaType } from "mongoose";
 
 const ironingTaskItemSchema = new Schema(
   {
@@ -38,4 +38,4 @@ ironingTaskSchema.index({ staffId: 1, completedAt: 1 });
 ironingTaskSchema.index({ orderId: 1, status: 1 });
 
 export type IroningTaskDoc = InferSchemaType<typeof ironingTaskSchema>;
-export const IroningTask = model("IroningTask", ironingTaskSchema);
+export const IroningTask = (mongoose.models.IroningTask as any) || model("IroningTask", ironingTaskSchema);

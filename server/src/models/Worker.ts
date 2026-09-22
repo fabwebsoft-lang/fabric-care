@@ -1,4 +1,4 @@
-import { Schema, model, type InferSchemaType } from "mongoose";
+import mongoose, { Schema, model, type InferSchemaType } from "mongoose";
 
 // "pending" = signed up but not yet approved by an admin; carries no permissions.
 export const WORKER_ROLES = ["pending", "admin", "manager", "staff"] as const;
@@ -19,4 +19,4 @@ const workerSchema = new Schema(
 );
 
 export type WorkerDoc = InferSchemaType<typeof workerSchema>;
-export const Worker = model("Worker", workerSchema);
+export const Worker = (mongoose.models.Worker as any) || model("Worker", workerSchema);

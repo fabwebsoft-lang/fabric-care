@@ -1,4 +1,4 @@
-import { Schema, model, type InferSchemaType } from "mongoose";
+import mongoose, { Schema, model, type InferSchemaType } from "mongoose";
 
 const productSchema = new Schema(
   {
@@ -37,4 +37,4 @@ productSchema.index({ name: 1, isArchived: 1 });
 productSchema.index({ status: 1, isArchived: 1 });
 
 export type ProductDoc = InferSchemaType<typeof productSchema>;
-export const Product = model("Product", productSchema);
+export const Product = (mongoose.models.Product as any) || model("Product", productSchema);

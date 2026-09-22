@@ -1,4 +1,4 @@
-import { Schema, model, type InferSchemaType } from "mongoose";
+import mongoose, { Schema, model, type InferSchemaType } from "mongoose";
 
 const deviceSchema = new Schema(
   {
@@ -10,4 +10,4 @@ const deviceSchema = new Schema(
 );
 
 export type DeviceDoc = InferSchemaType<typeof deviceSchema>;
-export const Device = model("Device", deviceSchema);
+export const Device = (mongoose.models.Device as any) || model("Device", deviceSchema);

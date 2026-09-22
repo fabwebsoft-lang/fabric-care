@@ -1,4 +1,4 @@
-import { Schema, model, type InferSchemaType } from "mongoose";
+import mongoose, { Schema, model, type InferSchemaType } from "mongoose";
 
 const expenseSchema = new Schema(
   {
@@ -22,4 +22,4 @@ const expenseSchema = new Schema(
 );
 
 export type ExpenseDoc = InferSchemaType<typeof expenseSchema>;
-export const Expense = model("Expense", expenseSchema);
+export const Expense = (mongoose.models.Expense as any) || model("Expense", expenseSchema);
