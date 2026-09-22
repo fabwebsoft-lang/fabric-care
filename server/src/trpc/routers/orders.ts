@@ -7,6 +7,7 @@ import { Customer } from "../../models/Customer.js";
 import { DeletedBill } from "../../models/DeletedBill.js";
 import { Expense } from "../../models/Expense.js";
 import { IroningTask } from "../../models/IroningTask.js";
+import { Product } from "../../models/Product.js";
 import { normalizePhone } from "../../lib/phone.js";
 
 const orderItemInput = z.object({
@@ -180,6 +181,33 @@ export const ordersRouter = router({
         input.branchAddress ||
         (branchName.includes("SKT") ? "SKT Dindigul" : "17/B3, 1st street, Pandian Nagar, Dindigul");
 
+      // Auto-enrich items with live Product catalog ID and staffIroningRate
+      const dbProducts = await Product.find({ isArchived: { $ne: true } }).lean();
+      const enrichedItems = (input.items || []).map((item) => {
+        const itemCopy = { ...item };
+        let matched: any = null;
+        if (itemCopy.productId) {
+          matched = dbProducts.find((p: any) => p._id.toString() === String(itemCopy.productId));
+        }
+        if (!matched && itemCopy.name) {
+          const normName = itemCopy.name.toLowerCase().trim();
+          matched = dbProducts.find((p: any) => p.name.toLowerCase().trim() === normName);
+          if (!matched) {
+            matched = dbProducts.find((p: any) => {
+              const pNorm = p.name.toLowerCase().trim();
+              return pNorm.includes(normName) || normName.includes(pNorm);
+            });
+          }
+        }
+        if (matched) {
+          itemCopy.productId = matched._id.toString();
+          if (itemCopy.staffIroningRate === undefined || itemCopy.staffIroningRate === 0) {
+            itemCopy.staffIroningRate = matched.staffIroningRate ?? 10;
+          }
+        }
+        return itemCopy;
+      });
+
       const order = await Order.create({
         _id: id,
         customerId: orderCustomerId,
@@ -193,7 +221,7 @@ export const ordersRouter = router({
         totalAmount: input.totalAmount,
         amountPaid: input.amountPaid,
         discount: input.discount,
-        items: input.items,
+        items: enrichedItems,
         branch: branchName,
         branchAddress: branchAddr,
       });

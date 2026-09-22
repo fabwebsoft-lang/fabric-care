@@ -120,28 +120,12 @@ export const ironingRouter = router({
       const shop = await Shop.findOne();
       const fallbackDefaultRate = shop?.defaultStaffIroningRate ?? 10;
 
-      // Fetch products to pull configured staff ironing rates (by ID first, fallback to name)
+      // Fetch all active products to resolve live rates
+      const products = await Product.find({ isArchived: { $ne: true } });
+
       const rawOrderItems = (order.items && order.items.length > 0)
         ? order.items
         : [{ name: order.serviceType || "Standard Laundry", quantity: 1, price: order.totalAmount || 50 }];
-
-      const productIds = rawOrderItems
-        .map((i: any) => i.productId)
-        .filter((id: any): id is string => Boolean(id) && mongoose.Types.ObjectId.isValid(id));
-
-      const productNames = rawOrderItems.flatMap((i: any) => {
-        const { cleanName } = extractCleanGarmentName(i.name);
-        return [i.name.trim(), cleanName];
-      });
-
-      const products = await Product.find({
-        $or: [
-          ...(productIds.length > 0 ? [{ _id: { $in: productIds } }] : []),
-          { name: { $in: productNames.map((n: string) => new RegExp(`^${n}$`, "i")) } },
-          { name: { $regex: /Standard Laundry|Shirt|Pant/i } },
-        ],
-        isArchived: { $ne: true },
-      });
 
       const productIdMap = new Map<string, number>();
       const productNameMap = new Map<string, number>();
@@ -161,9 +145,6 @@ export const ironingRouter = router({
           const r = productIdMap.get(item.productId.toString());
           if (r !== undefined && r !== null) rate = r;
         }
-        if (rate === undefined && item.staffIroningRate !== undefined && item.staffIroningRate !== null) {
-          rate = item.staffIroningRate;
-        }
         if (rate === undefined) {
           const cleanLower = cleanName.toLowerCase().trim();
           const rawLower = (item.name || "").toLowerCase().trim();
@@ -181,6 +162,9 @@ export const ironingRouter = router({
         }
         if (rate === undefined && productNameMap.has("standard laundry")) {
           rate = productNameMap.get("standard laundry");
+        }
+        if (rate === undefined && item.staffIroningRate !== undefined && item.staffIroningRate !== null && item.staffIroningRate > 0) {
+          rate = item.staffIroningRate;
         }
         // Fallback default rate if unconfigured
         const finalRate = rate !== undefined && rate !== null ? Math.max(0, rate) : fallbackDefaultRate;
@@ -247,15 +231,61 @@ export const ironingRouter = router({
 
       if (!task) return null;
 
+      // If in progress, dynamically refresh item rates from live Product catalog
+      let displayItems = task.items;
+      let displayTotalPieces = task.totalPieces;
+      let displayTotalEarning = task.totalEarning;
+
+      if (task.status === "In Progress") {
+        const products = await Product.find({ isArchived: { $ne: true } });
+        const shop = await Shop.findOne();
+        const fallbackRate = shop?.defaultStaffIroningRate ?? 10;
+
+        const nameMap = new Map<string, number>();
+        for (const p of products) {
+          if (p.staffIroningRate !== undefined && p.staffIroningRate !== null) {
+            nameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate);
+          }
+        }
+
+        displayItems = (task.items || []).map((i: any) => {
+          const { cleanName, extractedQty } = extractCleanGarmentName(i.name);
+          const qty = i.quantity && i.quantity > 0 ? i.quantity : (extractedQty || 1);
+          const cleanLower = cleanName.toLowerCase().trim();
+
+          let r: number | undefined;
+          if (nameMap.has(cleanLower)) {
+            r = nameMap.get(cleanLower);
+          } else if (nameMap.has("standard laundry")) {
+            r = nameMap.get("standard laundry");
+          } else if (i.staffRate !== undefined && i.staffRate !== null && i.staffRate > 0) {
+            r = i.staffRate;
+          } else {
+            r = fallbackRate;
+          }
+
+          const resolvedRate = r !== undefined && r !== null ? Math.max(0, r) : fallbackRate;
+          return {
+            name: cleanName,
+            quantity: qty,
+            staffRate: resolvedRate,
+            staffEarning: qty * resolvedRate,
+          };
+        });
+
+        displayTotalPieces = displayItems.reduce((acc: number, item: any) => acc + (item.quantity || 0), 0);
+        displayTotalEarning = displayItems.reduce((acc: number, item: any) => acc + (item.staffEarning || 0), 0);
+      }
+
       return {
         id: task._id.toString(),
         orderId: task.orderId,
         staffId: task.staffId.toString(),
         staffName: task.staffName,
         customer: task.customer,
-        items: task.items,
-        totalPieces: task.totalPieces,
-        totalEarning: task.totalEarning,
+        items: displayItems,
+        totalPieces: displayTotalPieces,
+        totalEarning: displayTotalEarning,
         status: task.status,
         startedAt: task.startedAt?.toISOString() ?? null,
         completedAt: task.completedAt?.toISOString() ?? null,
@@ -320,28 +350,12 @@ export const ironingRouter = router({
       const shop = await Shop.findOne();
       const fallbackDefaultRate = shop?.defaultStaffIroningRate ?? 10;
 
-      // Fetch products to pull rates (by ID first, fallback to name)
+      // Fetch all active products live from Product catalog
+      const products = await Product.find({ isArchived: { $ne: true } });
+
       const rawOrderItems = (order.items && order.items.length > 0)
         ? order.items
         : [{ name: order.serviceType || "Standard Laundry", quantity: 1, price: order.totalAmount || 50 }];
-
-      const productIds = rawOrderItems
-        .map((i: any) => i.productId)
-        .filter((id: any): id is string => Boolean(id) && mongoose.Types.ObjectId.isValid(id));
-
-      const productNames = rawOrderItems.flatMap((i: any) => {
-        const { cleanName } = extractCleanGarmentName(i.name);
-        return [i.name.trim(), cleanName];
-      });
-
-      const products = await Product.find({
-        $or: [
-          ...(productIds.length > 0 ? [{ _id: { $in: productIds } }] : []),
-          { name: { $in: productNames.map((n: string) => new RegExp(`^${n}$`, "i")) } },
-          { name: { $regex: /Standard Laundry|Shirt|Pant/i } },
-        ],
-        isArchived: { $ne: true },
-      });
 
       const productIdMap = new Map<string, number>();
       const productNameMap = new Map<string, number>();
@@ -367,9 +381,6 @@ export const ironingRouter = router({
             const r = productIdMap.get(item.productId.toString());
             if (r !== undefined && r !== null) rate = r;
           }
-          if (rate === undefined && item.staffIroningRate !== undefined && item.staffIroningRate !== null) {
-            rate = item.staffIroningRate;
-          }
           if (rate === undefined) {
             const cleanLower = cleanName.toLowerCase().trim();
             const rawLower = (item.name || "").toLowerCase().trim();
@@ -387,6 +398,9 @@ export const ironingRouter = router({
           }
           if (rate === undefined && productNameMap.has("standard laundry")) {
             rate = productNameMap.get("standard laundry");
+          }
+          if (rate === undefined && item.staffIroningRate !== undefined && item.staffIroningRate !== null && item.staffIroningRate > 0) {
+            rate = item.staffIroningRate;
           }
         }
         // Fallback default rate if unconfigured

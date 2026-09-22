@@ -40,6 +40,7 @@ type OrderItemInput = {
 };
 
 const defaultCatalog = [
+  { label: "Standard Laundry", price: 50, staffIroningRate: 10 },
   { label: "Shirt", price: 50, staffIroningRate: 10 },
   { label: "Pant", price: 60, staffIroningRate: 10 },
   { label: "Vasti / Dhoti", price: 50, staffIroningRate: 10 },
