@@ -57,8 +57,8 @@ app.use(async (_req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
-// REST Health Check Endpoint
-app.get(["/api/health", "/health", "/api/index/health"], (_req: Request, res: Response) => {
+// REST Health Check & Root Endpoints
+app.get(["/", "/api", "/api/health", "/health", "/api/index/health", "/status", "/api/status"], (_req: Request, res: Response) => {
   const activeUri =
     process.env.MONGODB_URI ||
     process.env.DATABASE_URL ||
@@ -66,11 +66,21 @@ app.get(["/api/health", "/health", "/api/index/health"], (_req: Request, res: Re
     process.env.MONGODB_URL ||
     process.env.MONGO_URL;
 
+  const isDbConnected = mongoose.connection.readyState === 1;
+
   return res.json({
-    ok: true,
-    status: "healthy",
-    db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    ok: isDbConnected,
+    service: "Fabric Care Backend API",
+    status: isDbConnected ? "healthy" : "db_disconnected",
+    database: isDbConnected ? "MongoDB Atlas Connected" : "Disconnected",
+    db: isDbConnected ? "connected" : "disconnected",
     hasMongoUriEnv: Boolean(activeUri),
+    endpoints: {
+      root: "/",
+      health: "/api/health",
+      trpc: "/api/trpc",
+    },
+    timestamp: new Date().toISOString(),
   });
 });
 

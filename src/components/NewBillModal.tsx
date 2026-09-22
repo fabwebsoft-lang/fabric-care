@@ -81,28 +81,76 @@ export default function NewBillModal({
     return `FC-${nextNum < 10000 ? String(nextNum).padStart(4, "0") : nextNum}`;
   }, [orders]);
 
-  const hasValidInitial = Boolean(initialCustomer && initialCustomer.name);
-  const [customerMode, setCustomerMode] = useState<"existing" | "new">(hasValidInitial ? "existing" : "new");
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(initialCustomer?.id || null);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(hasValidInitial ? initialCustomer : null);
-  const [customerSearch, setCustomerSearch] = useState(
-    hasValidInitial
-      ? `${initialCustomer?.name || ""}${initialCustomer?.phone ? ` (${initialCustomer.phone})` : ""}`
-      : ""
+  const hasValidInitial = Boolean(
+    initialCustomer &&
+    typeof initialCustomer === "object" &&
+    typeof initialCustomer.name === "string" &&
+    initialCustomer.name.trim() !== "" &&
+    initialCustomer.name.toLowerCase() !== "undefined"
   );
+  const [customerMode, setCustomerMode] = useState<"existing" | "new">(hasValidInitial ? "existing" : "new");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(
+    hasValidInitial ? initialCustomer?.id || null : null
+  );
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(hasValidInitial ? initialCustomer : null);
+  const [customerSearch, setCustomerSearch] = useState(() => {
+    if (hasValidInitial && initialCustomer) {
+      const cleanName = initialCustomer.name && initialCustomer.name !== "undefined" ? initialCustomer.name.trim() : "";
+      const cleanPhone = initialCustomer.phone && initialCustomer.phone !== "undefined" ? initialCustomer.phone.trim() : "";
+      if (cleanName && cleanPhone) return `${cleanName} (${cleanPhone})`;
+      return cleanName || cleanPhone || "";
+    }
+    return "";
+  });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Form Fields
-  const [customerName, setCustomerName] = useState(initialCustomer?.name || "");
-  const [phone, setPhone] = useState(initialCustomer?.phone || "");
-  const [customerId, setCustomerId] = useState(initialCustomer?.customerId || generateDefaultCustomerId());
-  const [address, setAddress] = useState(initialCustomer?.address || "");
-  const [alternatePhone, setAlternatePhone] = useState(initialCustomer?.alternatePhone || "");
-  const [notes, setNotes] = useState(initialCustomer?.notes || "");
-  const [showExtraDetails, setShowExtraDetails] = useState(Boolean(initialCustomer?.address || initialCustomer?.alternatePhone || initialCustomer?.notes));
+  const [customerName, setCustomerName] = useState(() => {
+    if (hasValidInitial && initialCustomer?.name && initialCustomer.name !== "undefined") {
+      return initialCustomer.name;
+    }
+    return "";
+  });
+  const [phone, setPhone] = useState(() => {
+    if (hasValidInitial && initialCustomer?.phone && initialCustomer.phone !== "undefined") {
+      return initialCustomer.phone;
+    }
+    return "";
+  });
+  const [customerId, setCustomerId] = useState(() => {
+    if (hasValidInitial && initialCustomer?.customerId && initialCustomer.customerId !== "undefined") {
+      return initialCustomer.customerId;
+    }
+    return generateDefaultCustomerId();
+  });
+  const [address, setAddress] = useState(() => {
+    if (hasValidInitial && initialCustomer?.address && initialCustomer.address !== "undefined") {
+      return initialCustomer.address;
+    }
+    return "";
+  });
+  const [alternatePhone, setAlternatePhone] = useState(() => {
+    if (hasValidInitial && initialCustomer?.alternatePhone && initialCustomer.alternatePhone !== "undefined") {
+      return initialCustomer.alternatePhone;
+    }
+    return "";
+  });
+  const [notes, setNotes] = useState(() => {
+    if (hasValidInitial && initialCustomer?.notes && initialCustomer.notes !== "undefined") {
+      return initialCustomer.notes;
+    }
+    return "";
+  });
+  const [showExtraDetails, setShowExtraDetails] = useState(
+    Boolean(
+      hasValidInitial &&
+        initialCustomer &&
+        (initialCustomer.address || initialCustomer.alternatePhone || initialCustomer.notes)
+    )
+  );
   const [updateCustomerProfile, setUpdateCustomerProfile] = useState(false);
 
   // Duplicate Warning Modal State
@@ -138,7 +186,8 @@ export default function NewBillModal({
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(customerSearch);
+      const cleanQ = customerSearch.replace(/\s*\([^)]*\)/g, "").trim();
+      setDebouncedSearch(cleanQ.toLowerCase() === "undefined" ? "" : cleanQ);
     }, 150);
     return () => clearTimeout(timer);
   }, [customerSearch]);
@@ -150,10 +199,11 @@ export default function NewBillModal({
 
   // Combine search results with local cache for instant filtering
   const matchingCustomers = useMemo(() => {
-    const q = customerSearch.trim().toLowerCase();
-    const qDigits = normalizePhone(q);
+    const rawClean = customerSearch.replace(/\s*\([^)]*\)/g, "").trim().toLowerCase();
+    const q = rawClean === "undefined" ? "" : rawClean;
+    const qDigits = normalizePhone(customerSearch);
 
-    if (!q) {
+    if (!q && !qDigits) {
       // Show first 10 customers from list if no search term
       return (searchResults.length > 0 ? searchResults : customersData).slice(0, 10);
     }
@@ -163,26 +213,27 @@ export default function NewBillModal({
     const seenIds = new Set<string>();
     const filtered: Customer[] = [];
 
+    const matches = (c: Customer) => {
+      const cName = (c.name || "").toLowerCase();
+      const cPhone = c.phone || "";
+      const cId = (c.customerId || "").toLowerCase();
+      const nameMatch = q ? cName.includes(q) : false;
+      const phoneMatch = (qDigits && normalizePhone(cPhone).includes(qDigits)) || (q ? cPhone.includes(q) : false);
+      const idMatch = q ? cId.includes(q) : false;
+      return nameMatch || phoneMatch || idMatch;
+    };
+
     for (const c of source) {
       if (seenIds.has(c.id)) continue;
-      const nameMatch = c.name.toLowerCase().includes(q);
-      const phoneMatch = c.phone.toLowerCase().includes(q) || (qDigits && normalizePhone(c.phone).includes(qDigits));
-      const idMatch = c.customerId ? c.customerId.toLowerCase().includes(q) : false;
-
-      if (nameMatch || phoneMatch || idMatch) {
+      if (matches(c)) {
         seenIds.add(c.id);
         filtered.push(c);
       }
     }
 
-    // Also check customersData to ensure no omissions
     for (const c of customersData) {
       if (seenIds.has(c.id)) continue;
-      const nameMatch = c.name.toLowerCase().includes(q);
-      const phoneMatch = c.phone.toLowerCase().includes(q) || (qDigits && normalizePhone(c.phone).includes(qDigits));
-      const idMatch = c.customerId ? c.customerId.toLowerCase().includes(q) : false;
-
-      if (nameMatch || phoneMatch || idMatch) {
+      if (matches(c)) {
         seenIds.add(c.id);
         filtered.push(c);
       }
@@ -229,20 +280,24 @@ export default function NewBillModal({
   const handleSelectCustomer = (c: Customer) => {
     setSelectedCustomerId(c.id);
     setSelectedCustomer(c);
-    setCustomerName(c.name);
-    setPhone(c.phone);
-    setCustomerId(c.customerId || "");
-    setAddress(c.address || "");
-    setAlternatePhone(c.alternatePhone || "");
-    setNotes(c.notes || "");
-    setCustomerSearch(`${c.name} (${c.phone})`);
+    const cleanName = c.name && c.name !== "undefined" ? c.name.trim() : "";
+    const cleanPhone = c.phone && c.phone !== "undefined" ? c.phone.trim() : "";
+    setCustomerName(cleanName);
+    setPhone(cleanPhone);
+    setCustomerId(c.customerId && c.customerId !== "undefined" ? c.customerId : generateDefaultCustomerId());
+    setAddress(c.address && c.address !== "undefined" ? c.address : "");
+    setAlternatePhone(c.alternatePhone && c.alternatePhone !== "undefined" ? c.alternatePhone : "");
+    setNotes(c.notes && c.notes !== "undefined" ? c.notes : "");
+    setCustomerSearch(cleanName && cleanPhone ? `${cleanName} (${cleanPhone})` : cleanName || cleanPhone || "");
     setIsDropdownOpen(false);
     setHighlightedIndex(0);
 
     if (c.address || c.alternatePhone || c.notes) {
       setShowExtraDetails(true);
     }
-    toast.success(`Loaded customer: ${c.name}`, { description: `Phone: ${c.phone}${c.customerId ? ` · ID: ${c.customerId}` : ""}` });
+    toast.success(`Loaded customer: ${cleanName || "Customer"}`, {
+      description: `Phone: ${cleanPhone || "N/A"}${c.customerId ? ` · ID: ${c.customerId}` : ""}`,
+    });
   };
 
   const handleClearCustomer = () => {
@@ -268,16 +323,17 @@ export default function NewBillModal({
     setSelectedCustomerId(null);
     setSelectedCustomer(null);
     setCustomerId(generateDefaultCustomerId());
-    if (initialSearchTerm && initialSearchTerm.trim()) {
+    const cleanTerm = initialSearchTerm ? initialSearchTerm.replace(/\s*\([^)]*\)/g, "").trim() : "";
+    if (cleanTerm && cleanTerm.toLowerCase() !== "undefined") {
       // If user typed digits, set as phone; otherwise set as name
-      const cleanDigits = normalizePhone(initialSearchTerm);
-      if (/^\d{5,}$/.test(initialSearchTerm.replace(/\s+/g, ""))) {
-        setPhone(initialSearchTerm.trim());
+      if (/^\d{5,}$/.test(cleanTerm.replace(/\s+/g, ""))) {
+        setPhone(cleanTerm);
         setCustomerName("");
       } else {
-        setCustomerName(initialSearchTerm.trim());
+        setCustomerName(cleanTerm);
       }
     }
+    setCustomerSearch("");
     setIsDropdownOpen(false);
   };
 

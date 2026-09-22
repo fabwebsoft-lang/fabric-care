@@ -220,14 +220,8 @@ const API_URL = (() => {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) {
     return (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "");
   }
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    if (host === "localhost" || host === "127.0.0.1") {
-      return "http://localhost:4000";
-    }
-    // In production web deployment (e.g. Vercel), use relative URL to call the built-in serverless backend
-    return "";
-  }
+  // In dev, relative path "/trpc" is proxied by Vite directly to backend http://localhost:4000
+  // In production, relative path "/trpc" is handled by the serverless function seamlessly.
   return "";
 })();
 

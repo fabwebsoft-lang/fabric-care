@@ -6,7 +6,7 @@ const customerSchema = new Schema(
     customerId: { type: String, default: null, trim: true, index: true },
     name: { type: String, required: true },
     phone: { type: String, required: true },
-    normalizedPhone: { type: String, required: true, index: true },
+    normalizedPhone: { type: String, required: true },
     customerType: { type: String, enum: ["Normal", "Premium"], default: "Normal" },
     address: { type: String, default: null },
     alternatePhone: { type: String, default: null },

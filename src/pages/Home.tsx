@@ -446,7 +446,11 @@ export default function Home() {
             <SectionView
               section={activeSection}
               onNewOrder={(cust?: any) => {
-                setNewOrderCustomer(cust || null);
+                if (cust && typeof cust === "object" && typeof cust.name === "string" && cust.name.trim() !== "" && cust.name.toLowerCase() !== "undefined") {
+                  setNewOrderCustomer(cust);
+                } else {
+                  setNewOrderCustomer(null);
+                }
                 setShowNewOrder(true);
               }}
               onNavigate={(s: any) => navigate(s)}

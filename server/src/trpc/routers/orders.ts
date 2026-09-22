@@ -125,6 +125,17 @@ export const ordersRouter = router({
         }
       }
 
+      // If not resolved via customerRefId, check if customer already exists by customerId or phone
+      if (!existingCustomer) {
+        existingCustomer = await Customer.findOne({
+          $or: [
+            { customerId: { $regex: `^${cleanCustomerId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } },
+            { normalizedPhone: normPhone },
+            { phone: input.phone.trim() },
+          ],
+        });
+      }
+
       if (existingCustomer) {
         if (!existingCustomer.customerId) {
           existingCustomer.customerId = cleanCustomerId;

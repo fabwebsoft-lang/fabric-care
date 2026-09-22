@@ -1,5 +1,6 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors, { type CorsOptions } from "cors";
+import mongoose from "mongoose";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { env } from "./env.js";
 import { connectDB } from "./db.js";
@@ -105,16 +106,47 @@ async function main() {
   app.use(cors(corsOptions));
   app.use(express.json({ limit: "1mb" }));
 
-  app.get("/health", (_req, res) => res.json({ ok: true, status: "healthy" }));
+  // Comprehensive Health & Status Check Endpoints
+  const handleHealth = (_req: Request, res: Response) => {
+    const isDbConnected = mongoose.connection.readyState === 1;
+    return res.status(isDbConnected ? 200 : 503).json({
+      ok: isDbConnected,
+      service: "Fabric Care Backend API",
+      status: isDbConnected ? "healthy" : "db_disconnected",
+      database: isDbConnected ? "MongoDB Atlas Connected" : "Disconnected",
+      dbReadyState: mongoose.connection.readyState,
+      port: env.port,
+      uptime: `${Math.floor(process.uptime())} seconds`,
+      endpoints: {
+        root: "/",
+        health: "/health",
+        apiHealth: "/api/health",
+        trpc: "/trpc",
+      },
+      timestamp: new Date().toISOString(),
+    });
+  };
 
-  app.use(
-    "/trpc",
-    authRateLimiter,
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-    })
-  );
+  app.get(["/", "/api", "/health", "/api/health", "/status", "/api/status"], handleHealth);
+
+  const trpcHandler = createExpressMiddleware({
+    router: appRouter,
+    createContext,
+  });
+
+  app.use("/trpc", authRateLimiter, trpcHandler);
+  app.use("/api/trpc", authRateLimiter, trpcHandler);
+  app.use("/api/index/trpc", authRateLimiter, trpcHandler);
+
+  // Catch-all 404 for undefined routes
+  app.use((req: Request, res: Response) => {
+    res.status(404).json({
+      error: "Route not found",
+      method: req.method,
+      path: req.originalUrl || req.url,
+      hint: "Use /health or /api/health for status, or /trpc for tRPC API calls.",
+    });
+  });
 
   app.listen(env.port, () => {
     console.log(`Fabric Care API listening on port ${env.port}`);
