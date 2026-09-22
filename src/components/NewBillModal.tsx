@@ -81,10 +81,15 @@ export default function NewBillModal({
     return `FC-${nextNum < 10000 ? String(nextNum).padStart(4, "0") : nextNum}`;
   }, [orders]);
 
-  const [customerMode, setCustomerMode] = useState<"existing" | "new">(initialCustomer ? "existing" : "new");
+  const hasValidInitial = Boolean(initialCustomer && initialCustomer.name);
+  const [customerMode, setCustomerMode] = useState<"existing" | "new">(hasValidInitial ? "existing" : "new");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(initialCustomer?.id || null);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(initialCustomer || null);
-  const [customerSearch, setCustomerSearch] = useState(initialCustomer ? `${initialCustomer.name} (${initialCustomer.phone})` : "");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(hasValidInitial ? initialCustomer : null);
+  const [customerSearch, setCustomerSearch] = useState(
+    hasValidInitial
+      ? `${initialCustomer?.name || ""}${initialCustomer?.phone ? ` (${initialCustomer.phone})` : ""}`
+      : ""
+  );
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
