@@ -871,6 +871,9 @@ function CompleteIroningModal({
   });
   const { data: staffList = [] } = trpc.workers.activeStaffList.useQuery();
   const { data: products = [] } = trpc.products.list.useQuery();
+  const { data: shops = [] } = trpc.shops.list.useQuery();
+
+  const shopFallbackRate = shops[0]?.defaultStaffIroningRate ?? 10;
 
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
   const [customRates, setCustomRates] = useState<Record<string, number>>({});
@@ -880,8 +883,8 @@ function CompleteIroningModal({
     const idMap = new Map<string, number>();
     const nameMap = new Map<string, number>();
     for (const p of products) {
-      idMap.set(p.id, p.staffIroningRate || 0);
-      nameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
+      idMap.set(p.id, p.staffIroningRate !== undefined ? p.staffIroningRate : 10);
+      nameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate !== undefined ? p.staffIroningRate : 10);
     }
     return { productIdRateMap: idMap, productNameRateMap: nameMap };
   }, [products]);
@@ -939,21 +942,21 @@ function CompleteIroningModal({
     return [sanitizeItem(order.items || "Standard Laundry", 1)];
   }, [order]);
 
-  const getItemDefaultRate = (item: { productId?: string | null; name: string; staffIroningRate?: number }): number => {
+  const getItemRateAndSource = (item: { productId?: string | null; name: string; staffIroningRate?: number }): { rate: number; source: "product" | "order_snapshot" | "shop_default" | "missing" } => {
     // 1. Check stable Product ID match
     if (item.productId && productIdRateMap.has(item.productId)) {
       const r = productIdRateMap.get(item.productId)!;
-      if (r > 0) return r;
+      if (r > 0) return { rate: r, source: "product" };
     }
     // 2. Check snapshot rate saved on order item
     if (item.staffIroningRate !== undefined && item.staffIroningRate > 0) {
-      return item.staffIroningRate;
+      return { rate: item.staffIroningRate, source: "order_snapshot" };
     }
     // 3. Exact name match against products catalog
     const cleanName = item.name.toLowerCase().trim();
     if (productNameRateMap.has(cleanName)) {
       const r = productNameRateMap.get(cleanName)!;
-      if (r > 0) return r;
+      if (r > 0) return { rate: r, source: "product" };
     }
     // 4. Fuzzy name match fallback
     let fuzzyMatch = 0;
@@ -962,31 +965,50 @@ function CompleteIroningModal({
         fuzzyMatch = pRate;
       }
     });
-    if (fuzzyMatch > 0) return fuzzyMatch;
+    if (fuzzyMatch > 0) return { rate: fuzzyMatch, source: "product" };
+
     // 5. Standard configured fallback for standard laundry/general ironing
     if (productNameRateMap.has("standard laundry") && productNameRateMap.get("standard laundry")! > 0) {
-      return productNameRateMap.get("standard laundry")!;
+      return { rate: productNameRateMap.get("standard laundry")!, source: "product" };
     }
-    // 6. Safe default labour rate (₹10/piece)
-    return 10;
+
+    // 6. Settings default fallback
+    if (shopFallbackRate > 0) {
+      return { rate: shopFallbackRate, source: "shop_default" };
+    }
+
+    // 7. No rate configured anywhere
+    return { rate: 0, source: "missing" };
   };
 
   const calculatedItems = parsedGarmentItems.map((item) => {
-    const rate =
-      customRates[item.name] !== undefined
-        ? customRates[item.name]
-        : getItemDefaultRate(item);
+    if (customRates[item.name] !== undefined) {
+      const customVal = customRates[item.name];
+      return {
+        productId: item.productId,
+        name: item.name,
+        quantity: item.quantity,
+        staffRate: customVal,
+        staffEarning: item.quantity * customVal,
+        source: "custom" as const,
+        isUsingDefaultRate: false,
+        isMissingRate: customVal === 0,
+      };
+    }
+    const { rate, source } = getItemRateAndSource(item);
     return {
       productId: item.productId,
       name: item.name,
       quantity: item.quantity,
       staffRate: rate,
       staffEarning: item.quantity * rate,
+      source,
+      isUsingDefaultRate: source === "shop_default",
       isMissingRate: rate === 0,
     };
   });
 
-  const unconfiguredItems = calculatedItems.filter((i) => i.staffRate === 0);
+  const unconfiguredItems = calculatedItems.filter((i) => i.isMissingRate);
   const totalPieces = calculatedItems.reduce((acc: number, i) => acc + i.quantity, 0);
   const totalEarnings = calculatedItems.reduce((acc: number, i) => acc + i.staffEarning, 0);
 
@@ -1006,6 +1028,13 @@ function CompleteIroningModal({
     e.preventDefault();
     if (!effectiveStaffId) {
       toast.error("Please select the staff member who did the ironing");
+      return;
+    }
+
+    if (unconfiguredItems.length > 0) {
+      toast.error("Missing Staff Ironing Rate", {
+        description: `Please configure a rate for "${unconfiguredItems[0].name}" or set a default in Settings.`,
+      });
       return;
     }
 
@@ -1047,19 +1076,19 @@ function CompleteIroningModal({
           </button>
         </div>
 
-        {/* Warning banner if any items have ₹0 rate */}
+        {/* Hard-block warning banner if rate is 0 and no fallback */}
         {unconfiguredItems.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900">
+          <div className="bg-rose-50 border border-rose-200/80 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-rose-900">
             <div className="flex items-start gap-2.5">
-              <AlertCircle className="size-4.5 text-amber-600 shrink-0 mt-0.5" />
+              <AlertCircle className="size-4.5 text-rose-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-amber-950">
+                <p className="font-bold text-rose-950">
                   {unconfiguredItems.length === 1
-                    ? `Rate missing for "${unconfiguredItems[0].name}" (₹0/pc)`
-                    : `Rates missing for ${unconfiguredItems.length} items (₹0/pc)`}
+                    ? `Missing Staff Rate for "${unconfiguredItems[0].name}" (₹0)`
+                    : `Missing Staff Rates for ${unconfiguredItems.length} items (₹0)`}
                 </p>
-                <p className="text-[11px] text-amber-800 mt-0.5">
-                  Enter the staff rate per piece below for this order, or set it permanently in Items / Services.
+                <p className="text-[11px] text-rose-800 mt-0.5">
+                  Enter rate below or configure permanently in Items / Services to complete this order.
                 </p>
               </div>
             </div>
@@ -1070,7 +1099,7 @@ function CompleteIroningModal({
                   onClose();
                   onNavigateToProducts();
                 }}
-                className="shrink-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-[11px] transition flex items-center justify-center gap-1 shadow-xs"
+                className="shrink-0 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-[11px] transition flex items-center justify-center gap-1 shadow-xs"
               >
                 Go to Items / Services
                 <ChevronRight className="size-3.5" />
@@ -1119,8 +1148,8 @@ function CompleteIroningModal({
         {/* Rate Breakdown Table */}
         <div className="space-y-2">
           <div className="flex justify-between items-center text-xs font-bold text-slate-700">
-            <span>Garment Breakdown</span>
-            <span className="text-[11px] font-normal text-slate-500">Edit rates per piece if needed</span>
+            <span>Garment Labour Breakdown</span>
+            <span className="text-[11px] font-normal text-slate-500">Edit rate/pc if needed</span>
           </div>
 
           <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
@@ -1138,12 +1167,17 @@ function CompleteIroningModal({
                 </div>
               ) : (
                 calculatedItems.map((item, idx) => (
-                  <div key={idx} className={`grid grid-cols-12 px-3 py-2 items-center text-slate-700 gap-1 ${item.isMissingRate ? "bg-amber-50/40" : ""}`}>
+                  <div key={idx} className={`grid grid-cols-12 px-3 py-2 items-center text-slate-700 gap-1 ${item.isMissingRate ? "bg-rose-50/40" : item.isUsingDefaultRate ? "bg-amber-50/40" : ""}`}>
                     <div className="col-span-5 truncate" title={item.name}>
                       <p className="font-semibold text-slate-800 truncate">{item.name}</p>
+                      {item.isUsingDefaultRate && (
+                        <span className="inline-block text-[9px] font-bold text-amber-700 bg-amber-100/80 px-1.5 py-0.5 rounded mt-0.5">
+                          ⚠️ Using default rate (₹{item.staffRate})
+                        </span>
+                      )}
                       {item.isMissingRate && (
-                        <span className="inline-block text-[10px] font-bold text-amber-700">
-                          ⚠️ Rate missing (₹0)
+                        <span className="inline-block text-[9px] font-bold text-rose-700 bg-rose-100/80 px-1.5 py-0.5 rounded mt-0.5">
+                          ❌ Rate missing (₹0)
                         </span>
                       )}
                     </div>
@@ -1162,6 +1196,8 @@ function CompleteIroningModal({
                           onChange={(e) => handleRateChange(item.name, e.target.value)}
                           className={`w-full pl-4 pr-1 py-1 text-xs text-right font-mono font-bold rounded-lg focus:outline-none focus:ring-1 ${
                             item.isMissingRate
+                              ? "bg-rose-50 border border-rose-300 focus:ring-rose-500 text-rose-900"
+                              : item.isUsingDefaultRate
                               ? "bg-amber-50 border border-amber-300 focus:ring-amber-500 text-amber-900"
                               : "bg-slate-50 border border-slate-200 focus:ring-emerald-500 text-slate-800"
                           }`}
@@ -1213,7 +1249,7 @@ function CompleteIroningModal({
           </button>
           <button
             type="submit"
-            disabled={isPending || !effectiveStaffId}
+            disabled={isPending || !effectiveStaffId || unconfiguredItems.length > 0}
             className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
           >
             <Check className="size-4" />

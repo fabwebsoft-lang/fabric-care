@@ -7,6 +7,7 @@ import { Worker } from "../../models/Worker.js";
 import { Order } from "../../models/Order.js";
 import { Product } from "../../models/Product.js";
 import { Expense } from "../../models/Expense.js";
+import { Shop } from "../../models/Shop.js";
 
 /**
  * Returns Start and End Date for IST (Asia/Kolkata) range.
@@ -116,6 +117,9 @@ export const ironingRouter = router({
         });
       }
 
+      const shop = await Shop.findOne();
+      const fallbackDefaultRate = shop?.defaultStaffIroningRate ?? 10;
+
       // Fetch products to pull configured staff ironing rates (by ID first, fallback to name)
       const rawOrderItems = (order.items && order.items.length > 0)
         ? order.items
@@ -142,8 +146,8 @@ export const ironingRouter = router({
       const productIdMap = new Map<string, number>();
       const productNameMap = new Map<string, number>();
       for (const p of products) {
-        productIdMap.set(p._id.toString(), p.staffIroningRate || 0);
-        productNameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
+        productIdMap.set(p._id.toString(), p.staffIroningRate !== undefined ? p.staffIroningRate : fallbackDefaultRate);
+        productNameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate !== undefined ? p.staffIroningRate : fallbackDefaultRate);
       }
 
       const taskItems = rawOrderItems.map((item: any) => {
@@ -174,7 +178,7 @@ export const ironingRouter = router({
           }
         }
         // Fallback default rate if unconfigured
-        const finalRate = rate !== undefined && rate > 0 ? rate : 10;
+        const finalRate = rate !== undefined && rate > 0 ? rate : fallbackDefaultRate;
         return {
           name: cleanName,
           quantity: qty,
@@ -308,6 +312,9 @@ export const ironingRouter = router({
         });
       }
 
+      const shop = await Shop.findOne();
+      const fallbackDefaultRate = shop?.defaultStaffIroningRate ?? 10;
+
       // Fetch products to pull rates (by ID first, fallback to name)
       const rawOrderItems = (order.items && order.items.length > 0)
         ? order.items
@@ -334,8 +341,8 @@ export const ironingRouter = router({
       const productIdMap = new Map<string, number>();
       const productNameMap = new Map<string, number>();
       for (const p of products) {
-        productIdMap.set(p._id.toString(), p.staffIroningRate || 0);
-        productNameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate || 0);
+        productIdMap.set(p._id.toString(), p.staffIroningRate !== undefined ? p.staffIroningRate : fallbackDefaultRate);
+        productNameMap.set(p.name.toLowerCase().trim(), p.staffIroningRate !== undefined ? p.staffIroningRate : fallbackDefaultRate);
       }
 
       // Build task items
@@ -373,7 +380,7 @@ export const ironingRouter = router({
           }
         }
         // Fallback default rate if unconfigured
-        const finalRate = rate !== undefined ? Math.max(0, rate) : 10;
+        const finalRate = rate !== undefined ? Math.max(0, rate) : fallbackDefaultRate;
 
         return {
           name: cleanName,
@@ -389,7 +396,9 @@ export const ironingRouter = router({
       const reference = `IRONING-PAYMENT-${task.orderId}-${task.staffId.toString()}-${task._id.toString()}`;
 
       // Create or update linked internal Expense if earning > 0
-      let linkedExpense = await Expense.findOne({ reference });
+      let linkedExpense = await Expense.findOne({
+        $or: [{ reference }, { orderId: task.orderId, isSystemGenerated: true }],
+      });
 
       if (totalEarning > 0) {
         if (!linkedExpense) {
@@ -403,13 +412,26 @@ export const ironingRouter = router({
             reference,
             staffId: task.staffId,
             taskId: task._id,
+            orderId: task.orderId,
+            isSystemGenerated: true,
+            expenseType: "Staff / Ironing Labour",
             deletedBy: null,
             isDeleted: false,
           });
         } else {
+          linkedExpense.title = `Ironing Labour - ${task.staffName}`;
           linkedExpense.amount = totalEarning;
+          linkedExpense.category = "Staff / Ironing Labour";
           linkedExpense.notes = `Ironing labour for Order #${order._id} (${totalPieces} pcs @ ₹${totalEarning})`;
+          linkedExpense.reference = reference;
+          linkedExpense.staffId = task.staffId;
+          linkedExpense.taskId = task._id;
+          linkedExpense.orderId = task.orderId;
+          linkedExpense.isSystemGenerated = true;
+          linkedExpense.expenseType = "Staff / Ironing Labour";
           linkedExpense.isDeleted = false;
+          linkedExpense.deletedAt = null;
+          linkedExpense.deletedBy = null;
           await linkedExpense.save();
         }
       }
@@ -524,6 +546,12 @@ export const ironingRouter = router({
           );
         }
       }
+
+      await Expense.updateMany(
+        { orderId: input.orderId, isSystemGenerated: true },
+        { isDeleted: true, deletedAt: new Date(), deletedBy: "System (Voided Task)" }
+      );
+
       return { success: true, message: "Ironing task and associated expense voided." };
     }),
 

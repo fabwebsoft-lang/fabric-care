@@ -69,10 +69,20 @@ export const reportsRouter = router({
       const totalRevenue = orders.reduce((s, o) => s + (o.totalAmount || 0), 0);
       const totalCollected = orders.reduce((s, o) => s + (o.amountPaid || 0), 0);
       const totalPending = totalRevenue - totalCollected;
-      const totalExpenses = expenses.reduce((s, e) => s + (e.amount || 0), 0);
-      const netProfit = totalCollected - totalExpenses;
 
-      const buckets = new Map<string, { label: string; date: string; sales: number; collected: number; expenses: number; orders: number }>();
+      let totalLabourCost = 0;
+      let totalOtherExpenses = 0;
+      for (const e of expenses) {
+        if (e.isSystemGenerated || (e.category && e.category.toLowerCase().includes("labour"))) {
+          totalLabourCost += Number(e.amount || 0);
+        } else {
+          totalOtherExpenses += Number(e.amount || 0);
+        }
+      }
+      const totalExpenses = totalLabourCost + totalOtherExpenses;
+      const netProfit = totalRevenue - totalExpenses;
+
+      const buckets = new Map<string, { label: string; date: string; sales: number; collected: number; labour: number; expenses: number; orders: number }>();
 
       if (groupMode === "month") {
         // Pre-populate months between start and end
@@ -80,7 +90,7 @@ export const reportsRouter = router({
         while (cur <= end) {
           const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}`;
           const label = cur.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
-          buckets.set(key, { label, date: label, sales: 0, collected: 0, expenses: 0, orders: 0 });
+          buckets.set(key, { label, date: label, sales: 0, collected: 0, labour: 0, expenses: 0, orders: 0 });
           cur.setMonth(cur.getMonth() + 1);
         }
       } else {
@@ -89,7 +99,7 @@ export const reportsRouter = router({
         while (cur <= end) {
           const key = cur.toISOString().slice(0, 10);
           const label = cur.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-          buckets.set(key, { label, date: label, sales: 0, collected: 0, expenses: 0, orders: 0 });
+          buckets.set(key, { label, date: label, sales: 0, collected: 0, labour: 0, expenses: 0, orders: 0 });
           cur.setDate(cur.getDate() + 1);
         }
       }
@@ -105,7 +115,7 @@ export const reportsRouter = router({
           const label = groupMode === "month"
             ? d.toLocaleDateString("en-US", { month: "short", year: "2-digit" })
             : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-          bucket = { label, date: label, sales: 0, collected: 0, expenses: 0, orders: 0 };
+          bucket = { label, date: label, sales: 0, collected: 0, labour: 0, expenses: 0, orders: 0 };
           buckets.set(key, bucket);
         }
         bucket.sales += o.totalAmount || 0;
@@ -124,8 +134,11 @@ export const reportsRouter = router({
           const label = groupMode === "month"
             ? d.toLocaleDateString("en-US", { month: "short", year: "2-digit" })
             : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-          bucket = { label, date: label, sales: 0, collected: 0, expenses: 0, orders: 0 };
+          bucket = { label, date: label, sales: 0, collected: 0, labour: 0, expenses: 0, orders: 0 };
           buckets.set(key, bucket);
+        }
+        if (e.isSystemGenerated || (e.category && e.category.toLowerCase().includes("labour"))) {
+          bucket.labour += e.amount || 0;
         }
         bucket.expenses += e.amount || 0;
       }
@@ -138,9 +151,10 @@ export const reportsRouter = router({
           sales: v.sales,
           revenue: v.sales,
           collected: v.collected,
+          labour: v.labour,
           expenses: v.expenses,
           orders: v.orders,
-          net: v.collected - v.expenses,
+          net: v.sales - v.expenses,
         }));
 
       return {
@@ -150,6 +164,8 @@ export const reportsRouter = router({
         totalRevenue,
         totalCollected,
         totalPending: Math.max(0, totalPending),
+        totalLabourCost,
+        totalOtherExpenses,
         totalExpenses,
         netProfit,
         orderCount: orders.length,

@@ -44,6 +44,9 @@ export default function SettingsView({
 
   const [shopName, setShopName] = useState(shop?.name || "Fabric Care");
   const [shopAddress, setShopAddress] = useState(shop?.address || "17/B3, 1st street, Pandian Nagar, Dindigul");
+  const [defaultStaffIroningRate, setDefaultStaffIroningRate] = useState<number>(shop?.defaultStaffIroningRate ?? 10);
+  const [defaultStaffWashRate, setDefaultStaffWashRate] = useState<number>(shop?.defaultStaffWashRate ?? 15);
+  const [defaultRateUnit, setDefaultRateUnit] = useState<"per_piece" | "per_order" | "per_kg">((shop?.defaultRateUnit as any) || "per_piece");
 
   // Invoice Settings Hook & Local Form State
   const [invoiceSettings, setInvoiceSettings] = useInvoiceSettings();
@@ -57,6 +60,9 @@ export default function SettingsView({
     if (shop) {
       setShopName(shop.name);
       setShopAddress(shop.address || "");
+      if (shop.defaultStaffIroningRate !== undefined) setDefaultStaffIroningRate(shop.defaultStaffIroningRate);
+      if (shop.defaultStaffWashRate !== undefined) setDefaultStaffWashRate(shop.defaultStaffWashRate);
+      if (shop.defaultRateUnit) setDefaultRateUnit(shop.defaultRateUnit as any);
     }
   }, [shop]);
 
@@ -452,6 +458,9 @@ export default function SettingsView({
                   updateShopMutation.mutate({
                     name: shopName,
                     address: shopAddress,
+                    defaultStaffIroningRate,
+                    defaultStaffWashRate,
+                    defaultRateUnit,
                     customerNotifications: true,
                     pricingTier: "Normal + Premium",
                   })
@@ -469,21 +478,73 @@ export default function SettingsView({
             </div>
           </div>
 
-          {/* Invoice Settings Quick Card */}
+          {/* Default Staff Labour Rates (Global Fallback) */}
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
             <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2 border-b border-slate-100 pb-3">
-              <FileText className="size-4 text-[#0F4C5C]" /> Professional Invoice & Thermal Receipt
+              <Percent className="size-4 text-purple-600" /> Default Staff Labour Rates (Global Fallback)
             </h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Configure your A4 invoice layout, 80mm/58mm thermal receipts, GSTIN, UPI payment QR code, and shop terms.
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              These global fallback rates are applied automatically when an order contains an item with no specific staff rate configured in Items / Services.
             </p>
 
-            <button
-              onClick={() => setActiveTab("invoice")}
-              className="w-full py-2.5 bg-slate-50 border border-slate-200 text-[#0F4C5C] text-xs font-bold rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2 active:scale-95"
-            >
-              <FileText className="size-4" /> Open Invoice Settings
-            </button>
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-purple-900 font-semibold mb-1">Default Ironing Rate (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={defaultStaffIroningRate}
+                    onChange={(e) => setDefaultStaffIroningRate(Math.max(0, Number(e.target.value) || 0))}
+                    disabled={!canManageSettings}
+                    className="w-full px-3 py-2 bg-purple-50/50 border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 text-xs font-bold text-purple-900 disabled:opacity-60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-blue-900 font-semibold mb-1">Default Wash Rate (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={defaultStaffWashRate}
+                    onChange={(e) => setDefaultStaffWashRate(Math.max(0, Number(e.target.value) || 0))}
+                    disabled={!canManageSettings}
+                    className="w-full px-3 py-2 bg-blue-50/50 border border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs font-bold text-blue-900 disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-600 font-semibold mb-1">Default Calculation Unit</label>
+                <select
+                  value={defaultRateUnit}
+                  onChange={(e) => setDefaultRateUnit(e.target.value as any)}
+                  disabled={!canManageSettings}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C] text-xs font-semibold text-slate-800 disabled:opacity-60"
+                >
+                  <option value="per_piece">Per Piece (Default)</option>
+                  <option value="per_order">Per Order</option>
+                  <option value="per_kg">Per Kg</option>
+                </select>
+              </div>
+
+              <button
+                onClick={() =>
+                  updateShopMutation.mutate({
+                    name: shopName,
+                    address: shopAddress,
+                    defaultStaffIroningRate,
+                    defaultStaffWashRate,
+                    defaultRateUnit,
+                    customerNotifications: true,
+                    pricingTier: "Normal + Premium",
+                  })
+                }
+                disabled={updateShopMutation.isPending || !canManageSettings}
+                className="w-full py-2.5 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-700 transition shadow-xs flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+              >
+                <Save className="size-3.5" /> Save Labour Rate Defaults
+              </button>
+            </div>
           </div>
         </div>
       )}

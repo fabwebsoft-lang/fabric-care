@@ -111,21 +111,23 @@ export default function StatementsView() {
     totalRevenue = 0,
     totalCollected = 0,
     totalPending = 0,
+    totalLabourCost = 0,
+    totalOtherExpenses = 0,
     totalExpenses = 0,
     netProfit = 0,
     orderCount = 0,
     avgOrderValue = 0,
     dailyBreakdown = [],
-  } = statements || {};
+  } = (statements as any) || {};
 
   const handleExportStatement = () => {
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      ["Period/Date,Total Billed (₹),Collected (₹),Expenses (₹),Net Profit (₹),Orders Count"]
+      ["Period/Date,Total Billed (₹),Collected (₹),Labour Cost (₹),General Expenses (₹),Total Expenses (₹),Net Profit (₹),Orders Count"]
         .concat(
           dailyBreakdown.map(
             (d: any) =>
-              `"${d.label || d.date}",${d.sales || 0},${d.collected || 0},${d.expenses || 0},${d.net || 0},${d.orders || 0}`
+              `"${d.label || d.date}",${d.sales || 0},${d.collected || 0},${d.labour || 0},${(d.expenses || 0) - (d.labour || 0)},${d.expenses || 0},${d.net || 0},${d.orders || 0}`
           )
         )
         .join("\n");
@@ -158,7 +160,7 @@ export default function StatementsView() {
               {periodTitles[timeRange]}
             </h2>
             <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-              Comprehensive revenue booked, actual collections received, expenses, and net profit analysis
+              Revenue (sum of bills) − Staff Labour costs − General expenses = Net Profit
             </p>
           </div>
 
@@ -179,20 +181,20 @@ export default function StatementsView() {
                   key={r}
                   type="button"
                   onClick={() => setTimeRange(r)}
-                  className={`shrink-0 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
                     timeRange === r
                       ? "bg-white text-[#0F4C5C] shadow-xs font-bold"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  {r === "Financial Year" ? "Financial Year (FY)" : r}
+                  {r}
                 </button>
               ))}
             </div>
           </div>
 
           {timeRange === "Custom" && (
-            <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200 text-xs">
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="flex items-center gap-1">
                 <span className="text-[10px] font-bold text-slate-500 uppercase px-1">From:</span>
                 <input
@@ -216,55 +218,66 @@ export default function StatementsView() {
         </div>
       </div>
 
+      {/* Financial Formula Callout */}
+      <div className="bg-[#0F4C5C]/5 border border-[#0F4C5C]/20 p-3 sm:p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 text-[#0F4C5C] font-semibold">
+          <TrendingUp className="size-4 shrink-0" />
+          <span>Financial Equation:</span>
+          <span className="font-mono bg-white px-2 py-1 rounded-lg border border-[#0F4C5C]/20 font-bold text-slate-800">
+            Revenue (₹{totalRevenue.toLocaleString("en-IN")}) − Labour Costs (₹{totalLabourCost.toLocaleString("en-IN")}) − Other Expenses (₹{totalOtherExpenses.toLocaleString("en-IN")}) = Net (₹{netProfit.toLocaleString("en-IN")})
+          </span>
+        </div>
+      </div>
+
       {/* Summary KPI Cards Grid */}
       <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
-        {/* Total Billed */}
+        {/* Total Billed Revenue */}
         <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
-          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">Total Billed</span>
+          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">Total Revenue</span>
           <p className="text-lg sm:text-xl font-bold text-[#0F4C5C] tracking-tight">
             ₹{totalRevenue.toLocaleString("en-IN")}
           </p>
-          <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">Gross orders booked</span>
+          <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">Gross sum of bills</span>
         </div>
 
-        {/* Total Collected */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
-          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">Total Collected</span>
-          <p className="text-lg sm:text-xl font-bold text-emerald-600 tracking-tight">
-            ₹{totalCollected.toLocaleString("en-IN")}
+        {/* Staff Labour Costs */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-purple-200 bg-purple-50/20 shadow-xs space-y-1">
+          <span className="text-[11px] sm:text-xs font-semibold text-purple-800 block truncate">Staff Labour</span>
+          <p className="text-lg sm:text-xl font-bold text-purple-700 tracking-tight">
+            ₹{totalLabourCost.toLocaleString("en-IN")}
           </p>
-          <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">Cash / UPI / Card in</span>
+          <span className="text-[10px] sm:text-[11px] text-purple-500 block truncate">Ironing & Wash labour</span>
         </div>
 
-        {/* Pending Dues */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
-          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">Uncollected Dues</span>
-          <p className="text-lg sm:text-xl font-bold text-rose-600 tracking-tight">
-            ₹{totalPending.toLocaleString("en-IN")}
+        {/* General Other Expenses */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-amber-200 bg-amber-50/20 shadow-xs space-y-1">
+          <span className="text-[11px] sm:text-xs font-semibold text-amber-800 block truncate">Other Expenses</span>
+          <p className="text-lg sm:text-xl font-bold text-amber-700 tracking-tight">
+            ₹{totalOtherExpenses.toLocaleString("en-IN")}
           </p>
-          <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">Pending customer balances</span>
+          <span className="text-[10px] sm:text-[11px] text-amber-500 block truncate">Rent, supplies & utility</span>
         </div>
 
         {/* Total Expenses */}
         <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
           <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">Total Expenses</span>
-          <p className="text-lg sm:text-xl font-bold text-amber-600 tracking-tight">
+          <p className="text-lg sm:text-xl font-bold text-rose-600 tracking-tight">
             ₹{totalExpenses.toLocaleString("en-IN")}
           </p>
-          <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">Overheads & materials</span>
+          <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">Labour + Overhead</span>
         </div>
 
         {/* Net Profit */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-1">
-          <span className="text-[11px] sm:text-xs font-semibold text-slate-500 block truncate">Net Profit</span>
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-emerald-200 bg-emerald-50/20 shadow-xs space-y-1">
+          <span className="text-[11px] sm:text-xs font-semibold text-emerald-800 block truncate">Net Profit</span>
           <p
             className={`text-lg sm:text-xl font-bold tracking-tight ${
-              netProfit >= 0 ? "text-emerald-600" : "text-rose-600"
+              netProfit >= 0 ? "text-emerald-700" : "text-rose-600"
             }`}
           >
             ₹{netProfit.toLocaleString("en-IN")}
           </p>
-          <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">Collected − Expenses</span>
+          <span className="text-[10px] sm:text-[11px] text-emerald-600 block truncate">Revenue − Expenses</span>
         </div>
 
         {/* Total Orders & Avg Value */}

@@ -5,6 +5,8 @@ import { router, approvedProcedure, requirePermission } from "../trpc.js";
 import { Order } from "../../models/Order.js";
 import { Customer } from "../../models/Customer.js";
 import { DeletedBill } from "../../models/DeletedBill.js";
+import { Expense } from "../../models/Expense.js";
+import { IroningTask } from "../../models/IroningTask.js";
 import { normalizePhone } from "../../lib/phone.js";
 
 const orderItemInput = z.object({
@@ -213,6 +215,19 @@ export const ordersRouter = router({
         { new: true }
       );
       if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+
+      // If moving backwards before Ready stage (to Received or Processing), void any linked labour expenses
+      if (input.status === "Received" || input.status === "Processing") {
+        await IroningTask.updateMany(
+          { orderId: input.id },
+          { status: "Voided" }
+        );
+        await Expense.updateMany(
+          { orderId: input.id, isSystemGenerated: true },
+          { isDeleted: true, deletedAt: new Date(), deletedBy: "System (Order Step Rollback)" }
+        );
+      }
+
       return toApiOrder(order);
     }),
 

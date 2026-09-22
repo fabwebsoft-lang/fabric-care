@@ -246,7 +246,8 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
                     <th className="py-3 px-4">Category</th>
                     <th className="py-3 px-4">Service</th>
                     <th className="py-3 px-4">Customer Price</th>
-                    <th className="py-3 px-4">Staff Ironing Rate</th>
+                    <th className="py-3 px-4">Staff Labour Rates</th>
+                    <th className="py-3 px-4">Unit</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Created</th>
                     <th className="py-3 px-4 text-right">Actions</th>
@@ -282,8 +283,20 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className="font-display text-xs font-bold text-purple-800 bg-purple-50 px-2 py-1 rounded-md border border-purple-200">
-                          ₹{product.staffIroningRate ?? 0} / pc
+                        <div className="flex flex-col gap-1">
+                          <span className="font-display text-xs font-bold text-purple-800 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200 inline-flex items-center gap-1 w-fit">
+                            <span>Iron:</span> ₹{product.staffIroningRate ?? 10}
+                          </span>
+                          {(product.staffWashRate ?? 0) > 0 && (
+                            <span className="font-display text-[10px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 inline-flex items-center gap-1 w-fit">
+                              <span>Wash:</span> ₹{product.staffWashRate}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="text-[11px] font-semibold text-slate-600">
+                          {product.rateUnit === "per_kg" ? "Per Kg" : product.rateUnit === "per_order" ? "Per Order" : "Per Piece"}
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
@@ -358,35 +371,32 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
                             {product.category}
                           </span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#0F4C5C]/10 text-[#0F4C5C] font-bold">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#0F4C5C]/10 text-[#0F4C5C] font-semibold">
                             {product.serviceType}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    <span className="font-display text-base font-bold text-[#0F4C5C]">
-                      ₹{product.price}
-                    </span>
+                    <div className="text-right">
+                      <p className="font-display text-base font-bold text-[#0F4C5C]">₹{product.price}</p>
+                      <span className="text-[10px] text-slate-400">
+                        {product.rateUnit === "per_kg" ? "/ kg" : product.rateUnit === "per_order" ? "/ order" : "/ pc"}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-50 text-xs">
-                    <button
-                      onClick={() => toggleStatusMutation.mutate({ id: product.id })}
-                      disabled={toggleStatusMutation.isPending}
-                      className="inline-flex items-center gap-1"
-                    >
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          product.status === "Active"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        <span className={`size-1.5 rounded-full ${product.status === "Active" ? "bg-emerald-600" : "bg-slate-400"}`} />
-                        {product.status}
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded text-[11px]">
+                        Iron: ₹{product.staffIroningRate ?? 10}
                       </span>
-                    </button>
+                      {(product.staffWashRate ?? 0) > 0 && (
+                        <span className="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded text-[11px]">
+                          Wash: ₹{product.staffWashRate}
+                        </span>
+                      )}
+                    </div>
 
                     <div className="flex items-center gap-1">
                       <button
@@ -394,15 +404,15 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
                           setEditingProduct(product);
                           setIsAddModalOpen(true);
                         }}
-                        className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#0F4C5C] bg-slate-100 hover:bg-[#0F4C5C] hover:text-white transition"
+                        className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100"
                       >
-                        Edit
+                        <Edit2 className="size-3.5" />
                       </button>
                       <button
                         onClick={() => setDeletingProduct(product)}
-                        className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50"
                       >
-                        <Trash2 className="size-4" />
+                        <Trash2 className="size-3.5" />
                       </button>
                     </div>
                   </div>
@@ -412,6 +422,43 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
           </>
         )}
       </div>
+
+      {/* Delete / Archive Confirmation Dialog */}
+      {deletingProduct && (
+        <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="grid size-10 place-items-center rounded-xl bg-rose-50 text-rose-600 shrink-0">
+                <AlertCircle className="size-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Delete {deletingProduct.name}?</h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  If this item is used in existing orders, it will be safely archived instead of deleted to protect order history.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDeletingProduct(null)}
+                className="px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteProductMutation.isPending}
+                onClick={() => deleteProductMutation.mutate({ id: deletingProduct.id })}
+                className="px-4 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition shadow-xs disabled:opacity-50"
+              >
+                {deleteProductMutation.isPending ? "Processing..." : "Confirm Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add / Edit Product Modal */}
       {isAddModalOpen && (
@@ -424,42 +471,10 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
           onSuccess={() => {
             setIsAddModalOpen(false);
             setEditingProduct(null);
+            utils.products.list.invalidate();
+            utils.products.activeList.invalidate();
           }}
         />
-      )}
-
-      {/* Safe Delete / Archive Confirmation Modal */}
-      {deletingProduct && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-[#0F4C5C]/50 px-4 py-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-200">
-            <div className="size-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center mb-3.5">
-              <AlertCircle className="size-5" />
-            </div>
-            <h3 className="font-display text-base font-bold text-[#0F4C5C]">
-              Delete "{deletingProduct.name}"?
-            </h3>
-            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-              If this item is already used in historical orders, it will be safely archived and deactivated so existing bills are never broken.
-            </p>
-            <div className="mt-5 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setDeletingProduct(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={deleteProductMutation.isPending}
-                onClick={() => deleteProductMutation.mutate({ id: deletingProduct.id })}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition disabled:opacity-50"
-              >
-                {deleteProductMutation.isPending ? "Processing..." : "Confirm Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
@@ -479,15 +494,21 @@ function ProductFormModal({
   const [category, setCategory] = useState<string>(product?.category || "Men's Wear");
   const [serviceType, setServiceType] = useState<string>(product?.serviceType || "Wash & Iron");
   const [price, setPrice] = useState<string>(product ? String(product.price) : "");
+  const [staffWashRate, setStaffWashRate] = useState<string>(
+    product?.staffWashRate !== undefined ? String(product.staffWashRate) : "0"
+  );
   const [staffIroningRate, setStaffIroningRate] = useState<string>(
     product?.staffIroningRate !== undefined ? String(product.staffIroningRate) : "10"
+  );
+  const [rateUnit, setRateUnit] = useState<"per_piece" | "per_order" | "per_kg">(
+    (product?.rateUnit as any) || "per_piece"
   );
   const [status, setStatus] = useState<"Active" | "Inactive">(product?.status || "Active");
 
   const createMutation = trpc.products.create.useMutation({
     onSuccess: (created) => {
       toast.success(`${created.name} added to catalog`, {
-        description: `Price: ₹${created.price} · Staff Rate: ₹${created.staffIroningRate ?? 0}`,
+        description: `Price: ₹${created.price} · Staff Ironing: ₹${created.staffIroningRate ?? 10} · Staff Wash: ₹${created.staffWashRate ?? 0}`,
       });
       onSuccess();
     },
@@ -499,7 +520,7 @@ function ProductFormModal({
   const updateMutation = trpc.products.update.useMutation({
     onSuccess: (updated) => {
       toast.success(`${updated.name} updated`, {
-        description: `Price: ₹${updated.price} · Staff Rate: ₹${updated.staffIroningRate ?? 0}`,
+        description: `Price: ₹${updated.price} · Staff Ironing: ₹${updated.staffIroningRate ?? 10} · Staff Wash: ₹${updated.staffWashRate ?? 0}`,
       });
       onSuccess();
     },
@@ -516,10 +537,11 @@ function ProductFormModal({
     }
     const priceNum = Number(price);
     if (isNaN(priceNum) || priceNum <= 0) {
-      toast.error("Please enter a valid price greater than 0");
+      toast.error("Please enter a valid customer price greater than 0");
       return;
     }
-    const staffRateNum = Number(staffIroningRate) || 0;
+    const washRateNum = Math.max(0, Number(staffWashRate) || 0);
+    const ironingRateNum = Math.max(0, Number(staffIroningRate) || 0);
 
     if (isEditing && product) {
       updateMutation.mutate({
@@ -528,7 +550,9 @@ function ProductFormModal({
         category: category as any,
         serviceType: serviceType as any,
         price: priceNum,
-        staffIroningRate: staffRateNum,
+        staffWashRate: washRateNum,
+        staffIroningRate: ironingRateNum,
+        rateUnit,
         status,
       });
     } else {
@@ -537,7 +561,9 @@ function ProductFormModal({
         category: category as any,
         serviceType: serviceType as any,
         price: priceNum,
-        staffIroningRate: staffRateNum,
+        staffWashRate: washRateNum,
+        staffIroningRate: ironingRateNum,
+        rateUnit,
         status,
       });
     }
@@ -547,7 +573,7 @@ function ProductFormModal({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0F4C5C]/50 backdrop-blur-sm p-3 sm:p-4 flex justify-center items-center min-h-screen">
-      <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden flex flex-col my-8">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#0F4C5C]/20 bg-[#0F4C5C] px-5 py-4 text-white">
           <div className="flex items-center gap-2.5">
@@ -556,10 +582,10 @@ function ProductFormModal({
             </div>
             <div>
               <h3 className="font-display text-base font-bold">
-                {isEditing ? `Edit ${product?.name}` : "Add New Item"}
+                {isEditing ? `Edit ${product?.name}` : "Add New Item / Service"}
               </h3>
               <p className="text-[11px] text-white/80">
-                {isEditing ? "Modify price or service details" : "Add a new garment or service to the catalog"}
+                {isEditing ? "Modify price, staff labour rates, and units" : "Configure customer pricing & staff labour rates"}
               </p>
             </div>
           </div>
@@ -573,13 +599,13 @@ function ProductFormModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs max-h-[80vh] overflow-y-auto">
           <div>
-            <label className="mb-1 block font-bold text-[#0F4C5C]">Item Name *</label>
+            <label className="mb-1 block font-bold text-[#0F4C5C]">Item / Service Name *</label>
             <input
               type="text"
               required
-              placeholder="e.g. Pant, Shirt, Saree, Blanket"
+              placeholder="e.g. Pant, Shirt, Saree, Blanket, Dry Clean Suit"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
@@ -630,25 +656,66 @@ function ProductFormModal({
                   className="w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3.5 py-2 text-xs font-bold text-[#0F4C5C] focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
                 />
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">Charged to the customer on the bill.</p>
+              <p className="text-[10px] text-slate-400 mt-1">Charged to customer on bill (Untouched by labour).</p>
             </div>
 
             <div>
-              <label className="mb-1 block font-bold text-purple-900">Staff Ironing Rate (₹) *</label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-purple-400">₹</span>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  step="1"
-                  placeholder="10"
-                  value={staffIroningRate}
-                  onChange={(e) => setStaffIroningRate(e.target.value)}
-                  className="w-full rounded-xl border border-purple-300 bg-purple-50/40 pl-8 pr-3.5 py-2 text-xs font-bold text-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-600"
-                />
+              <label className="mb-1 block font-bold text-slate-700">Calculation Unit *</label>
+              <select
+                value={rateUnit}
+                onChange={(e) => setRateUnit(e.target.value as any)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
+              >
+                <option value="per_piece">Per Piece (Default)</option>
+                <option value="per_order">Per Order</option>
+                <option value="per_kg">Per Kg</option>
+              </select>
+              <p className="text-[10px] text-slate-400 mt-1">Unit of measurement for service.</p>
+            </div>
+          </div>
+
+          {/* Dual Labour Rates Card */}
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="size-4 text-purple-600" />
+              <span className="font-bold text-slate-800 text-xs">Staff Labour Compensation Rates</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block font-bold text-purple-900">Staff Ironing Rate (₹) *</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-purple-400">₹</span>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="1"
+                    placeholder="10"
+                    value={staffIroningRate}
+                    onChange={(e) => setStaffIroningRate(e.target.value)}
+                    className="w-full rounded-xl border border-purple-300 bg-white pl-8 pr-3.5 py-2 text-xs font-bold text-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-600"
+                  />
+                </div>
+                <p className="text-[10px] text-purple-600 mt-1">Staff payout for ironing & pressing.</p>
               </div>
-              <p className="text-[10px] text-purple-600 mt-1">Labour payout per piece to ironing staff.</p>
+
+              <div>
+                <label className="mb-1 block font-bold text-blue-900">Staff Wash Rate (₹ - Optional)</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-blue-400">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    value={staffWashRate}
+                    onChange={(e) => setStaffWashRate(e.target.value)}
+                    className="w-full rounded-xl border border-blue-300 bg-white pl-8 pr-3.5 py-2 text-xs font-bold text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
+                </div>
+                <p className="text-[10px] text-blue-600 mt-1">Optional payout for washing/dry cleaning.</p>
+              </div>
             </div>
           </div>
 

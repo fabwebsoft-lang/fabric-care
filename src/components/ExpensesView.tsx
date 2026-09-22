@@ -126,16 +126,24 @@ export default function ExpensesView() {
             ) : (
               apiExpenses.map((expense) => {
                 const isMenuOpen = menuOpenId === expense.id;
+                const isSystem = Boolean(expense.isSystemGenerated);
 
                 return (
                   <div key={expense.id} className="relative flex items-center justify-between gap-2.5 py-3.5 sm:py-4">
                     {/* Left: Icon & Info */}
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="grid size-9 sm:size-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-[#0F4C5C]">
+                      <div className={`grid size-9 sm:size-10 shrink-0 place-items-center rounded-xl ${isSystem ? "bg-purple-100 text-purple-700" : "bg-slate-100 text-[#0F4C5C]"}`}>
                         <WalletCards className="size-4 sm:size-5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">{expense.title}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">{expense.title}</p>
+                          {isSystem && (
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                              System Generated
+                            </span>
+                          )}
+                        </div>
                         <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-500 truncate">
                           <span className="font-semibold text-[#0F4C5C]">{expense.category}</span> ·{" "}
                           {new Date(expense.expenseDate).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })} ·{" "}
@@ -172,32 +180,43 @@ export default function ExpensesView() {
                         {isMenuOpen && (
                           <div
                             ref={menuRef}
-                            className="absolute right-0 top-11 z-30 w-36 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150"
+                            className="absolute right-0 top-11 z-30 w-44 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setMenuOpenId(null);
-                                setEditingExpense(expense);
-                              }}
-                              className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0F4C5C] rounded-xl transition min-h-[44px]"
-                            >
-                              <Pencil className="size-4 text-slate-500" />
-                              <span>Edit</span>
-                            </button>
+                            {isSystem ? (
+                              <div className="p-2 text-[11px] text-slate-500 space-y-1">
+                                <p className="font-bold text-slate-700">System Recorded</p>
+                                <p className="text-[10px] text-slate-400">
+                                  Auto-created via Active Process. To reverse, move the order back in the workflow.
+                                </p>
+                              </div>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMenuOpenId(null);
+                                    setEditingExpense(expense);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0F4C5C] rounded-xl transition min-h-[44px]"
+                                >
+                                  <Pencil className="size-4 text-slate-500" />
+                                  <span>Edit</span>
+                                </button>
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setMenuOpenId(null);
-                                setDeletingExpense(expense);
-                              }}
-                              className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition min-h-[44px]"
-                            >
-                              <Trash2 className="size-4 text-rose-600" />
-                              <span>Delete</span>
-                            </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMenuOpenId(null);
+                                    setDeletingExpense(expense);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition min-h-[44px]"
+                                >
+                                  <Trash2 className="size-4 text-rose-600" />
+                                  <span>Delete</span>
+                                </button>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
@@ -214,11 +233,12 @@ export default function ExpensesView() {
           <p className="text-[11px] text-slate-500 mt-0.5">Operational cost allocation by category</p>
           
           <div className="mt-5 space-y-3">
-            {["Supplies", "Utilities", "Rent", "Wages", "Maintenance", "Other"].map((cat) => {
+            {["Staff / Ironing Labour", "Staff / Wash Labour", "Supplies", "Utilities", "Rent", "Wages", "Maintenance", "Other"].map((cat) => {
               const catTotal = apiExpenses
                 .filter((e) => e.category.toLowerCase() === cat.toLowerCase())
                 .reduce((sum, e) => sum + Number(e.amount || 0), 0);
               const percentage = totalExpenseAmount > 0 ? Math.round((catTotal / totalExpenseAmount) * 100) : 0;
+              if (catTotal === 0 && (cat.includes("Labour"))) return null;
               return (
                 <div key={cat} className="space-y-1">
                   <div className="flex justify-between text-xs text-slate-600 font-medium">

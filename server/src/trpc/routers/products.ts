@@ -5,15 +5,15 @@ import { Product } from "../../models/Product.js";
 import { Order } from "../../models/Order.js";
 
 const DEFAULT_PRODUCTS = [
-  { name: "Shirt", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffIroningRate: 10, status: "Active" },
-  { name: "Pant", category: "Men's Wear", serviceType: "Wash & Iron", price: 60, staffIroningRate: 10, status: "Active" },
-  { name: "Vasti / Dhoti", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffIroningRate: 10, status: "Active" },
-  { name: "Suit (2-pc)", category: "Men's Wear", serviceType: "Dry Clean", price: 180, staffIroningRate: 30, status: "Active" },
-  { name: "Saree", category: "Women's Wear", serviceType: "Dry Clean", price: 120, staffIroningRate: 25, status: "Active" },
-  { name: "Dress", category: "Women's Wear", serviceType: "Wash & Iron", price: 100, staffIroningRate: 15, status: "Active" },
-  { name: "Blanket", category: "Household", serviceType: "Wash & Fold", price: 200, staffIroningRate: 0, status: "Active" },
-  { name: "Curtain", category: "Household", serviceType: "Wash & Fold", price: 150, staffIroningRate: 20, status: "Active" },
-  { name: "Standard Laundry", category: "Other", serviceType: "Wash & Iron", price: 60, staffIroningRate: 10, status: "Active" },
+  { name: "Shirt", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+  { name: "Pant", category: "Men's Wear", serviceType: "Wash & Iron", price: 60, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+  { name: "Vasti / Dhoti", category: "Men's Wear", serviceType: "Wash & Iron", price: 50, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
+  { name: "Suit (2-pc)", category: "Men's Wear", serviceType: "Dry Clean", price: 180, staffWashRate: 50, staffIroningRate: 30, rateUnit: "per_piece", status: "Active" },
+  { name: "Saree", category: "Women's Wear", serviceType: "Dry Clean", price: 120, staffWashRate: 40, staffIroningRate: 25, rateUnit: "per_piece", status: "Active" },
+  { name: "Dress", category: "Women's Wear", serviceType: "Wash & Iron", price: 100, staffWashRate: 25, staffIroningRate: 15, rateUnit: "per_piece", status: "Active" },
+  { name: "Blanket", category: "Household", serviceType: "Wash & Fold", price: 200, staffWashRate: 50, staffIroningRate: 0, rateUnit: "per_piece", status: "Active" },
+  { name: "Curtain", category: "Household", serviceType: "Wash & Fold", price: 150, staffWashRate: 40, staffIroningRate: 20, rateUnit: "per_piece", status: "Active" },
+  { name: "Standard Laundry", category: "Other", serviceType: "Wash & Iron", price: 60, staffWashRate: 15, staffIroningRate: 10, rateUnit: "per_piece", status: "Active" },
 ];
 
 async function ensureDefaultProducts() {
@@ -39,7 +39,9 @@ function toApiProduct(p: any) {
     category: p.category,
     serviceType: p.serviceType,
     price: p.price,
-    staffIroningRate: Number(p.staffIroningRate ?? 0),
+    staffWashRate: Number(p.staffWashRate ?? 0),
+    staffIroningRate: Number(p.staffIroningRate ?? 10),
+    rateUnit: (p.rateUnit ?? "per_piece") as "per_piece" | "per_order" | "per_kg",
     status: p.status as "Active" | "Inactive",
     isArchived: Boolean(p.isArchived),
     createdAt: p.createdAt ? p.createdAt.toISOString() : new Date().toISOString(),
@@ -97,7 +99,9 @@ export const productsRouter = router({
         category: z.enum(["Men's Wear", "Women's Wear", "Kids Wear", "Household", "Other"]),
         serviceType: z.enum(["Wash & Fold", "Wash & Iron", "Dry Clean", "Iron Only", "Steam Iron", "Other"]),
         price: z.number().positive("Price must be greater than 0"),
-        staffIroningRate: z.number().min(0, "Staff rate cannot be negative").default(0),
+        staffWashRate: z.number().min(0, "Staff wash rate cannot be negative").default(0),
+        staffIroningRate: z.number().min(0, "Staff ironing rate cannot be negative").default(10),
+        rateUnit: z.enum(["per_piece", "per_order", "per_kg"]).default("per_piece"),
         status: z.enum(["Active", "Inactive"]).default("Active"),
       })
     )
@@ -120,7 +124,9 @@ export const productsRouter = router({
         category: input.category,
         serviceType: input.serviceType,
         price: input.price,
-        staffIroningRate: input.staffIroningRate ?? 0,
+        staffWashRate: input.staffWashRate ?? 0,
+        staffIroningRate: input.staffIroningRate ?? 10,
+        rateUnit: input.rateUnit ?? "per_piece",
         status: input.status,
       });
 
@@ -135,7 +141,9 @@ export const productsRouter = router({
         category: z.enum(["Men's Wear", "Women's Wear", "Kids Wear", "Household", "Other"]).optional(),
         serviceType: z.enum(["Wash & Fold", "Wash & Iron", "Dry Clean", "Iron Only", "Steam Iron", "Other"]).optional(),
         price: z.number().positive("Price must be greater than 0").optional(),
-        staffIroningRate: z.number().min(0, "Staff rate cannot be negative").optional(),
+        staffWashRate: z.number().min(0, "Staff wash rate cannot be negative").optional(),
+        staffIroningRate: z.number().min(0, "Staff ironing rate cannot be negative").optional(),
+        rateUnit: z.enum(["per_piece", "per_order", "per_kg"]).optional(),
         status: z.enum(["Active", "Inactive"]).optional(),
       })
     )
@@ -161,7 +169,9 @@ export const productsRouter = router({
           ...(patch.category && { category: patch.category }),
           ...(patch.serviceType && { serviceType: patch.serviceType }),
           ...(patch.price !== undefined && { price: patch.price }),
+          ...(patch.staffWashRate !== undefined && { staffWashRate: patch.staffWashRate }),
           ...(patch.staffIroningRate !== undefined && { staffIroningRate: patch.staffIroningRate }),
+          ...(patch.rateUnit !== undefined && { rateUnit: patch.rateUnit }),
           ...(patch.status && { status: patch.status }),
         },
         { new: true }

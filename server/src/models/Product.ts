@@ -16,7 +16,13 @@ const productSchema = new Schema(
       default: "Wash & Iron",
     },
     price: { type: Number, required: true, min: 0 },
-    staffIroningRate: { type: Number, default: 0, min: 0 },
+    staffWashRate: { type: Number, default: 0, min: 0 },
+    staffIroningRate: { type: Number, default: 10, min: 0 },
+    rateUnit: {
+      type: String,
+      enum: ["per_piece", "per_order", "per_kg"],
+      default: "per_piece",
+    },
     status: {
       type: String,
       enum: ["Active", "Inactive"],

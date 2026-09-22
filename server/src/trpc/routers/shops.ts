@@ -21,6 +21,9 @@ function toApiShop(shop: Awaited<ReturnType<typeof getOrCreateShop>>) {
     address: shop.address,
     customerNotifications: shop.customerNotifications ? 1 : 0,
     pricingTier: shop.pricingTier,
+    defaultStaffIroningRate: Number(shop.defaultStaffIroningRate ?? 10),
+    defaultStaffWashRate: Number(shop.defaultStaffWashRate ?? 15),
+    defaultRateUnit: (shop.defaultRateUnit ?? "per_piece") as "per_piece" | "per_order" | "per_kg",
     shopCode: shop.shopCode,
     lastBackupAt: shop.lastBackupAt ? shop.lastBackupAt.toISOString() : null,
     createdAt: shop.createdAt!.toISOString(),
@@ -41,6 +44,9 @@ export const shopsRouter = router({
         address: z.string().min(1),
         customerNotifications: z.boolean().optional(),
         pricingTier: z.string().optional(),
+        defaultStaffIroningRate: z.number().min(0).optional(),
+        defaultStaffWashRate: z.number().min(0).optional(),
+        defaultRateUnit: z.enum(["per_piece", "per_order", "per_kg"]).optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -49,6 +55,9 @@ export const shopsRouter = router({
       shop.address = input.address;
       if (input.customerNotifications !== undefined) shop.customerNotifications = input.customerNotifications;
       if (input.pricingTier) shop.pricingTier = input.pricingTier;
+      if (input.defaultStaffIroningRate !== undefined) shop.defaultStaffIroningRate = input.defaultStaffIroningRate;
+      if (input.defaultStaffWashRate !== undefined) shop.defaultStaffWashRate = input.defaultStaffWashRate;
+      if (input.defaultRateUnit) shop.defaultRateUnit = input.defaultRateUnit;
       await shop.save();
       return toApiShop(shop);
     }),

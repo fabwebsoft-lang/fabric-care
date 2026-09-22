@@ -6,6 +6,13 @@ const shopSchema = new Schema(
     address: { type: String, required: true },
     customerNotifications: { type: Boolean, default: true },
     pricingTier: { type: String, default: "Normal + Premium" },
+    defaultStaffIroningRate: { type: Number, default: 10, min: 0 },
+    defaultStaffWashRate: { type: Number, default: 15, min: 0 },
+    defaultRateUnit: {
+      type: String,
+      enum: ["per_piece", "per_order", "per_kg"],
+      default: "per_piece",
+    },
     shopCode: { type: String, required: true, unique: true },
     lastBackupAt: { type: Date, default: null },
   },
