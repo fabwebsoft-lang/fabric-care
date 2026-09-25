@@ -155,6 +155,7 @@ export default function ActiveProcessView({
         description: `${data.message}`,
       });
       setCompleteWashingOrder(null);
+      setStartWashingOrder(null);
     },
     onError: (err) => {
       toast.error("Cannot complete washing", { description: err.message });

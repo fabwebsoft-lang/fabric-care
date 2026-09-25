@@ -30,6 +30,7 @@ import {
   Building2,
   Store,
   Zap,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -80,6 +81,7 @@ export default function NewBillModal({
     hasValidInitial ? initialCustomer?.id || null : null
   );
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(hasValidInitial ? initialCustomer : null);
+  const [isCustomerCollapsed, setIsCustomerCollapsed] = useState<boolean>(Boolean(hasValidInitial));
   const [customerSearch, setCustomerSearch] = useState(() => {
     if (hasValidInitial && initialCustomer) {
       const cleanName = initialCustomer.name && initialCustomer.name !== "undefined" ? initialCustomer.name.trim() : "";
@@ -327,6 +329,7 @@ export default function NewBillModal({
     if (c.address || c.alternatePhone || c.notes) {
       setShowExtraDetails(true);
     }
+    setIsCustomerCollapsed(true);
     toast.success(`Loaded customer: ${cleanName || "Customer"}`, {
       description: `Phone: ${cleanPhone || "N/A"}${c.customerId ? ` · ID: ${c.customerId}` : ""}`,
     });
@@ -344,6 +347,7 @@ export default function NewBillModal({
     setCustomerSearch("");
     setUpdateCustomerProfile(false);
     setIsDropdownOpen(false);
+    setIsCustomerCollapsed(false);
   };
 
   const handlePhoneChange = (val: string) => {
@@ -355,6 +359,7 @@ export default function NewBillModal({
     setSelectedCustomerId(null);
     setSelectedCustomer(null);
     setCustomerId("");
+    setIsCustomerCollapsed(false);
     const cleanTerm = initialSearchTerm ? initialSearchTerm.replace(/\s*\([^)]*\)/g, "").trim() : "";
     if (cleanTerm && cleanTerm.toLowerCase() !== "undefined") {
       // If user typed digits, set as phone; otherwise set as name
@@ -675,39 +680,87 @@ export default function NewBillModal({
             )}
           </div>
 
-          {/* Customer Information */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 sm:p-4 space-y-3.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-[#0F4C5C] flex items-center gap-1.5">
-                <User className="size-3.5 sm:size-4" /> Customer Information
-              </span>
-              <div className="flex rounded-lg bg-slate-200/70 p-0.5 text-[10px] sm:text-[11px] font-semibold self-start sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomerMode("new");
-                    if (selectedCustomerId) handleClearCustomer();
-                  }}
-                  className={`rounded-md px-2.5 py-1 transition ${
-                    customerMode === "new" ? "bg-[#0F4C5C] text-white shadow-xs" : "text-[#0F4C5C]"
-                  }`}
-                >
-                  New Customer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomerMode("existing");
-                    setIsDropdownOpen(true);
-                  }}
-                  className={`rounded-md px-2.5 py-1 transition ${
-                    customerMode === "existing" ? "bg-[#0F4C5C] text-white shadow-xs" : "text-[#0F4C5C]"
-                  }`}
-                >
-                  Existing Search
-                </button>
+          {/* Customer Information (Collapsible) */}
+          {isCustomerCollapsed && customerName.trim() ? (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 sm:p-3.5 flex items-center justify-between gap-2 shadow-2xs transition-all duration-200">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="size-8 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <UserCheck className="size-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-900 text-xs sm:text-sm truncate">
+                      {customerName}
+                    </span>
+                    <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-100 px-2 py-0.5 rounded-md">
+                      {phone ? formatPhoneDisplay(phone) : "No mobile"}
+                    </span>
+                    {customerId && (
+                      <span className="text-[10px] text-slate-600 font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-200">
+                        ID: {customerId}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-emerald-700 font-medium">Customer Information Saved</p>
+                </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setIsCustomerCollapsed(false)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 text-xs font-bold transition shrink-0 cursor-pointer shadow-2xs"
+                title="Edit customer information"
+              >
+                <Pencil className="size-3" />
+                <span>Edit</span>
+              </button>
             </div>
+          ) : (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 sm:p-4 space-y-3.5 transition-all duration-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-[#0F4C5C] flex items-center gap-1.5">
+                  <User className="size-3.5 sm:size-4" /> Customer Information
+                </span>
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  {customerName.trim() && phone.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomerCollapsed(true)}
+                      className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition"
+                      title="Collapse customer information"
+                    >
+                      <Check className="size-3" />
+                      <span>Done</span>
+                    </button>
+                  )}
+                  <div className="flex rounded-lg bg-slate-200/70 p-0.5 text-[10px] sm:text-[11px] font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerMode("new");
+                        if (selectedCustomerId) handleClearCustomer();
+                      }}
+                      className={`rounded-md px-2.5 py-1 transition ${
+                        customerMode === "new" ? "bg-[#0F4C5C] text-white shadow-xs" : "text-[#0F4C5C]"
+                      }`}
+                    >
+                      New Customer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerMode("existing");
+                        setIsDropdownOpen(true);
+                      }}
+                      className={`rounded-md px-2.5 py-1 transition ${
+                        customerMode === "existing" ? "bg-[#0F4C5C] text-white shadow-xs" : "text-[#0F4C5C]"
+                      }`}
+                    >
+                      Existing Search
+                    </button>
+                  </div>
+                </div>
+              </div>
 
             {/* Existing Customer Mode: Search Dropdown */}
             {customerMode === "existing" && (
@@ -950,6 +1003,7 @@ export default function NewBillModal({
               )}
             </div>
           </div>
+        )}
 
           {/* Cloth Items & Catalog */}
           <div className="rounded-xl border border-slate-200 bg-white p-3.5 sm:p-4 space-y-4 shadow-xs">
