@@ -62,8 +62,28 @@ export function getBranchById(id?: string | null): ShopBranch {
 export function getBranchByAddressOrName(addressOrName?: string | null): ShopBranch {
   if (!addressOrName) return DEFAULT_BRANCH;
   const clean = addressOrName.toLowerCase();
-  if (clean.includes("skt")) {
+  if (clean.includes("skt") || clean.includes("branch 2")) {
     return SHOP_BRANCHES[1];
   }
   return SHOP_BRANCHES[0];
 }
+
+export function normalizeBranchShortName(branchOrAddress?: string | null): "Pandian Nagar" | "SKT Dindigul" {
+  if (!branchOrAddress) return "Pandian Nagar";
+  const clean = branchOrAddress.toLowerCase().replace(/[-_]/g, " ");
+  if (clean.includes("skt") || clean.includes("branch 2")) {
+    return "SKT Dindigul";
+  }
+  return "Pandian Nagar";
+}
+
+export function matchesBranchFilter(
+  order: { branch?: string | null; branchAddress?: string | null; branchId?: string | null },
+  filter: string
+): boolean {
+  if (!filter || filter === "All") return true;
+  const orderBranch = normalizeBranchShortName(order.branch || order.branchId || order.branchAddress);
+  const targetBranch = normalizeBranchShortName(filter);
+  return orderBranch === targetBranch;
+}
+

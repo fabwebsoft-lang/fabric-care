@@ -14,6 +14,7 @@ import {
   getIroningOrderIds,
   setIroningOrderId,
 } from "./session";
+import { normalizeBranchShortName, getBranchByAddressOrName } from "./branches";
 
 // ---------------------------------------------------------------------------
 // Display-shaped types consumed by the existing view components. The real
@@ -352,8 +353,8 @@ function toDisplayOrder(o: any): Order {
     discount: o.discount,
     clothTags: items.flatMap((i) => i.clothTags || []),
     structuredItems: items,
-    branch: o.branch || "Pandian Nagar",
-    branchAddress: o.branchAddress || (o.branch?.includes("SKT") ? "SKT Dindigul" : "17/B3, 1st street, Pandian Nagar, Dindigul"),
+    branch: normalizeBranchShortName(o.branch || o.branchId || o.branchAddress),
+    branchAddress: o.branchAddress || getBranchByAddressOrName(o.branch || o.branchId || o.branchAddress).address,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
   };

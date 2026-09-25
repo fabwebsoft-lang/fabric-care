@@ -29,7 +29,7 @@ import {
   Building2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { SHOP_BRANCHES } from "@/lib/branches";
+import { SHOP_BRANCHES, matchesBranchFilter, normalizeBranchShortName } from "@/lib/branches";
 
 const statusStyles: Record<string, string> = {
   Received: "bg-amber-100 text-amber-800 border-amber-200",
@@ -191,23 +191,21 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
       }
 
       // 2. Branch Filter
-      if (branchFilter !== "All") {
-        const orderBranch = (o.branch || (o.branchAddress?.includes("SKT") ? "SKT Dindigul" : "Pandian Nagar")).toLowerCase();
-        const target = branchFilter.toLowerCase();
-        if (!orderBranch.includes(target) && !target.includes(orderBranch)) {
-          return false;
-        }
+      if (!matchesBranchFilter(o, branchFilter)) {
+        return false;
       }
 
       // 3. Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
+        const branchName = normalizeBranchShortName(o.branch || o.branchAddress).toLowerCase();
         const matchesQuery =
           o.id.toLowerCase().includes(q) ||
           o.customer.toLowerCase().includes(q) ||
           (o.customerId && o.customerId.toLowerCase().includes(q)) ||
           o.phone.toLowerCase().includes(q) ||
           (o.items && o.items.toLowerCase().includes(q)) ||
+          branchName.includes(q) ||
           (o.branch && o.branch.toLowerCase().includes(q));
         if (!matchesQuery) return false;
       }
@@ -532,7 +530,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
             <button
               type="button"
               onClick={() => setBranchFilter("All")}
-              className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap shrink-0 ${
+              className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap shrink-0 flex items-center gap-1 ${
                 branchFilter === "All"
                   ? "bg-[#0F4C5C] text-white shadow-xs font-bold"
                   : "text-slate-600 hover:text-slate-900"
@@ -545,13 +543,14 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                 key={b.id}
                 type="button"
                 onClick={() => setBranchFilter(b.shortName)}
-                className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap shrink-0 ${
+                className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                   branchFilter === b.shortName
                     ? "bg-[#0F4C5C] text-white shadow-xs font-bold"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                {b.shortName}
+                <Building2 className={`size-3 shrink-0 ${branchFilter === b.shortName ? "text-white" : "text-[#0F4C5C]"}`} />
+                <span>{b.shortName}</span>
               </button>
             ))}
           </div>
@@ -656,12 +655,24 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
       {isLoading ? (
         <div className="text-center py-12 text-slate-400 text-sm">Loading invoices...</div>
       ) : filteredOrders.length === 0 ? (
-        <div className="bg-white rounded-2xl p-8 sm:p-12 text-center border border-slate-200/80 shadow-xs">
-          <FileText className="size-10 sm:size-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm sm:base font-bold text-slate-700">No bills found</p>
-          <p className="text-xs text-slate-500 mt-1">
-            Try adjusting your search query, status tab, or date range filter
+        <div className="bg-white rounded-2xl p-8 sm:p-12 text-center border border-slate-200/80 shadow-xs space-y-2">
+          <FileText className="size-10 sm:size-12 text-slate-300 mx-auto mb-1" />
+          <p className="text-sm sm:text-base font-bold text-slate-700">
+            No bills found{branchFilter !== "All" ? ` for ${branchFilter}` : ""}
           </p>
+          <p className="text-xs text-slate-500">
+            {branchFilter !== "All"
+              ? `No orders found for branch "${branchFilter}" with current filters.`
+              : "Try adjusting your search query, status tab, or date range filter"}
+          </p>
+          {branchFilter !== "All" && (
+            <button
+              onClick={() => setBranchFilter("All")}
+              className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition"
+            >
+              Show All Branches
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -706,7 +717,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                           <span className="text-[10px] text-slate-300 shrink-0">·</span>
                           <span className="text-[9.5px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0 max-w-[130px] truncate">
                             <Building2 className="size-2.5 text-[#0F4C5C] shrink-0" />
-                            <span className="truncate">{order.branch || (order.branchAddress?.includes("SKT") ? "SKT Dindigul" : "Pandian Nagar")}</span>
+                            <span className="truncate">{normalizeBranchShortName(order.branch || order.branchAddress)}</span>
                           </span>
                         </div>
                         <h3 className="font-bold text-slate-800 text-xs sm:text-sm truncate mt-0.5 flex items-center gap-1.5 min-w-0">
@@ -891,6 +902,10 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                         <td className="py-3.5 px-3">
                           <span className="font-mono font-bold text-[#0F4C5C] block">{order.id}</span>
                           <span className="text-[10px] text-slate-400 block">{orderDateIST}</span>
+                          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded mt-0.5">
+                            <Building2 className="size-2.5 text-[#0F4C5C] shrink-0" />
+                            <span>{normalizeBranchShortName(order.branch || order.branchAddress)}</span>
+                          </span>
                         </td>
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-1.5 flex-wrap">
