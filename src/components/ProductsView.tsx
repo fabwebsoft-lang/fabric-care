@@ -80,6 +80,8 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
 
   const activeCount = products.filter((p) => p.status === "Active").length;
   const inactiveCount = products.filter((p) => p.status === "Inactive").length;
+  const categoriesCount = useMemo(() => new Set(products.map((p) => p.category)).size, [products]);
+  const servicesCount = useMemo(() => new Set(products.map((p) => p.serviceType)).size, [products]);
   const avgPrice = products.length > 0 ? Math.round(products.reduce((acc, p) => acc + p.price, 0) / products.length) : 0;
 
   return (
@@ -110,29 +112,41 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
       </div>
 
       {/* Metrics Row */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 sm:p-4 shadow-xs">
-          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Items</span>
-          <p className="font-display text-xl sm:text-2xl font-bold text-[#0F4C5C] mt-1">{products.length}</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">All catalog entries</p>
+      <div className="grid gap-2 sm:gap-3.5 xl:gap-4 grid-cols-3 xl:grid-cols-6">
+        <div className="rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white p-2.5 sm:p-3.5 md:p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[9px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Total Items</span>
+          <p className="font-display text-base sm:text-xl md:text-2xl font-bold text-[#0F4C5C] mt-0.5 sm:mt-1 truncate">{products.length}</p>
+          <p className="text-[8px] sm:text-[10px] text-slate-400 mt-0.5 truncate hidden sm:block">All catalog entries</p>
         </div>
 
-        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3.5 sm:p-4 shadow-xs">
-          <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Active in Orders</span>
-          <p className="font-display text-xl sm:text-2xl font-bold text-emerald-800 mt-1">{activeCount}</p>
-          <p className="text-[10px] text-emerald-600 mt-0.5">Selectable in New Order</p>
+        <div className="rounded-xl sm:rounded-2xl border border-emerald-100 bg-emerald-50/50 p-2.5 sm:p-3.5 md:p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[9px] sm:text-[11px] font-semibold text-emerald-700 uppercase tracking-wider truncate">Active Items</span>
+          <p className="font-display text-base sm:text-xl md:text-2xl font-bold text-emerald-800 mt-0.5 sm:mt-1 truncate">{activeCount}</p>
+          <p className="text-[8px] sm:text-[10px] text-emerald-600 mt-0.5 truncate hidden sm:block">In New Order</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 sm:p-4 shadow-xs">
-          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Inactive Items</span>
-          <p className="font-display text-xl sm:text-2xl font-bold text-slate-700 mt-1">{inactiveCount}</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">Hidden from counter</p>
+        <div className="rounded-xl sm:rounded-2xl border border-slate-200 bg-slate-50/70 p-2.5 sm:p-3.5 md:p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[9px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Inactive</span>
+          <p className="font-display text-base sm:text-xl md:text-2xl font-bold text-slate-700 mt-0.5 sm:mt-1 truncate">{inactiveCount}</p>
+          <p className="text-[8px] sm:text-[10px] text-slate-400 mt-0.5 truncate hidden sm:block">Hidden entries</p>
         </div>
 
-        <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3.5 sm:p-4 shadow-xs">
-          <span className="text-[10px] sm:text-[11px] font-semibold text-amber-700 uppercase tracking-wider">Average Rate</span>
-          <p className="font-display text-xl sm:text-2xl font-bold text-amber-800 mt-1">₹{avgPrice}</p>
-          <p className="text-[10px] text-amber-600 mt-0.5">Across all services</p>
+        <div className="rounded-xl sm:rounded-2xl border border-teal-100 bg-teal-50/50 p-2.5 sm:p-3.5 md:p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[9px] sm:text-[11px] font-semibold text-teal-700 uppercase tracking-wider truncate">Categories</span>
+          <p className="font-display text-base sm:text-xl md:text-2xl font-bold text-teal-800 mt-0.5 sm:mt-1 truncate">{categoriesCount}</p>
+          <p className="text-[8px] sm:text-[10px] text-teal-600 mt-0.5 truncate hidden sm:block">Item categories</p>
+        </div>
+
+        <div className="rounded-xl sm:rounded-2xl border border-indigo-100 bg-indigo-50/50 p-2.5 sm:p-3.5 md:p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[9px] sm:text-[11px] font-semibold text-indigo-700 uppercase tracking-wider truncate">Services</span>
+          <p className="font-display text-base sm:text-xl md:text-2xl font-bold text-indigo-800 mt-0.5 sm:mt-1 truncate">{servicesCount}</p>
+          <p className="text-[8px] sm:text-[10px] text-indigo-600 mt-0.5 truncate hidden sm:block">Service types</p>
+        </div>
+
+        <div className="rounded-xl sm:rounded-2xl border border-amber-100 bg-amber-50/50 p-2.5 sm:p-3.5 md:p-4 shadow-xs flex flex-col justify-between">
+          <span className="text-[9px] sm:text-[11px] font-semibold text-amber-700 uppercase tracking-wider truncate">Avg Rate</span>
+          <p className="font-display text-base sm:text-xl md:text-2xl font-bold text-amber-800 mt-0.5 sm:mt-1 truncate">₹{avgPrice}</p>
+          <p className="text-[8px] sm:text-[10px] text-amber-600 mt-0.5 truncate hidden sm:block">Across catalog</p>
         </div>
       </div>
 

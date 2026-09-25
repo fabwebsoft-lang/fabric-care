@@ -163,133 +163,100 @@ export default function StaffManagementView() {
       </div>
 
       {/* KPI Overview Cards */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-        {/* Total Pieces Today */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
-          <div className="flex justify-between items-center text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-            <span>
-              {serviceFilter === "ironing"
-                ? "Ironed Today"
-                : serviceFilter === "washing"
-                ? "Washed Today"
-                : "Total Pieces Today"}
-            </span>
-            <span
-              className={`size-7 rounded-lg flex items-center justify-center ${
-                serviceFilter === "washing"
-                  ? "bg-blue-50 text-blue-600"
-                  : "bg-teal-50 text-[#0F4C5C]"
-              }`}
-            >
-              {serviceFilter === "washing" ? (
-                <Droplets className="size-3.5" />
-              ) : (
-                <Shirt className="size-3.5" />
-              )}
+      <div className="grid gap-2 sm:gap-3.5 xl:gap-4 grid-cols-3 xl:grid-cols-6">
+        {/* Ironed Today */}
+        <div className="bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
+          <div className="flex justify-between items-center text-slate-500 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider">
+            <span className="truncate">Ironed Today</span>
+            <span className="size-5 sm:size-7 rounded-lg bg-teal-50 text-[#0F4C5C] flex items-center justify-center shrink-0">
+              <Shirt className="size-3 sm:size-3.5" />
             </span>
           </div>
-          <p className="font-display text-2xl font-bold text-[#0F4C5C] mt-2">
-            {serviceFilter === "ironing"
-              ? todayStats?.todayPieces ?? 0
-              : serviceFilter === "washing"
-              ? todayStats?.todayWashedPieces ?? 0
-              : todayStats?.totalPiecesToday ??
-                (todayStats?.todayPieces ?? 0) + (todayStats?.todayWashedPieces ?? 0)}{" "}
-            <span className="text-xs font-normal text-slate-400">pcs</span>
+          <p className="font-display text-base sm:text-xl md:text-2xl font-bold text-[#0F4C5C] mt-1 sm:mt-2 truncate">
+            {todayStats?.todayPieces ?? 0} <span className="text-[9px] sm:text-xs font-normal text-slate-400">pcs</span>
           </p>
-          <p className="text-[10px] text-slate-400 mt-1">
-            {serviceFilter === "all"
-              ? `${todayStats?.todayPieces ?? 0} ironed · ${todayStats?.todayWashedPieces ?? 0} washed`
-              : "Across completed orders today"}
+          <p className="text-[8px] sm:text-[10px] text-slate-400 mt-0.5 sm:mt-1 truncate hidden sm:block">
+            Ironing completed
           </p>
         </div>
 
-        {/* Total Labour Cost Today */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
-          <div className="flex justify-between items-center text-emerald-700 text-[11px] font-bold uppercase tracking-wider">
-            <span>
-              {serviceFilter === "ironing"
-                ? "Ironing Labour Today"
-                : serviceFilter === "washing"
-                ? "Washing Labour Today"
-                : "Labour Earning Today"}
-            </span>
-            <span className="size-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
-              <IndianRupee className="size-3.5" />
+        {/* Washed Today */}
+        <div className="bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-blue-100 bg-blue-50/30 shadow-xs flex flex-col justify-between">
+          <div className="flex justify-between items-center text-blue-700 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider">
+            <span className="truncate">Washed Today</span>
+            <span className="size-5 sm:size-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <Droplets className="size-3 sm:size-3.5" />
             </span>
           </div>
-          <p className="font-display text-2xl font-bold text-emerald-800 mt-2">
-            ₹
-            {(serviceFilter === "ironing"
-              ? todayStats?.todayLabourCost ?? 0
-              : serviceFilter === "washing"
-              ? todayStats?.todayWashingLabourCost ?? 0
-              : todayStats?.totalLabourCostToday ??
-                (todayStats?.todayLabourCost ?? 0) + (todayStats?.todayWashingLabourCost ?? 0)
-            ).toLocaleString("en-IN")}
+          <p className="font-display text-base sm:text-xl md:text-2xl font-bold text-blue-800 mt-1 sm:mt-2 truncate">
+            {todayStats?.todayWashedPieces ?? 0} <span className="text-[9px] sm:text-xs font-normal text-slate-400">pcs</span>
           </p>
-          <p className="text-[10px] text-slate-400 mt-1">
-            {serviceFilter === "all"
-              ? `₹${(todayStats?.todayLabourCost ?? 0).toLocaleString("en-IN")} iron · ₹${(
-                  todayStats?.todayWashingLabourCost ?? 0
-                ).toLocaleString("en-IN")} wash`
-              : "Credited as shop labour expense"}
+          <p className="text-[8px] sm:text-[10px] text-blue-600 mt-0.5 sm:mt-1 truncate hidden sm:block">
+            Wash cycles completed
+          </p>
+        </div>
+
+        {/* Total Labour Today */}
+        <div className="bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-emerald-100 bg-emerald-50/30 shadow-xs flex flex-col justify-between">
+          <div className="flex justify-between items-center text-emerald-700 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider">
+            <span className="truncate">Labour Today</span>
+            <span className="size-5 sm:size-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+              <IndianRupee className="size-3 sm:size-3.5" />
+            </span>
+          </div>
+          <p className="font-display text-base sm:text-xl md:text-2xl font-bold text-emerald-800 mt-1 sm:mt-2 truncate">
+            ₹{((todayStats?.totalLabourCostToday ?? ((todayStats?.todayLabourCost ?? 0) + (todayStats?.todayWashingLabourCost ?? 0)))).toLocaleString("en-IN")}
+          </p>
+          <p className="text-[8px] sm:text-[10px] text-emerald-600 mt-0.5 sm:mt-1 truncate hidden sm:block">
+            Iron & wash expense
           </p>
         </div>
 
         {/* Active Staff */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
-          <div className="flex justify-between items-center text-blue-700 text-[11px] font-bold uppercase tracking-wider">
-            <span>Active Staff</span>
-            <span className="size-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
-              <UserCheck className="size-3.5" />
+        <div className="bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-indigo-100 bg-indigo-50/30 shadow-xs flex flex-col justify-between">
+          <div className="flex justify-between items-center text-indigo-700 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider">
+            <span className="truncate">Active Staff</span>
+            <span className="size-5 sm:size-7 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0">
+              <UserCheck className="size-3 sm:size-3.5" />
             </span>
           </div>
-          <p className="font-display text-2xl font-bold text-blue-800 mt-2">
-            {activeStaffCount}{" "}
-            <span className="text-xs font-normal text-slate-400">/ {staffList.length}</span>
+          <p className="font-display text-base sm:text-xl md:text-2xl font-bold text-indigo-800 mt-1 sm:mt-2 truncate">
+            {activeStaffCount} <span className="text-[9px] sm:text-xs font-normal text-slate-400">/ {staffList.length}</span>
           </p>
-          <p className="text-[10px] text-slate-400 mt-1">
-            {serviceFilter === "ironing"
-              ? `${todayStats?.activeIroningStaffToday ?? 0} active in ironing today`
-              : serviceFilter === "washing"
-              ? `${todayStats?.activeWashingStaffToday ?? 0} active in washing today`
-              : `${todayStats?.activeStaffCount ?? 0} active in shop tasks today`}
+          <p className="text-[8px] sm:text-[10px] text-indigo-600 mt-0.5 sm:mt-1 truncate hidden sm:block">
+            Active in tasks today
           </p>
         </div>
 
-        {/* Orders In Progress */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
-          <div className="flex justify-between items-center text-purple-700 text-[11px] font-bold uppercase tracking-wider">
-            <span>
-              {serviceFilter === "ironing"
-                ? "Ironing in Progress"
-                : serviceFilter === "washing"
-                ? "Washing in Progress"
-                : "Tasks in Progress"}
-            </span>
-            <span className="size-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center">
-              {serviceFilter === "washing" ? (
-                <Droplets className="size-3.5" />
-              ) : (
-                <Sparkles className="size-3.5" />
-              )}
+        {/* Ironing in Progress */}
+        <div className="bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-purple-100 bg-purple-50/30 shadow-xs flex flex-col justify-between">
+          <div className="flex justify-between items-center text-purple-700 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider">
+            <span className="truncate">Ironing Active</span>
+            <span className="size-5 sm:size-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
+              <Sparkles className="size-3 sm:size-3.5" />
             </span>
           </div>
-          <p className="font-display text-2xl font-bold text-purple-800 mt-2">
-            {serviceFilter === "ironing"
-              ? todayStats?.inProgressCount ?? 0
-              : serviceFilter === "washing"
-              ? todayStats?.inProgressWashingCount ?? 0
-              : (todayStats?.inProgressCount ?? 0) + (todayStats?.inProgressWashingCount ?? 0)}{" "}
-            <span className="text-xs font-normal text-slate-400">orders</span>
+          <p className="font-display text-base sm:text-xl md:text-2xl font-bold text-purple-800 mt-1 sm:mt-2 truncate">
+            {todayStats?.inProgressCount ?? 0} <span className="text-[9px] sm:text-xs font-normal text-slate-400">orders</span>
           </p>
-          <p className="text-[10px] text-slate-400 mt-1">
-            {serviceFilter === "all"
-              ? `${todayStats?.inProgressCount ?? 0} ironing · ${
-                  todayStats?.inProgressWashingCount ?? 0
-                } washing`
-              : "Assigned & currently processing"}
+          <p className="text-[8px] sm:text-[10px] text-purple-600 mt-0.5 sm:mt-1 truncate hidden sm:block">
+            Ironing in progress
+          </p>
+        </div>
+
+        {/* Washing in Progress */}
+        <div className="bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-sky-100 bg-sky-50/30 shadow-xs flex flex-col justify-between">
+          <div className="flex justify-between items-center text-sky-700 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider">
+            <span className="truncate">Washing Active</span>
+            <span className="size-5 sm:size-7 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center shrink-0">
+              <Droplets className="size-3 sm:size-3.5" />
+            </span>
+          </div>
+          <p className="font-display text-base sm:text-xl md:text-2xl font-bold text-sky-800 mt-1 sm:mt-2 truncate">
+            {todayStats?.inProgressWashingCount ?? 0} <span className="text-[9px] sm:text-xs font-normal text-slate-400">orders</span>
+          </p>
+          <p className="text-[8px] sm:text-[10px] text-sky-600 mt-0.5 sm:mt-1 truncate hidden sm:block">
+            Wash cycle running
           </p>
         </div>
       </div>

@@ -280,8 +280,8 @@ export default function ActiveProcessView({
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div>
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4 bg-white p-3 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="hidden sm:block">
           <h2 className="font-display text-lg sm:text-xl font-bold text-[#0F4C5C] flex items-center gap-2">
             <WashingMachine className="size-5 sm:size-6 text-[#0F4C5C]" />
             Active Laundry Workflow
@@ -291,8 +291,8 @@ export default function ActiveProcessView({
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
+        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64 hidden sm:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
             <input
               type="text"
@@ -304,142 +304,142 @@ export default function ActiveProcessView({
           </div>
           <button
             onClick={onNewOrder}
-            className="px-4 py-2 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95"
+            className="w-full sm:w-auto px-4 py-2.5 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 min-h-[40px]"
           >
             + New Order
           </button>
         </div>
       </div>
 
-      {/* KPI Metric Cards: 5-Stage Sequential Flow Overview */}
-      <div className="grid gap-2.5 sm:gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+      {/* KPI Metric Cards: 3x2 on mobile, 5x1 on desktop */}
+      <div className="grid gap-2 sm:gap-3 grid-cols-3 lg:grid-cols-5">
         {/* STEP 1: Collect from Customer */}
         <div
           onClick={() => setActiveTab(activeTab === "Received" ? "All" : "Received")}
-          className={`bg-white p-3.5 sm:p-4 rounded-2xl border shadow-xs flex flex-col justify-between space-y-2 cursor-pointer transition ${
+          className={`bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
             activeTab === "Received"
               ? "border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20"
               : "border-slate-200/90 hover:border-amber-300"
           }`}
         >
-          <div className="flex justify-between items-center text-slate-500 text-[11px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-semibold gap-1">
             <span className="truncate font-bold text-amber-800">STEP 1</span>
-            <div className="p-1.5 bg-amber-100 text-amber-700 rounded-lg shrink-0">
-              <Clock className="size-3.5 sm:size-4" />
+            <div className="p-1 sm:p-1.5 bg-amber-100 text-amber-700 rounded-md sm:rounded-lg shrink-0">
+              <Clock className="size-3 sm:size-3.5 md:size-4" />
             </div>
           </div>
-          <div>
-            <p className="text-lg sm:text-2xl font-bold text-amber-700 tracking-tight">
-              {counts.Received} <span className="text-xs font-normal text-slate-500">Orders</span>
+          <div className="min-w-0">
+            <p className="text-sm sm:text-lg md:text-2xl font-bold text-amber-700 tracking-tight truncate">
+              {counts.Received} <span className="text-[10px] sm:text-xs font-normal text-slate-500">Orders</span>
             </p>
-            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
+            <p className="text-[9px] sm:text-[10px] md:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
               Collect from Customer
             </p>
-            <p className="text-[9px] text-slate-400 truncate">Intake & Tagged</p>
+            <p className="text-[8px] sm:text-[9px] text-slate-400 truncate">Intake & Tagged</p>
           </div>
         </div>
 
         {/* STEP 2: Start Wash / Dry Clean */}
         <div
           onClick={() => setActiveTab(activeTab === "Processing" ? "All" : "Processing")}
-          className={`bg-white p-3.5 sm:p-4 rounded-2xl border shadow-xs flex flex-col justify-between space-y-2 cursor-pointer transition ${
+          className={`bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
             activeTab === "Processing"
               ? "border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/20"
               : "border-slate-200/90 hover:border-blue-300"
           }`}
         >
-          <div className="flex justify-between items-center text-slate-500 text-[11px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-semibold gap-1">
             <span className="truncate font-bold text-blue-800">STEP 2</span>
-            <div className="p-1.5 bg-blue-100 text-blue-700 rounded-lg shrink-0">
-              <WashingMachine className="size-3.5 sm:size-4" />
+            <div className="p-1 sm:p-1.5 bg-blue-100 text-blue-700 rounded-md sm:rounded-lg shrink-0">
+              <WashingMachine className="size-3 sm:size-3.5 md:size-4" />
             </div>
           </div>
-          <div>
-            <p className="text-lg sm:text-2xl font-bold text-blue-700 tracking-tight">
-              {counts.Processing} <span className="text-xs font-normal text-slate-500">Orders</span>
+          <div className="min-w-0">
+            <p className="text-sm sm:text-lg md:text-2xl font-bold text-blue-700 tracking-tight truncate">
+              {counts.Processing} <span className="text-[10px] sm:text-xs font-normal text-slate-500">Orders</span>
             </p>
-            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
+            <p className="text-[9px] sm:text-[10px] md:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
               Start Wash / Dry Clean
             </p>
-            <p className="text-[9px] text-slate-400 truncate">In Wash & Dry Cycle</p>
+            <p className="text-[8px] sm:text-[9px] text-slate-400 truncate">In Wash Cycle</p>
           </div>
         </div>
 
         {/* STEP 3: Ironing */}
         <div
           onClick={() => setActiveTab(activeTab === "Ironing" ? "All" : "Ironing")}
-          className={`bg-white p-3.5 sm:p-4 rounded-2xl border shadow-xs flex flex-col justify-between space-y-2 cursor-pointer transition ${
+          className={`bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
             activeTab === "Ironing"
               ? "border-purple-500 ring-2 ring-purple-500/20 bg-purple-50/20"
               : "border-slate-200/90 hover:border-purple-300"
           }`}
         >
-          <div className="flex justify-between items-center text-slate-500 text-[11px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-semibold gap-1">
             <span className="truncate font-bold text-purple-800">STEP 3</span>
-            <div className="p-1.5 bg-purple-100 text-purple-700 rounded-lg shrink-0">
-              <Sparkles className="size-3.5 sm:size-4" />
+            <div className="p-1 sm:p-1.5 bg-purple-100 text-purple-700 rounded-md sm:rounded-lg shrink-0">
+              <Sparkles className="size-3 sm:size-3.5 md:size-4" />
             </div>
           </div>
-          <div>
-            <p className="text-lg sm:text-2xl font-bold text-purple-700 tracking-tight">
-              {counts.Ironing} <span className="text-xs font-normal text-slate-500">Orders</span>
+          <div className="min-w-0">
+            <p className="text-sm sm:text-lg md:text-2xl font-bold text-purple-700 tracking-tight truncate">
+              {counts.Ironing} <span className="text-[10px] sm:text-xs font-normal text-slate-500">Orders</span>
             </p>
-            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
+            <p className="text-[9px] sm:text-[10px] md:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
               Ironing & Pressing
             </p>
-            <p className="text-[9px] text-slate-400 truncate">Steam Press & Fold</p>
+            <p className="text-[8px] sm:text-[9px] text-slate-400 truncate">Steam Press & Fold</p>
           </div>
         </div>
 
         {/* STEP 4: Shop Collection / Delivery */}
         <div
           onClick={() => setActiveTab(activeTab === "Ready" ? "All" : "Ready")}
-          className={`bg-white p-3.5 sm:p-4 rounded-2xl border shadow-xs flex flex-col justify-between space-y-2 cursor-pointer transition ${
+          className={`bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
             activeTab === "Ready"
               ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20"
               : "border-slate-200/90 hover:border-emerald-300"
           }`}
         >
-          <div className="flex justify-between items-center text-slate-500 text-[11px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-semibold gap-1">
             <span className="truncate font-bold text-emerald-800">STEP 4</span>
-            <div className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg shrink-0">
-              <PackageCheck className="size-3.5 sm:size-4" />
+            <div className="p-1 sm:p-1.5 bg-emerald-100 text-emerald-700 rounded-md sm:rounded-lg shrink-0">
+              <PackageCheck className="size-3 sm:size-3.5 md:size-4" />
             </div>
           </div>
-          <div>
-            <p className="text-lg sm:text-2xl font-bold text-emerald-700 tracking-tight">
-              {counts.Ready} <span className="text-xs font-normal text-slate-500">Orders</span>
+          <div className="min-w-0">
+            <p className="text-sm sm:text-lg md:text-2xl font-bold text-emerald-700 tracking-tight truncate">
+              {counts.Ready} <span className="text-[10px] sm:text-xs font-normal text-slate-500">Orders</span>
             </p>
-            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
+            <p className="text-[9px] sm:text-[10px] md:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
               Shop Collection / Delivery
             </p>
-            <p className="text-[9px] text-slate-400 truncate">Ready for handover</p>
+            <p className="text-[8px] sm:text-[9px] text-slate-400 truncate">Ready for handover</p>
           </div>
         </div>
 
         {/* STEP 5: Payment Collection */}
         <div
           onClick={() => setActiveTab(activeTab === "Collected" ? "All" : "Collected")}
-          className={`bg-white p-3.5 sm:p-4 rounded-2xl border shadow-xs flex flex-col justify-between space-y-2 cursor-pointer transition col-span-2 sm:col-span-1 ${
+          className={`bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
             activeTab === "Collected"
               ? "border-[#0F4C5C] ring-2 ring-[#0F4C5C]/20 bg-[#0F4C5C]/5"
               : "border-slate-200/90 hover:border-[#0F4C5C]/30"
           }`}
         >
-          <div className="flex justify-between items-center text-slate-500 text-[11px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-semibold gap-1">
             <span className="truncate font-bold text-[#0F4C5C]">STEP 5</span>
-            <div className="p-1.5 bg-[#0F4C5C]/10 text-[#0F4C5C] rounded-lg shrink-0">
-              <CreditCard className="size-3.5 sm:size-4" />
+            <div className="p-1 sm:p-1.5 bg-[#0F4C5C]/10 text-[#0F4C5C] rounded-md sm:rounded-lg shrink-0">
+              <CreditCard className="size-3 sm:size-3.5 md:size-4" />
             </div>
           </div>
-          <div>
-            <p className="text-lg sm:text-2xl font-bold text-[#0F4C5C] tracking-tight">
-              {counts.Collected} <span className="text-xs font-normal text-slate-500">Orders</span>
+          <div className="min-w-0">
+            <p className="text-sm sm:text-lg md:text-2xl font-bold text-[#0F4C5C] tracking-tight truncate">
+              {counts.Collected} <span className="text-[10px] sm:text-xs font-normal text-slate-500">Orders</span>
             </p>
-            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
+            <p className="text-[9px] sm:text-[10px] md:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
               Payment Collection
             </p>
-            <p className="text-[9px] text-slate-400 truncate">Settled & Completed</p>
+            <p className="text-[8px] sm:text-[9px] text-slate-400 truncate">Settled & Done</p>
           </div>
         </div>
       </div>
