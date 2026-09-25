@@ -4,34 +4,29 @@ import { useAccessControl } from "@/contexts/AccessControlContext";
 import {
   Users,
   UserCheck,
-  UserX,
   Plus,
   Search,
-  Calendar,
   Sparkles,
   TrendingUp,
   Shirt,
   IndianRupee,
-  ChevronRight,
-  Filter,
-  Pencil,
-  ShieldCheck,
-  CheckCircle2,
-  Clock,
-  ArrowUpDown,
   History,
   AlertTriangle,
   X,
-  Check,
+  Droplets,
+  Layers,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 
 export type PeriodOption = "today" | "yesterday" | "this_week" | "this_month" | "custom";
+export type ServiceOption = "all" | "ironing" | "washing";
 
 export default function StaffManagementView() {
   const { canManageRoles } = useAccessControl();
   const utils = trpc.useUtils();
 
+  const [serviceFilter, setServiceFilter] = useState<ServiceOption>("all");
   const [period, setPeriod] = useState<PeriodOption>("today");
   const [customFromDate, setCustomFromDate] = useState("");
   const [customToDate, setCustomToDate] = useState("");
@@ -49,6 +44,7 @@ export default function StaffManagementView() {
     period,
     fromDate: customFromDate || undefined,
     toDate: customToDate || undefined,
+    service: serviceFilter,
   });
   const { data: todayStats } = trpc.ironing.todayStats.useQuery();
 
@@ -98,7 +94,6 @@ export default function StaffManagementView() {
   }, [staffList, searchQuery]);
 
   const activeStaffCount = staffList.filter((s) => s.active).length;
-  const inactiveStaffCount = staffList.length - activeStaffCount;
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
@@ -107,10 +102,10 @@ export default function StaffManagementView() {
         <div>
           <h2 className="font-display text-lg sm:text-xl font-bold text-[#0F4C5C] flex items-center gap-2">
             <Users className="size-5 sm:size-6 text-[#0F4C5C]" />
-            Staff & Ironing Labour Management
+            Staff & Labour Management
           </h2>
           <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-            Track staff performance, daily ironed pieces, labour earnings, and automatic expenses
+            Track staff performance, daily washed & ironed pieces, labour earnings, and automatic expenses
           </p>
         </div>
 
@@ -125,34 +120,121 @@ export default function StaffManagementView() {
         )}
       </div>
 
+      {/* Service Filter Tabs (All / Ironing / Washing) */}
+      <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 rounded-2xl w-fit border border-slate-200/70">
+        <button
+          type="button"
+          onClick={() => setServiceFilter("all")}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+            serviceFilter === "all"
+              ? "bg-[#0F4C5C] text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+          }`}
+        >
+          <Layers className="size-3.5" />
+          All Services
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setServiceFilter("ironing")}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+            serviceFilter === "ironing"
+              ? "bg-[#0F4C5C] text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+          }`}
+        >
+          <Sparkles className="size-3.5 text-amber-300" />
+          Ironing Labour
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setServiceFilter("washing")}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+            serviceFilter === "washing"
+              ? "bg-[#0F4C5C] text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+          }`}
+        >
+          <Droplets className="size-3.5 text-blue-300" />
+          Washing Labour
+        </button>
+      </div>
+
       {/* KPI Overview Cards */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         {/* Total Pieces Today */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
           <div className="flex justify-between items-center text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-            <span>Ironed Today</span>
-            <span className="size-7 rounded-lg bg-teal-50 text-[#0F4C5C] flex items-center justify-center">
-              <Shirt className="size-3.5" />
+            <span>
+              {serviceFilter === "ironing"
+                ? "Ironed Today"
+                : serviceFilter === "washing"
+                ? "Washed Today"
+                : "Total Pieces Today"}
+            </span>
+            <span
+              className={`size-7 rounded-lg flex items-center justify-center ${
+                serviceFilter === "washing"
+                  ? "bg-blue-50 text-blue-600"
+                  : "bg-teal-50 text-[#0F4C5C]"
+              }`}
+            >
+              {serviceFilter === "washing" ? (
+                <Droplets className="size-3.5" />
+              ) : (
+                <Shirt className="size-3.5" />
+              )}
             </span>
           </div>
           <p className="font-display text-2xl font-bold text-[#0F4C5C] mt-2">
-            {todayStats?.todayPieces ?? 0} <span className="text-xs font-normal text-slate-400">pcs</span>
+            {serviceFilter === "ironing"
+              ? todayStats?.todayPieces ?? 0
+              : serviceFilter === "washing"
+              ? todayStats?.todayWashedPieces ?? 0
+              : todayStats?.totalPiecesToday ??
+                (todayStats?.todayPieces ?? 0) + (todayStats?.todayWashedPieces ?? 0)}{" "}
+            <span className="text-xs font-normal text-slate-400">pcs</span>
           </p>
-          <p className="text-[10px] text-slate-400 mt-1">Across all completed orders</p>
+          <p className="text-[10px] text-slate-400 mt-1">
+            {serviceFilter === "all"
+              ? `${todayStats?.todayPieces ?? 0} ironed · ${todayStats?.todayWashedPieces ?? 0} washed`
+              : "Across completed orders today"}
+          </p>
         </div>
 
         {/* Total Labour Cost Today */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
           <div className="flex justify-between items-center text-emerald-700 text-[11px] font-bold uppercase tracking-wider">
-            <span>Labour Earning Today</span>
+            <span>
+              {serviceFilter === "ironing"
+                ? "Ironing Labour Today"
+                : serviceFilter === "washing"
+                ? "Washing Labour Today"
+                : "Labour Earning Today"}
+            </span>
             <span className="size-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
               <IndianRupee className="size-3.5" />
             </span>
           </div>
           <p className="font-display text-2xl font-bold text-emerald-800 mt-2">
-            ₹{(todayStats?.todayLabourCost ?? 0).toLocaleString("en-IN")}
+            ₹
+            {(serviceFilter === "ironing"
+              ? todayStats?.todayLabourCost ?? 0
+              : serviceFilter === "washing"
+              ? todayStats?.todayWashingLabourCost ?? 0
+              : todayStats?.totalLabourCostToday ??
+                (todayStats?.todayLabourCost ?? 0) + (todayStats?.todayWashingLabourCost ?? 0)
+            ).toLocaleString("en-IN")}
           </p>
-          <p className="text-[10px] text-slate-400 mt-1">Credited as shop labour expense</p>
+          <p className="text-[10px] text-slate-400 mt-1">
+            {serviceFilter === "all"
+              ? `₹${(todayStats?.todayLabourCost ?? 0).toLocaleString("en-IN")} iron · ₹${(
+                  todayStats?.todayWashingLabourCost ?? 0
+                ).toLocaleString("en-IN")} wash`
+              : "Credited as shop labour expense"}
+          </p>
         </div>
 
         {/* Active Staff */}
@@ -164,25 +246,51 @@ export default function StaffManagementView() {
             </span>
           </div>
           <p className="font-display text-2xl font-bold text-blue-800 mt-2">
-            {activeStaffCount} <span className="text-xs font-normal text-slate-400">/ {staffList.length}</span>
+            {activeStaffCount}{" "}
+            <span className="text-xs font-normal text-slate-400">/ {staffList.length}</span>
           </p>
           <p className="text-[10px] text-slate-400 mt-1">
-            {todayStats?.activeIroningStaffToday ?? 0} active in ironing today
+            {serviceFilter === "ironing"
+              ? `${todayStats?.activeIroningStaffToday ?? 0} active in ironing today`
+              : serviceFilter === "washing"
+              ? `${todayStats?.activeWashingStaffToday ?? 0} active in washing today`
+              : `${todayStats?.activeStaffCount ?? 0} active in shop tasks today`}
           </p>
         </div>
 
         {/* Orders In Progress */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
           <div className="flex justify-between items-center text-purple-700 text-[11px] font-bold uppercase tracking-wider">
-            <span>Ironing in Progress</span>
+            <span>
+              {serviceFilter === "ironing"
+                ? "Ironing in Progress"
+                : serviceFilter === "washing"
+                ? "Washing in Progress"
+                : "Tasks in Progress"}
+            </span>
             <span className="size-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center">
-              <Sparkles className="size-3.5" />
+              {serviceFilter === "washing" ? (
+                <Droplets className="size-3.5" />
+              ) : (
+                <Sparkles className="size-3.5" />
+              )}
             </span>
           </div>
           <p className="font-display text-2xl font-bold text-purple-800 mt-2">
-            {todayStats?.inProgressCount ?? 0} <span className="text-xs font-normal text-slate-400">orders</span>
+            {serviceFilter === "ironing"
+              ? todayStats?.inProgressCount ?? 0
+              : serviceFilter === "washing"
+              ? todayStats?.inProgressWashingCount ?? 0
+              : (todayStats?.inProgressCount ?? 0) + (todayStats?.inProgressWashingCount ?? 0)}{" "}
+            <span className="text-xs font-normal text-slate-400">orders</span>
           </p>
-          <p className="text-[10px] text-slate-400 mt-1">Assigned & currently pressing</p>
+          <p className="text-[10px] text-slate-400 mt-1">
+            {serviceFilter === "all"
+              ? `${todayStats?.inProgressCount ?? 0} ironing · ${
+                  todayStats?.inProgressWashingCount ?? 0
+                } washing`
+              : "Assigned & currently processing"}
+          </p>
         </div>
       </div>
 
@@ -195,7 +303,7 @@ export default function StaffManagementView() {
               Staff Labour & Earnings Breakdown
             </h3>
             <p className="text-[11px] text-slate-500">
-              Calculated dynamically from completed ironing tasks in IST timezone
+              Calculated dynamically from completed {serviceFilter === "all" ? "washing & ironing" : serviceFilter} tasks in IST timezone
             </p>
           </div>
 
@@ -256,6 +364,11 @@ export default function StaffManagementView() {
               <strong className="text-base text-slate-800 font-bold">
                 {reportData?.totalPieces ?? 0} pcs
               </strong>
+              {serviceFilter === "all" && reportData && (
+                <span className="block text-[10px] text-slate-500 font-medium mt-0.5">
+                  {reportData.totalIroningPieces ?? 0} iron · {reportData.totalWashingPieces ?? 0} wash
+                </span>
+              )}
             </div>
             <div className="h-8 w-px bg-slate-200" />
             <div>
@@ -263,6 +376,11 @@ export default function StaffManagementView() {
               <strong className="text-base text-emerald-700 font-bold">
                 ₹{(reportData?.totalEarnings ?? 0).toLocaleString("en-IN")}
               </strong>
+              {serviceFilter === "all" && reportData && (
+                <span className="block text-[10px] text-emerald-600 font-medium mt-0.5">
+                  ₹{(reportData.totalIroningEarnings ?? 0).toLocaleString("en-IN")} iron · ₹{(reportData.totalWashingEarnings ?? 0).toLocaleString("en-IN")} wash
+                </span>
+              )}
             </div>
           </div>
 
@@ -276,7 +394,7 @@ export default function StaffManagementView() {
           <div className="py-8 text-center text-xs text-slate-400">Loading labour report...</div>
         ) : !reportData || reportData.staffBreakdown.length === 0 ? (
           <div className="py-8 text-center text-xs text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-            No ironing tasks completed for the selected period.
+            No {serviceFilter === "all" ? "labour" : serviceFilter} tasks completed for the selected period.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -286,6 +404,12 @@ export default function StaffManagementView() {
                   <th className="py-3 px-3">Staff Member</th>
                   <th className="py-3 px-3 text-center">Tasks Completed</th>
                   <th className="py-3 px-3 text-center">Total Pieces</th>
+                  {serviceFilter === "all" && (
+                    <>
+                      <th className="py-3 px-3 text-right">Ironing</th>
+                      <th className="py-3 px-3 text-right">Washing</th>
+                    </>
+                  )}
                   <th className="py-3 px-3 text-right">Labour Earnings</th>
                   <th className="py-3 px-3 text-right">Actions</th>
                 </tr>
@@ -302,7 +426,14 @@ export default function StaffManagementView() {
                         <div className="size-8 rounded-full bg-[#0F4C5C]/10 text-[#0F4C5C] font-bold flex items-center justify-center text-xs">
                           {item.staffName.slice(0, 2).toUpperCase()}
                         </div>
-                        <span className="font-bold text-slate-800">{item.staffName}</span>
+                        <div>
+                          <span className="font-bold text-slate-800 block">{item.staffName}</span>
+                          {serviceFilter === "all" && (
+                            <span className="text-[10px] text-slate-400">
+                              {item.ironingPieces ?? 0} iron · {item.washingPieces ?? 0} wash
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="py-3.5 px-3 text-center font-semibold text-slate-700">
@@ -311,6 +442,16 @@ export default function StaffManagementView() {
                     <td className="py-3.5 px-3 text-center font-bold text-slate-800">
                       {item.totalPieces} pcs
                     </td>
+                    {serviceFilter === "all" && (
+                      <>
+                        <td className="py-3.5 px-3 text-right font-medium text-slate-600">
+                          ₹{(item.ironingEarnings ?? 0).toLocaleString("en-IN")}
+                        </td>
+                        <td className="py-3.5 px-3 text-right font-medium text-blue-700">
+                          ₹{(item.washingEarnings ?? 0).toLocaleString("en-IN")}
+                        </td>
+                      </>
+                    )}
                     <td className="py-3.5 px-3 text-right font-bold text-emerald-700 text-sm">
                       ₹{item.totalEarnings.toLocaleString("en-IN")}
                     </td>
@@ -340,7 +481,7 @@ export default function StaffManagementView() {
               Staff Directory & Status
             </h3>
             <p className="text-[11px] text-slate-500">
-              Active staff receive new assignments; inactive staff remain in all historical logs
+              Active staff receive new washing and ironing assignments; inactive staff remain in all historical logs
             </p>
           </div>
 
@@ -446,10 +587,10 @@ export default function StaffManagementView() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-800">
-                    {selectedStaffDetail.staffName} — Ironing History
+                    {selectedStaffDetail.staffName} — Labour History
                   </h3>
                   <p className="text-xs text-slate-500">
-                    {selectedStaffDetail.completedTasksCount} completed tasks · {selectedStaffDetail.totalPieces} pieces · ₹{selectedStaffDetail.totalEarnings} total earning
+                    {selectedStaffDetail.completedTasksCount} tasks ({selectedStaffDetail.ironingPieces ?? 0} iron · {selectedStaffDetail.washingPieces ?? 0} wash) · ₹{selectedStaffDetail.totalEarnings} total earning
                   </p>
                 </div>
               </div>
@@ -468,48 +609,64 @@ export default function StaffManagementView() {
                 <div className="py-8 text-center text-slate-400">No tasks logged in this period.</div>
               ) : (
                 <div className="space-y-3">
-                  {selectedStaffDetail.tasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="font-mono font-bold text-[#0F4C5C] text-xs">
-                            Order #{task.orderId}
-                          </span>
-                          <span className="text-slate-500 text-[11px] ml-2">
-                            Customer: <strong>{task.customer}</strong>
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-bold text-emerald-700 text-sm">
-                            ₹{task.totalEarning}
-                          </span>
-                          <span className="text-[10px] text-slate-400 block">
-                            {new Date(task.completedAt).toLocaleDateString("en-IN", {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </div>
-                      </div>
+                  {selectedStaffDetail.tasks.map((task) => {
+                    const isWashing = task.taskType === "washing";
 
-                      {/* Items breakdown */}
-                      <div className="bg-white p-2.5 rounded-lg border border-slate-200/60 divide-y divide-slate-100 text-[11px]">
-                        {task.items.map((item, idx) => (
-                          <div key={idx} className="py-1 flex justify-between items-center text-slate-600">
-                            <span>
-                              {item.quantity}x {item.name} @ ₹{item.staffRate}/pc
+                    return (
+                      <div
+                        key={task.id}
+                        className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 border ${
+                                  isWashing
+                                    ? "bg-blue-50 text-blue-700 border-blue-200"
+                                    : "bg-teal-50 text-[#0F4C5C] border-teal-200"
+                                }`}
+                              >
+                                {isWashing ? <Droplets className="size-3" /> : <Sparkles className="size-3" />}
+                                {isWashing ? "Washing" : "Ironing"}
+                              </span>
+                              <span className="font-mono font-bold text-slate-800 text-xs">
+                                Order #{task.orderId}
+                              </span>
+                            </div>
+                            <span className="text-slate-500 text-[11px] block mt-1">
+                              Customer: <strong>{task.customer}</strong>
                             </span>
-                            <strong className="text-slate-800">₹{item.staffEarning}</strong>
                           </div>
-                        ))}
+                          <div className="text-right">
+                            <span className="font-bold text-emerald-700 text-sm">
+                              ₹{task.totalEarning}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block">
+                              {new Date(task.completedAt).toLocaleDateString("en-IN", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Items breakdown */}
+                        <div className="bg-white p-2.5 rounded-lg border border-slate-200/60 divide-y divide-slate-100 text-[11px]">
+                          {task.items.map((item, idx) => (
+                            <div key={idx} className="py-1 flex justify-between items-center text-slate-600">
+                              <span>
+                                {item.quantity}x {item.name} @ ₹{item.staffRate}/pc ({isWashing ? "wash" : "iron"})
+                              </span>
+                              <strong className="text-slate-800">₹{item.staffEarning}</strong>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -542,8 +699,8 @@ export default function StaffManagementView() {
                 </h3>
                 <p className="text-xs text-slate-500">
                   {staffToToggle.active
-                    ? "Inactive staff cannot receive new ironing assignments but stay in all reports."
-                    : "Active staff will be available in the Ironing staff dropdown."}
+                    ? "Inactive staff cannot receive new washing or ironing assignments but stay in all reports."
+                    : "Active staff will be available in the Washing & Ironing staff dropdowns."}
                 </p>
               </div>
             </div>
@@ -649,7 +806,7 @@ function AddStaffModal({
               onChange={(e) => setRole(e.target.value as any)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:border-[#0F4C5C] outline-none"
             >
-              <option value="staff">Staff (Ironing / Counter)</option>
+              <option value="staff">Staff (Washing / Ironing / Counter)</option>
               <option value="manager">Manager</option>
               <option value="admin">Admin / Owner</option>
             </select>
@@ -741,7 +898,7 @@ function EditStaffModal({
               onChange={(e) => setRole(e.target.value as any)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:border-[#0F4C5C] outline-none"
             >
-              <option value="staff">Staff</option>
+              <option value="staff">Staff (Washing / Ironing / Counter)</option>
               <option value="manager">Manager</option>
               <option value="admin">Admin / Owner</option>
             </select>

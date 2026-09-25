@@ -121,13 +121,51 @@ export default function ActiveProcessView({
   const [activeTab, setActiveTab] = useState<TabType>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrderForPickup, setSelectedOrderForPickup] = useState<Order | null>(null);
+  const [startWashingOrder, setStartWashingOrder] = useState<Order | null>(null);
+  const [completeWashingOrder, setCompleteWashingOrder] = useState<Order | null>(null);
   const [startIroningOrder, setStartIroningOrder] = useState<Order | null>(null);
   const [completeIroningOrder, setCompleteIroningOrder] = useState<Order | null>(null);
+
+  const startWashingMutation = trpc.ironing.startWashing.useMutation({
+    onSuccess: async (data) => {
+      await utils.orders.list.invalidate();
+      await utils.ironing.todayStats.invalidate();
+      await utils.ironing.getActiveWashingTask.invalidate();
+      await utils.dashboard.stats.invalidate();
+      toast.success(data.message || "Washing started", {
+        description: `Assigned to ${data.task?.staffName} · No expense created until completion.`,
+      });
+      setStartWashingOrder(null);
+    },
+    onError: (err) => {
+      toast.error("Could not start washing", { description: err.message });
+    },
+  });
+
+  const completeWashingMutation = trpc.ironing.completeWashing.useMutation({
+    onSuccess: async (data) => {
+      await utils.orders.list.invalidate();
+      await utils.ironing.getActiveWashingTask.invalidate();
+      await utils.ironing.getActiveTask.invalidate();
+      await utils.ironing.reports.invalidate();
+      await utils.ironing.todayStats.invalidate();
+      await utils.expenses.list.invalidate();
+      await utils.dashboard.stats.invalidate();
+      toast.success("Washing Completed & Labour Expense Created", {
+        description: `${data.message}`,
+      });
+      setCompleteWashingOrder(null);
+    },
+    onError: (err) => {
+      toast.error("Cannot complete washing", { description: err.message });
+    },
+  });
 
   const startIroningMutation = trpc.ironing.startIroning.useMutation({
     onSuccess: async (data) => {
       await utils.orders.list.invalidate();
       await utils.ironing.todayStats.invalidate();
+      await utils.ironing.getActiveTask.invalidate();
       await utils.dashboard.stats.invalidate();
       toast.success(data.message || "Ironing started", {
         description: `Assigned to ${data.task?.staffName} · No expense created until completion.`,
@@ -159,6 +197,8 @@ export default function ActiveProcessView({
 
   const voidTaskMutation = trpc.ironing.voidTask.useMutation({
     onSuccess: async () => {
+      await utils.ironing.getActiveWashingTask.invalidate();
+      await utils.ironing.getActiveTask.invalidate();
       await utils.ironing.todayStats.invalidate();
       await utils.orders.list.invalidate();
     },
@@ -543,32 +583,31 @@ export default function ActiveProcessView({
                   {/* STEP 1 -> STEP 2 */}
                   {order.status === "Received" && (
                     <button
-                      disabled={updateStatusMutation.isPending}
-                      onClick={() =>
-                        updateStatusMutation.mutate({ id: order.id, status: "Processing" })
-                      }
+                      onClick={() => setStartWashingOrder(order)}
                       className="w-full py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition flex items-center justify-center gap-1.5 active:scale-95 shadow-2xs"
                     >
                       <WashingMachine className="size-3.5" />
-                      Step 2: Start Wash / Dry Clean <ArrowRight className="size-3.5" />
+                      Step 2: Start Wash & Assign Staff <ArrowRight className="size-3.5" />
                     </button>
                   )}
 
                   {/* STEP 2 -> STEP 3 */}
                   {order.status === "Processing" && (
                     <div className="space-y-1">
+                      <WashingStaffBadge orderId={order.id} />
                       <button
-                        onClick={() => setStartIroningOrder(order)}
-                        className="w-full py-2.5 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-700 transition flex items-center justify-center gap-1.5 active:scale-95 shadow-2xs"
+                        onClick={() => setCompleteWashingOrder(order)}
+                        className="w-full py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition flex items-center justify-center gap-1.5 active:scale-95 shadow-2xs"
                       >
-                        <Sparkles className="size-3.5" />
-                        Step 3: Start Ironing & Assign Staff <ArrowRight className="size-3.5" />
+                        <CheckCircle2 className="size-3.5" />
+                        Step 3: Complete Washing & Record Labour <ArrowRight className="size-3.5" />
                       </button>
                       <button
-                        disabled={updateStatusMutation.isPending}
-                        onClick={() =>
-                          updateStatusMutation.mutate({ id: order.id, status: "Received" })
-                        }
+                        disabled={updateStatusMutation.isPending || voidTaskMutation.isPending}
+                        onClick={async () => {
+                          await voidTaskMutation.mutateAsync({ orderId: order.id, taskType: "washing" });
+                          updateStatusMutation.mutate({ id: order.id, status: "Received" });
+                        }}
                         className="w-full py-1 text-[10px] text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1 transition"
                       >
                         <RotateCcw className="size-2.5" /> Move back to Step 1 (Intake)
@@ -582,7 +621,7 @@ export default function ActiveProcessView({
                       <IroningStaffBadge orderId={order.id} />
                       <button
                         onClick={() => setCompleteIroningOrder(order)}
-                        className="w-full py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition flex items-center justify-center gap-1.5 active:scale-95 shadow-2xs"
+                        className="w-full py-2.5 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-700 transition flex items-center justify-center gap-1.5 active:scale-95 shadow-2xs"
                       >
                         <PackageCheck className="size-3.5" />
                         Step 4: Complete Ironing & Record Labour <ArrowRight className="size-3.5" />
@@ -590,7 +629,7 @@ export default function ActiveProcessView({
                       <button
                         disabled={updateStatusMutation.isPending || voidTaskMutation.isPending}
                         onClick={async () => {
-                          await voidTaskMutation.mutateAsync({ orderId: order.id });
+                          await voidTaskMutation.mutateAsync({ orderId: order.id, taskType: "ironing" });
                           updateStatusMutation.mutate({ id: order.id, status: "Processing" });
                         }}
                         className="w-full py-1 text-[10px] text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1 transition"
@@ -648,6 +687,31 @@ export default function ActiveProcessView({
         </div>
       )}
 
+      {/* Start Washing - Assign Staff Modal */}
+      {startWashingOrder && (
+        <StartWashingModal
+          order={startWashingOrder}
+          onClose={() => setStartWashingOrder(null)}
+          onStart={(orderId, staffId) =>
+            startWashingMutation.mutate({ orderId, staffId })
+          }
+          isPending={startWashingMutation.isPending}
+        />
+      )}
+
+      {/* Complete Washing & Record Labour Modal */}
+      {completeWashingOrder && (
+        <CompleteWashingModal
+          order={completeWashingOrder}
+          onClose={() => setCompleteWashingOrder(null)}
+          onComplete={(orderId, staffId, ratesOverride) =>
+            completeWashingMutation.mutate({ orderId, staffId, ratesOverride })
+          }
+          onNavigateToProducts={onNavigateToProducts}
+          isPending={completeWashingMutation.isPending}
+        />
+      )}
+
       {/* Start Ironing - Assign Staff Modal */}
       {startIroningOrder && (
         <StartIroningModal
@@ -689,6 +753,587 @@ export default function ActiveProcessView({
           isPending={settlePaymentMutation.isPending || updateStatusMutation.isPending}
         />
       )}
+    </div>
+  );
+}
+
+function WashingStaffBadge({ orderId }: { orderId: string }) {
+  const { data: task } = trpc.ironing.getActiveWashingTask.useQuery(
+    { orderId },
+    { staleTime: 5000 }
+  );
+
+  if (!task || task.status !== "In Progress") {
+    return (
+      <div className="flex items-center gap-1 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl">
+        <AlertCircle className="size-3 text-amber-600 shrink-0" />
+        <span>Staff assignment required on completion</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-1 text-[11px] font-semibold text-blue-800 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-xl">
+      <div className="flex items-center gap-1.5 truncate">
+        <User className="size-3 text-blue-600 shrink-0" />
+        <span className="truncate">
+          Washing by: <strong className="font-bold">{task.staffName}</strong>
+        </span>
+      </div>
+      <span className="text-[9px] uppercase px-1.5 py-0.2 bg-blue-200/70 text-blue-800 font-bold rounded">
+        In Progress
+      </span>
+    </div>
+  );
+}
+
+function StartWashingModal({
+  order,
+  onClose,
+  onStart,
+  isPending,
+}: {
+  order: Order;
+  onClose: () => void;
+  onStart: (orderId: string, staffId: string) => void;
+  isPending: boolean;
+}) {
+  const { data: staffList = [], isLoading } = trpc.workers.activeStaffList.useQuery();
+  const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStaffId) {
+      toast.error("Please select a staff member to start washing");
+      return;
+    }
+    onStart(order.id, selectedStaffId);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+      <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-in fade-in zoom-in-95">
+        <div className="flex justify-between items-start border-b border-slate-100 pb-3 sm:pb-4">
+          <div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-600 text-white">
+                STEP 2 OF 5
+              </span>
+              <span className="text-[10px] font-semibold text-blue-700">WASH / DRY CLEAN STAGE</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <WashingMachine className="size-5 text-blue-600" />
+              Who is doing this washing?
+            </h3>
+            <p className="text-[11px] sm:text-xs text-slate-500">
+              Assign an active staff member to track their washing labour
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="grid size-8 place-items-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Order Preview */}
+        <div className="bg-slate-50 p-3.5 rounded-2xl space-y-2 text-xs border border-slate-100">
+          <div className="flex justify-between">
+            <span className="text-slate-500">Order ID:</span>
+            <span className="font-mono font-bold text-blue-800">{order.id}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-500">Customer:</span>
+            <span className="font-bold text-slate-800">{order.customer} ({order.phone})</span>
+          </div>
+          <div className="pt-1 border-t border-slate-200/70">
+            <span className="text-slate-500 block mb-0.5 font-medium">Garments to Wash:</span>
+            <p className="font-medium text-slate-800">{order.items}</p>
+          </div>
+        </div>
+
+        {/* Staff Selection Dropdown */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Select Active Staff Member <span className="text-rose-500">*</span>
+            </label>
+            {isLoading ? (
+              <div className="py-2 text-xs text-slate-400">Loading active staff...</div>
+            ) : staffList.length === 0 ? (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                No active staff found. Please add or activate staff in <strong>Staff Management</strong> tab.
+              </div>
+            ) : (
+              <div className="relative">
+                <select
+                  value={selectedStaffId}
+                  onChange={(e) => setSelectedStaffId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
+                  required
+                >
+                  <option value="">-- Choose Active Staff --</option>
+                  {staffList.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.role}) {(s as any).phone ? `· ${(s as any).phone}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="p-3 bg-blue-50/70 border border-blue-200/70 rounded-xl text-[11px] text-blue-900 space-y-1">
+            <p className="font-semibold flex items-center gap-1.5">
+              <WashingMachine className="size-3.5 text-blue-600 shrink-0" />
+              Starting Washing creates NO expense.
+            </p>
+            <p className="text-blue-700 text-[10px]">
+              Labour earning and linked internal expense are calculated and recorded only upon completing washing.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 border border-slate-200 text-slate-600 text-xs font-semibold rounded-xl hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPending || !selectedStaffId}
+              className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
+            >
+              <WashingMachine className="size-4" />
+              {isPending ? "Starting..." : "Start Washing"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CompleteWashingModal({
+  order,
+  onClose,
+  onComplete,
+  onNavigateToProducts,
+  isPending,
+}: {
+  order: Order;
+  onClose: () => void;
+  onComplete: (orderId: string, staffId?: string, ratesOverride?: Record<string, number>) => void;
+  onNavigateToProducts?: () => void;
+  isPending: boolean;
+}) {
+  const { data: activeTask } = trpc.ironing.getActiveWashingTask.useQuery({
+    orderId: order.id,
+  });
+  const { data: staffList = [] } = trpc.workers.activeStaffList.useQuery();
+  const { data: products = [] } = trpc.products.list.useQuery();
+  const { data: shops = [] } = trpc.shops.list.useQuery();
+
+  const shopFallbackRate = shops[0]?.defaultStaffWashRate ?? 15;
+
+  const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+  const [customRates, setCustomRates] = useState<Record<string, number>>({});
+
+  // Product ID & Name to staffWashRate mappings
+  const { productIdRateMap, productNameRateMap } = useMemo(() => {
+    const idMap = new Map<string, number>();
+    const nameMap = new Map<string, number>();
+    for (const p of products) {
+      const rate = p.staffWashRate !== undefined && p.staffWashRate !== null ? p.staffWashRate : 15;
+      if (p.id) idMap.set(String(p.id), rate);
+      if ((p as any)._id) idMap.set(String((p as any)._id), rate);
+      if (p.name) nameMap.set(p.name.toLowerCase().trim(), rate);
+    }
+    return { productIdRateMap: idMap, productNameRateMap: nameMap };
+  }, [products]);
+
+  // Robust parsing with full string & prefix sanitization
+  const parsedGarmentItems = useMemo(() => {
+    const sanitizeItem = (rawName: string, rawQty?: number, productId?: string | null, staffRate?: number) => {
+      let trimmed = (rawName || "").trim();
+      let qty = rawQty && rawQty > 0 ? rawQty : 1;
+
+      const prefixMatch = trimmed.match(/^(\d+)\s*(?:items|pcs|pieces|garments|cloths|clothes)?\s*[·\.\:\-\*x\s]\s*(.+)$/i);
+      if (prefixMatch) {
+        qty = rawQty && rawQty > 1 ? rawQty : (Number(prefixMatch[1]) || 1);
+        trimmed = prefixMatch[2].trim();
+      }
+
+      const suffixMatch = trimmed.match(/^(.+?)\s*[·\.\:\-\*x\s]\s*(\d+)\s*(?:items|pcs|pieces)?$/i);
+      if (suffixMatch) {
+        qty = rawQty && rawQty > 1 ? rawQty : (Number(suffixMatch[2]) || 1);
+        trimmed = suffixMatch[1].trim();
+      }
+
+      trimmed = trimmed.replace(/^\d+\s*(?:items|pcs|pieces)?\s*[·\.\:\-\*]\s*/i, "").trim();
+
+      return {
+        productId: productId || null,
+        name: trimmed || "Standard Laundry",
+        quantity: qty,
+        staffWashRate: staffRate,
+      };
+    };
+
+    if (order.structuredItems && order.structuredItems.length > 0) {
+      return order.structuredItems.map((i) =>
+        sanitizeItem(i.name, i.quantity, i.productId, (i as any).staffWashRate)
+      );
+    }
+    if (Array.isArray(order.items)) {
+      return (order.items as any[]).map((i: any) => {
+        if (typeof i === "string") return sanitizeItem(i);
+        return sanitizeItem(i.name, i.quantity, i.productId, (i as any).staffWashRate);
+      });
+    }
+    if (typeof order.items === "string" && order.items.trim()) {
+      const str = order.items.trim();
+      const parts = str.split(",");
+      return parts.map((s) => sanitizeItem(s));
+    }
+    return [sanitizeItem(order.items || "Standard Laundry", 1)];
+  }, [order]);
+
+  const getItemRateAndSource = (item: { productId?: string | null; name: string; staffWashRate?: number }): { rate: number; source: "product" | "order_snapshot" | "shop_default" | "missing" } => {
+    // 1. Check stable Product ID match from live catalog (including 0)
+    if (item.productId && productIdRateMap.has(String(item.productId))) {
+      const r = productIdRateMap.get(String(item.productId))!;
+      return { rate: r, source: "product" };
+    }
+
+    // 2. Exact name match against live products catalog (including 0)
+    const cleanName = item.name.toLowerCase().trim();
+    if (productNameRateMap.has(cleanName)) {
+      const r = productNameRateMap.get(cleanName)!;
+      return { rate: r, source: "product" };
+    }
+
+    // 3. Fuzzy / substring name match against live products catalog
+    let fuzzyMatch: number | null = null;
+    productNameRateMap.forEach((pRate, pName) => {
+      if (fuzzyMatch === null && (cleanName.includes(pName) || pName.includes(cleanName))) {
+        fuzzyMatch = pRate;
+      }
+    });
+    if (fuzzyMatch !== null) return { rate: fuzzyMatch, source: "product" };
+
+    // 4. Standard configured fallback for standard laundry / general wash
+    if (productNameRateMap.has("standard laundry")) {
+      return { rate: productNameRateMap.get("standard laundry")!, source: "product" };
+    }
+
+    // 5. Positive snapshot rate saved on order item (if custom / positive)
+    if (item.staffWashRate !== undefined && item.staffWashRate !== null && item.staffWashRate > 0) {
+      return { rate: item.staffWashRate, source: "order_snapshot" };
+    }
+
+    // 6. Shop default fallback from settings
+    if (shopFallbackRate !== undefined && shopFallbackRate !== null && shopFallbackRate > 0) {
+      return { rate: shopFallbackRate, source: "shop_default" };
+    }
+
+    // 7. Guaranteed fallback for standard laundry / general service
+    if (cleanName === "standard laundry" || cleanName.includes("standard") || cleanName.includes("laundry") || !cleanName) {
+      return { rate: 15, source: "product" };
+    }
+
+    // 8. No rate configured anywhere
+    return { rate: 0, source: "missing" };
+  };
+
+  const calculatedItems = parsedGarmentItems.map((item) => {
+    if (customRates[item.name] !== undefined) {
+      const customVal = customRates[item.name];
+      return {
+        productId: item.productId,
+        name: item.name,
+        quantity: item.quantity,
+        staffRate: customVal,
+        staffEarning: item.quantity * customVal,
+        source: "custom" as const,
+        isUsingDefaultRate: false,
+        isMissingRate: false,
+      };
+    }
+    const { rate, source } = getItemRateAndSource(item);
+    return {
+      productId: item.productId,
+      name: item.name,
+      quantity: item.quantity,
+      staffRate: rate,
+      staffEarning: item.quantity * rate,
+      source,
+      isUsingDefaultRate: source === "shop_default",
+      isMissingRate: source === "missing",
+    };
+  });
+
+  const unconfiguredItems = calculatedItems.filter((i) => i.isMissingRate);
+  const totalPieces = calculatedItems.reduce((acc: number, i) => acc + i.quantity, 0);
+  const totalEarnings = calculatedItems.reduce((acc: number, i) => acc + i.staffEarning, 0);
+
+  const effectiveStaffId = activeTask?.staffId || selectedStaffId;
+  const effectiveStaffName =
+    activeTask?.staffName || staffList.find((s) => s.id === selectedStaffId)?.name;
+
+  const handleRateChange = (itemName: string, val: string) => {
+    const num = Math.max(0, Number(val) || 0);
+    setCustomRates((prev) => ({
+      ...prev,
+      [itemName]: num,
+    }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!effectiveStaffId) {
+      toast.error("Please select the staff member who did the washing");
+      return;
+    }
+
+    if (unconfiguredItems.length > 0) {
+      toast.error("Missing Staff Washing Rate", {
+        description: `Please configure a rate for "${unconfiguredItems[0].name}" or set a default in Settings.`,
+      });
+      return;
+    }
+
+    const ratesOverride: Record<string, number> = {};
+    calculatedItems.forEach((i) => {
+      ratesOverride[i.name] = i.staffRate;
+      if (i.productId) {
+        ratesOverride[i.productId] = i.staffRate;
+      }
+    });
+
+    onComplete(order.id, activeTask ? undefined : effectiveStaffId, ratesOverride);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+      <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
+        <div className="flex justify-between items-start border-b border-slate-100 pb-3 sm:pb-4">
+          <div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-600 text-white">
+                STEP 2 ➔ 3
+              </span>
+              <span className="text-[10px] font-semibold text-blue-700">COMPLETING WASHING</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <CheckCircle2 className="size-5 text-blue-600" />
+              Complete Washing & Record Labour
+            </h3>
+            <p className="text-[11px] sm:text-xs text-slate-500">
+              Calculate staff washing labour earning and create automatic internal expense
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="grid size-8 place-items-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Hard-block warning banner if rate is 0 and no fallback */}
+        {unconfiguredItems.length > 0 && (
+          <div className="bg-rose-50 border border-rose-200/80 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-rose-900">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="size-4.5 text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-rose-950">
+                  {unconfiguredItems.length === 1
+                    ? `Missing Staff Rate for "${unconfiguredItems[0].name}" (₹0)`
+                    : `Missing Staff Rates for ${unconfiguredItems.length} items (₹0)`}
+                </p>
+                <p className="text-[11px] text-rose-800 mt-0.5">
+                  Enter rate below or configure permanently in Items / Services to complete this order.
+                </p>
+              </div>
+            </div>
+            {onNavigateToProducts && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onNavigateToProducts();
+                }}
+                className="shrink-0 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-[11px] transition flex items-center justify-center gap-1 shadow-xs"
+              >
+                Go to Items / Services
+                <ChevronRight className="size-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Staff details or fallback prompt */}
+        {activeTask ? (
+          <div className="bg-blue-50/70 border border-blue-200/80 p-3.5 rounded-2xl flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="size-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">
+                {activeTask.staffName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="text-[10px] text-blue-700 font-semibold uppercase">Assigned Staff</p>
+                <p className="font-bold text-blue-950 text-sm">{activeTask.staffName}</p>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-200/80 text-blue-800">
+              Washing In Progress
+            </span>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-slate-700">
+              Who completed this washing? <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={selectedStaffId}
+              onChange={(e) => setSelectedStaffId(e.target.value)}
+              className="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800"
+              required
+            >
+              <option value="">-- Choose Staff Member --</option>
+              {staffList.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.role})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Rate Breakdown Table */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+            <span>Garment Labour Breakdown</span>
+            <span className="text-[11px] font-normal text-slate-500">Edit rate/pc if needed</span>
+          </div>
+
+          <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
+            <div className="grid grid-cols-12 bg-slate-100/80 px-3 py-2 font-bold text-slate-600 text-[11px] border-b border-slate-200">
+              <div className="col-span-5">Garment</div>
+              <div className="col-span-2 text-center">Qty</div>
+              <div className="col-span-2 text-right">Rate/pc</div>
+              <div className="col-span-3 text-right">Labour Earning</div>
+            </div>
+
+            <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto">
+              {calculatedItems.length === 0 ? (
+                <div className="p-4 text-center text-slate-400 text-xs">
+                  {order.items || "Standard Laundry items"}
+                </div>
+              ) : (
+                calculatedItems.map((item, idx) => (
+                  <div key={idx} className={`grid grid-cols-12 px-3 py-2 items-center text-slate-700 gap-1 ${item.isMissingRate ? "bg-rose-50/40" : item.isUsingDefaultRate ? "bg-amber-50/40" : ""}`}>
+                    <div className="col-span-5 truncate" title={item.name}>
+                      <p className="font-semibold text-slate-800 truncate">{item.name}</p>
+                      {item.isUsingDefaultRate && (
+                        <span className="inline-block text-[9px] font-bold text-amber-700 bg-amber-100/80 px-1.5 py-0.5 rounded mt-0.5">
+                          ⚠️ Using default rate (₹{item.staffRate})
+                        </span>
+                      )}
+                      {item.isMissingRate && (
+                        <span className="inline-block text-[9px] font-bold text-rose-700 bg-rose-100/80 px-1.5 py-0.5 rounded mt-0.5">
+                          ❌ Rate missing — configure in Items/Services
+                        </span>
+                      )}
+                      {!item.isMissingRate && !item.isUsingDefaultRate && item.staffRate === 0 && (
+                        <span className="inline-block text-[9px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded mt-0.5">
+                          ₹0/pc (Explicit rate)
+                        </span>
+                      )}
+                    </div>
+                    <div className="col-span-2 text-center font-mono font-bold">
+                      {item.quantity}
+                    </div>
+                    <div className="col-span-2 flex justify-end">
+                      <div className="relative w-16">
+                        <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">
+                          ₹
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.staffRate}
+                          onChange={(e) => handleRateChange(item.name, e.target.value)}
+                          className={`w-full pl-4 pr-1 py-1 text-xs text-right font-mono font-bold rounded-lg focus:outline-none focus:ring-1 ${
+                            item.isMissingRate
+                              ? "bg-rose-50 border border-rose-300 focus:ring-rose-500 text-rose-900"
+                              : item.isUsingDefaultRate
+                              ? "bg-amber-50 border border-amber-300 focus:ring-amber-500 text-amber-900"
+                              : "bg-slate-50 border border-slate-200 focus:ring-blue-500 text-slate-800"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                    <div className="col-span-3 text-right font-mono font-bold text-blue-700">
+                      ₹{item.staffEarning}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="grid grid-cols-12 bg-slate-50 px-3 py-2.5 font-bold text-slate-800 border-t border-slate-200">
+              <div className="col-span-5">Total Pieces & Labour:</div>
+              <div className="col-span-2 text-center text-slate-900">{totalPieces} pcs</div>
+              <div className="col-span-2 text-right text-slate-400">-</div>
+              <div className="col-span-3 text-right text-blue-700 text-sm font-bold">
+                ₹{totalEarnings}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Accounting & Financial Clarification Notice */}
+        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-1.5 text-slate-600">
+          <div className="flex justify-between items-center text-[11px]">
+            <span>Customer Bill Amount (Unchanged):</span>
+            <span className="font-bold text-slate-800">₹{order.totalAmount}</span>
+          </div>
+          <div className="flex justify-between items-center text-[11px] text-blue-700 font-semibold border-t border-slate-200/60 pt-1">
+            <span>Automatic Internal Expense:</span>
+            <span>
+              {totalEarnings > 0
+                ? `₹${totalEarnings} under "Staff / Washing Labour"`
+                : `₹0 (No internal expense)`}
+            </span>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="pt-1 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 border border-slate-200 text-slate-600 text-xs font-semibold rounded-xl hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isPending || !effectiveStaffId || unconfiguredItems.length > 0}
+            className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
+          >
+            <Check className="size-4" />
+            {isPending
+              ? "Recording..."
+              : totalEarnings > 0
+              ? `Complete & Credit ₹${totalEarnings}`
+              : "Complete Washing (₹0 Labour)"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

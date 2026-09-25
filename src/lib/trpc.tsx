@@ -141,6 +141,7 @@ export interface IroningTaskItem {
 
 export interface IroningTask {
   id: string;
+  taskType?: "ironing" | "washing";
   orderId: string;
   staffId: string;
   staffName: string;
@@ -157,11 +158,18 @@ export interface IroningTask {
 export interface StaffPerformanceItem {
   staffId: string;
   staffName: string;
+  ironingPieces?: number;
+  ironingEarnings?: number;
+  ironingTasksCount?: number;
+  washingPieces?: number;
+  washingEarnings?: number;
+  washingTasksCount?: number;
   totalPieces: number;
   totalEarnings: number;
   completedTasksCount: number;
   tasks: Array<{
     id: string;
+    taskType?: "ironing" | "washing";
     orderId: string;
     customer: string;
     completedAt: string;
@@ -173,10 +181,15 @@ export interface StaffPerformanceItem {
 
 export interface IroningReportResponse {
   period: string;
+  service?: "all" | "ironing" | "washing";
   startDate: string;
   endDate: string;
   totalPieces: number;
   totalEarnings: number;
+  totalIroningPieces?: number;
+  totalIroningEarnings?: number;
+  totalWashingPieces?: number;
+  totalWashingEarnings?: number;
   totalTasksCount: number;
   staffBreakdown: StaffPerformanceItem[];
 }
@@ -1366,6 +1379,70 @@ export const trpc = {
   },
 
   ironing: {
+    startWashing: {
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: { orderId: string; staffId: string }) => {
+            try {
+              return await client.ironing.startWashing.mutate(input);
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveWashingTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
+    getActiveWashingTask: {
+      useQuery: (input: { orderId: string }, options?: any) =>
+        useQuery<IroningTask | null>({
+          queryKey: ["ironing.getActiveWashingTask", input.orderId],
+          queryFn: () => client.ironing.getActiveWashingTask.query(input),
+          enabled: Boolean(input.orderId),
+          ...options,
+        }),
+    },
+    completeWashing: {
+      useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: {
+            orderId: string;
+            staffId?: string;
+            ratesOverride?: Record<string, number>;
+          }) => {
+            try {
+              const res = await client.ironing.completeWashing.mutate(input);
+              qc.setQueryData(["orders.list"], (old: Order[] | undefined) =>
+                (old || []).map((ord) => (ord.id === input.orderId ? { ...ord, status: "Ironing" } : ord))
+              );
+              return res;
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveWashingTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.reports"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["expenses.list"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
     startIroning: {
       useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
         const qc = useQueryClient();
@@ -1461,7 +1538,7 @@ export const trpc = {
       useMutation: (options?: { onSuccess?: (data: any) => void; onError?: (err: Error) => void }) => {
         const qc = useQueryClient();
         return useMutation({
-          mutationFn: async (input: { orderId: string }) => {
+          mutationFn: async (input: { orderId: string; taskType?: "all" | "ironing" | "washing" }) => {
             try {
               return await client.ironing.voidTask.mutate(input);
             } catch (err) {
@@ -1469,6 +1546,7 @@ export const trpc = {
             }
           },
           onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveWashingTask"] });
             qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
             qc.invalidateQueries({ queryKey: ["ironing.reports"] });
             qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
@@ -1486,6 +1564,7 @@ export const trpc = {
           fromDate?: string;
           toDate?: string;
           staffId?: string;
+          service?: "all" | "ironing" | "washing";
         },
         options?: any
       ) =>
@@ -1501,9 +1580,15 @@ export const trpc = {
         useQuery<{
           todayPieces: number;
           todayLabourCost: number;
+          todayWashedPieces: number;
+          todayWashingLabourCost: number;
+          totalPiecesToday: number;
+          totalLabourCostToday: number;
           activeStaffCount: number;
           activeIroningStaffToday: number;
+          activeWashingStaffToday: number;
           inProgressCount: number;
+          inProgressWashingCount: number;
         }>({
           queryKey: ["ironing.todayStats"],
           queryFn: () => client.ironing.todayStats.query(),

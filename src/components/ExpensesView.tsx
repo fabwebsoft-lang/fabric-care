@@ -1,13 +1,100 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { trpc, type Expense } from "@/lib/trpc";
-import { WalletCards, Plus, Check, X, MoreVertical, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import {
+  WalletCards,
+  Plus,
+  Check,
+  X,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  User,
+  Calendar,
+  ChevronDown,
+  Sparkles,
+  ChevronsUpDown,
+  Search,
+} from "lucide-react";
 import { toast } from "sonner";
+
+// Extract staff name from expense title or category
+function extractStaffName(expense: Expense): string {
+  const title = (expense.title || "").trim();
+
+  // If title has a dash or separator (e.g., "Ironing Labour – Chinras", "Ironing Labour - asfaq")
+  if (/[-–—]/.test(title)) {
+    const parts = title.split(/[-–—]/);
+    if (parts.length >= 2) {
+      const extracted = parts[parts.length - 1].trim();
+      if (extracted) {
+        return extracted;
+      }
+    }
+  }
+
+  // If category is staff-related or has wages
+  const cat = (expense.category || "").toLowerCase();
+  if (cat.includes("labour") || cat.includes("wages") || cat.includes("staff")) {
+    if (title.includes(":")) {
+      const parts = title.split(":");
+      if (parts[1]?.trim()) return parts[1].trim();
+    }
+    return "Staff Member";
+  }
+
+  // General expense entry
+  return "Shop Owner";
+}
+
+function formatExpenseDate(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+function getDateSortKey(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "1970-01-01";
+    return d.toISOString().slice(0, 10);
+  } catch {
+    return "1970-01-01";
+  }
+}
+
+interface DateGroup {
+  dateKey: string;
+  formattedDate: string;
+  totalAmount: number;
+  expenses: Expense[];
+}
+
+interface StaffGroup {
+  staffName: string;
+  totalAmount: number;
+  totalEntries: number;
+  latestDate: string;
+  dateGroups: DateGroup[];
+}
 
 export default function ExpensesView() {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Collapsed state tracking (default is expanded / false)
+  const [collapsedStaff, setCollapsedStaff] = useState<Record<string, boolean>>({});
+  const [collapsedDates, setCollapsedDates] = useState<Record<string, boolean>>({});
 
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -70,6 +157,134 @@ export default function ExpensesView() {
   const totalCollectedAmount = orders.reduce((sum, o) => sum + Number(o.amountPaid || 0), 0);
   const netProfit = totalCollectedAmount - totalExpenseAmount;
 
+  // Filter and Group Expenses by Staff Name -> Date
+  const groupedExpenses = useMemo<StaffGroup[]>(() => {
+    const q = searchQuery.toLowerCase().trim();
+    const filtered = apiExpenses.filter((e) => {
+      if (!q) return true;
+      const staff = extractStaffName(e).toLowerCase();
+      const title = (e.title || "").toLowerCase();
+      const cat = (e.category || "").toLowerCase();
+      const notes = (e.notes || "").toLowerCase();
+      const method = (e.paymentMethod || "").toLowerCase();
+      return (
+        staff.includes(q) ||
+        title.includes(q) ||
+        cat.includes(q) ||
+        notes.includes(q) ||
+        method.includes(q)
+      );
+    });
+
+    const staffMap = new Map<
+      string,
+      {
+        staffName: string;
+        totalAmount: number;
+        totalEntries: number;
+        latestDate: string;
+        datesMap: Map<
+          string,
+          { dateKey: string; formattedDate: string; totalAmount: number; expenses: Expense[] }
+        >;
+      }
+    >();
+
+    for (const exp of filtered) {
+      const staffName = extractStaffName(exp);
+      const amount = Number(exp.amount || 0);
+      const dateKey = getDateSortKey(exp.expenseDate);
+      const formattedDate = formatExpenseDate(exp.expenseDate);
+
+      if (!staffMap.has(staffName)) {
+        staffMap.set(staffName, {
+          staffName,
+          totalAmount: 0,
+          totalEntries: 0,
+          latestDate: dateKey,
+          datesMap: new Map(),
+        });
+      }
+
+      const staffGroup = staffMap.get(staffName)!;
+      staffGroup.totalAmount += amount;
+      staffGroup.totalEntries += 1;
+      if (dateKey > staffGroup.latestDate) {
+        staffGroup.latestDate = dateKey;
+      }
+
+      if (!staffGroup.datesMap.has(dateKey)) {
+        staffGroup.datesMap.set(dateKey, {
+          dateKey,
+          formattedDate,
+          totalAmount: 0,
+          expenses: [],
+        });
+      }
+
+      const dateGroup = staffGroup.datesMap.get(dateKey)!;
+      dateGroup.totalAmount += amount;
+      dateGroup.expenses.push(exp);
+    }
+
+    const result: StaffGroup[] = Array.from(staffMap.values()).map((staff) => {
+      const dateGroups = Array.from(staff.datesMap.values())
+        .map((dg) => ({
+          ...dg,
+          expenses: dg.expenses.sort(
+            (a, b) =>
+              new Date(b.expenseDate || 0).getTime() - new Date(a.expenseDate || 0).getTime()
+          ),
+        }))
+        .sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+
+      return {
+        staffName: staff.staffName,
+        totalAmount: staff.totalAmount,
+        totalEntries: staff.totalEntries,
+        latestDate: staff.latestDate,
+        dateGroups,
+      };
+    });
+
+    return result.sort(
+      (a, b) =>
+        b.latestDate.localeCompare(a.latestDate) || a.staffName.localeCompare(b.staffName)
+    );
+  }, [apiExpenses, searchQuery]);
+
+  const toggleStaffCollapse = (staffName: string) => {
+    setCollapsedStaff((prev) => ({
+      ...prev,
+      [staffName]: !prev[staffName],
+    }));
+  };
+
+  const toggleDateCollapse = (staffName: string, dateKey: string) => {
+    const key = `${staffName}__${dateKey}`;
+    setCollapsedDates((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const areAllCollapsed = useMemo(() => {
+    if (groupedExpenses.length === 0) return false;
+    return groupedExpenses.every((s) => collapsedStaff[s.staffName]);
+  }, [groupedExpenses, collapsedStaff]);
+
+  const toggleAllStaff = () => {
+    if (areAllCollapsed) {
+      setCollapsedStaff({});
+    } else {
+      const next: Record<string, boolean> = {};
+      for (const s of groupedExpenses) {
+        next[s.staffName] = true;
+      }
+      setCollapsedStaff(next);
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Header */}
@@ -96,7 +311,8 @@ export default function ExpensesView() {
       </div>
 
       <div className="grid gap-4 sm:gap-5 grid-cols-1 lg:grid-cols-[1.2fr_.8fr]">
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-xs">
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-xs flex flex-col">
+          {/* Top Summary Cards */}
           <div className="mb-5 grid gap-2.5 sm:gap-3 grid-cols-1 sm:grid-cols-3">
             <div className="rounded-xl p-3.5 bg-rose-50 border border-rose-100">
               <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700">Total Expenses</p>
@@ -118,109 +334,277 @@ export default function ExpensesView() {
             </div>
           </div>
 
-          <div className="divide-y divide-slate-100">
+          {/* Search & Collapse Controls */}
+          {apiExpenses.length > 0 && (
+            <div className="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Filter by staff, title, category, notes..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-[#0F4C5C] focus:bg-white transition"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {groupedExpenses.length > 0 && (
+                <button
+                  type="button"
+                  onClick={toggleAllStaff}
+                  className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-[11px] font-semibold text-slate-600 hover:text-[#0F4C5C] bg-slate-100/80 hover:bg-slate-200/80 rounded-lg transition shrink-0"
+                >
+                  <ChevronsUpDown className="size-3.5 text-slate-500" />
+                  <span>{areAllCollapsed ? "Expand All" : "Collapse All"}</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Grouped Staff & Date Accordion List */}
+          <div className="space-y-3.5">
             {isLoading ? (
               <div className="py-12 text-center text-xs text-slate-400">Loading expenses...</div>
             ) : apiExpenses.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-400">No expenses recorded yet.</div>
+            ) : groupedExpenses.length === 0 ? (
+              <div className="py-12 text-center text-xs text-slate-400">
+                No matching expenses found for &quot;{searchQuery}&quot;.
+              </div>
             ) : (
-              apiExpenses.map((expense) => {
-                const isMenuOpen = menuOpenId === expense.id;
-                const isSystem = Boolean(expense.isSystemGenerated);
+              groupedExpenses.map((staff) => {
+                const isStaffCollapsed = Boolean(collapsedStaff[staff.staffName]);
+                const isOwner = staff.staffName.toLowerCase() === "shop owner";
 
                 return (
-                  <div key={expense.id} className="relative flex items-center justify-between gap-2.5 py-3.5 sm:py-4">
-                    {/* Left: Icon & Info */}
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className={`grid size-9 sm:size-10 shrink-0 place-items-center rounded-xl ${isSystem ? "bg-purple-100 text-purple-700" : "bg-slate-100 text-[#0F4C5C]"}`}>
-                        <WalletCards className="size-4 sm:size-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">{expense.title}</p>
-                          {isSystem && (
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-                              System Generated
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-500 truncate">
-                          <span className="font-semibold text-[#0F4C5C]">{expense.category}</span> ·{" "}
-                          {new Date(expense.expenseDate).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })} ·{" "}
-                          {expense.paymentMethod}
-                        </p>
-                        {expense.notes && (
-                          <p className="mt-0.5 text-[10px] text-slate-400 italic truncate">{expense.notes}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Right: Amount + 3-dots Menu Button */}
-                    <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                      <p className="text-xs sm:text-sm font-bold text-rose-600">
-                        ₹{Number(expense.amount).toLocaleString("en-IN")}
-                      </p>
-
-                      {/* 3-dots Action Button (at least 44x44 tap area) */}
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpenId(isMenuOpen ? null : expense.id);
-                          }}
-                          className="size-11 flex items-center justify-center rounded-xl text-slate-400 hover:text-[#0F4C5C] hover:bg-slate-100 active:bg-slate-200 transition"
-                          aria-label={`Actions for ${expense.title}`}
-                          title="Actions"
+                  <div
+                    key={staff.staffName}
+                    className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-visible transition"
+                  >
+                    {/* Staff Group Header */}
+                    <button
+                      type="button"
+                      onClick={() => toggleStaffCollapse(staff.staffName)}
+                      className="w-full flex items-center justify-between gap-3 p-3 sm:p-3.5 bg-slate-50/70 hover:bg-slate-100/70 rounded-2xl transition text-left cursor-pointer select-none"
+                      aria-expanded={!isStaffCollapsed}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className={`size-8 sm:size-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs ${
+                            isOwner
+                              ? "bg-slate-200 text-slate-700"
+                              : "bg-[#0F4C5C]/10 text-[#0F4C5C]"
+                          }`}
                         >
-                          <MoreVertical className="size-4.5" />
-                        </button>
-
-                        {/* Action Menu Popover */}
-                        {isMenuOpen && (
-                          <div
-                            ref={menuRef}
-                            className="absolute right-0 top-11 z-30 w-44 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {isSystem ? (
-                              <div className="p-2 text-[11px] text-slate-500 space-y-1">
-                                <p className="font-bold text-slate-700">System Recorded</p>
-                                <p className="text-[10px] text-slate-400">
-                                  Auto-created via Active Process. To reverse, move the order back in the workflow.
-                                </p>
-                              </div>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setMenuOpenId(null);
-                                    setEditingExpense(expense);
-                                  }}
-                                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0F4C5C] rounded-xl transition min-h-[44px]"
-                                >
-                                  <Pencil className="size-4 text-slate-500" />
-                                  <span>Edit</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setMenuOpenId(null);
-                                    setDeletingExpense(expense);
-                                  }}
-                                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition min-h-[44px]"
-                                >
-                                  <Trash2 className="size-4 text-rose-600" />
-                                  <span>Delete</span>
-                                </button>
-                              </>
-                            )}
+                          <User className="size-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">
+                              {staff.staffName}
+                            </span>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700">
+                              {staff.totalEntries} {staff.totalEntries === 1 ? "entry" : "entries"}
+                            </span>
                           </div>
-                        )}
+                          <p className="text-[10px] text-slate-500 mt-0.5">
+                            {staff.dateGroups.length} {staff.dateGroups.length === 1 ? "date" : "dates"} recorded
+                          </p>
+                        </div>
                       </div>
-                    </div>
+
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <div className="text-right">
+                          <p className="text-xs sm:text-sm font-bold text-rose-600">
+                            ₹{staff.totalAmount.toLocaleString("en-IN")}
+                          </p>
+                          <p className="text-[9px] text-slate-400 font-medium">Total Staff Outflow</p>
+                        </div>
+                        <div
+                          className={`size-7 rounded-lg bg-white border border-slate-200/80 flex items-center justify-center text-slate-500 transition-transform duration-200 ${
+                            isStaffCollapsed ? "-rotate-90" : "rotate-0"
+                          }`}
+                        >
+                          <ChevronDown className="size-4" />
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Staff Group Content: Nested Date Sub-sections */}
+                    {!isStaffCollapsed && (
+                      <div className="p-3 sm:p-4 space-y-3 border-t border-slate-100 bg-slate-50/20 rounded-b-2xl">
+                        {staff.dateGroups.map((dateGroup) => {
+                          const dateKeyId = `${staff.staffName}__${dateGroup.dateKey}`;
+                          const isDateCollapsed = Boolean(collapsedDates[dateKeyId]);
+
+                          return (
+                            <div
+                              key={dateGroup.dateKey}
+                              className="rounded-xl border border-slate-200/80 bg-white overflow-visible transition shadow-2xs"
+                            >
+                              {/* Date Sub-section Header */}
+                              <button
+                                type="button"
+                                onClick={() => toggleDateCollapse(staff.staffName, dateGroup.dateKey)}
+                                className="w-full flex items-center justify-between gap-2 p-2.5 sm:p-3 bg-slate-50/80 hover:bg-slate-100/80 rounded-xl transition text-left cursor-pointer select-none"
+                                aria-expanded={!isDateCollapsed}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="size-6 rounded-md bg-teal-50 text-[#0F4C5C] flex items-center justify-center shrink-0">
+                                    <Calendar className="size-3.5" />
+                                  </div>
+                                  <span className="text-xs font-bold text-slate-800 truncate">
+                                    {dateGroup.formattedDate}
+                                  </span>
+                                  <span className="text-[10px] font-medium text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                                    {dateGroup.expenses.length}{" "}
+                                    {dateGroup.expenses.length === 1 ? "item" : "items"}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <div className="text-right">
+                                    <span className="text-[11px] font-bold text-slate-700">
+                                      ₹{dateGroup.totalAmount.toLocaleString("en-IN")}
+                                    </span>
+                                  </div>
+                                  <div
+                                    className={`size-5 rounded flex items-center justify-center text-slate-400 transition-transform duration-200 ${
+                                      isDateCollapsed ? "-rotate-90" : "rotate-0"
+                                    }`}
+                                  >
+                                    <ChevronDown className="size-3.5" />
+                                  </div>
+                                </div>
+                              </button>
+
+                              {/* Individual Expense Entries under this Date */}
+                              {!isDateCollapsed && (
+                                <div className="divide-y divide-slate-100 px-3 py-1">
+                                  {dateGroup.expenses.map((expense) => {
+                                    const isMenuOpen = menuOpenId === expense.id;
+                                    const isSystem = Boolean(expense.isSystemGenerated);
+
+                                    return (
+                                      <div
+                                        key={expense.id}
+                                        className="relative flex items-center justify-between gap-2.5 py-3 sm:py-3.5"
+                                      >
+                                        {/* Left: Icon & Info */}
+                                        <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                                          <div
+                                            className={`grid size-8 sm:size-9 shrink-0 place-items-center rounded-xl mt-0.5 sm:mt-0 ${
+                                              isSystem
+                                                ? "bg-purple-100 text-purple-700"
+                                                : "bg-slate-100 text-[#0F4C5C]"
+                                            }`}
+                                          >
+                                            {isSystem ? (
+                                              <Sparkles className="size-4" />
+                                            ) : (
+                                              <WalletCards className="size-4" />
+                                            )}
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">
+                                                {expense.title}
+                                              </p>
+                                              {isSystem && (
+                                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                                                  System Generated
+                                                </span>
+                                              )}
+                                            </div>
+
+                                            <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-500 truncate">
+                                              <span className="font-semibold text-[#0F4C5C]">
+                                                {expense.category}
+                                              </span>{" "}
+                                              · {expense.paymentMethod}
+                                            </p>
+
+                                            {expense.notes && (
+                                              <p className="mt-1 text-[10px] text-slate-600 bg-slate-50 border border-slate-100/90 rounded-md px-2 py-0.5 inline-block max-w-full truncate">
+                                                {expense.notes}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        {/* Right: Amount + 3-dots Menu Button */}
+                                        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                                          <p className="text-xs sm:text-sm font-bold text-rose-600">
+                                            ₹{Number(expense.amount).toLocaleString("en-IN")}
+                                          </p>
+
+                                          {/* 3-dots Action Button */}
+                                          <div className="relative">
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setMenuOpenId(isMenuOpen ? null : expense.id);
+                                              }}
+                                              className="size-9 sm:size-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-[#0F4C5C] hover:bg-slate-100 active:bg-slate-200 transition"
+                                              aria-label={`Actions for ${expense.title}`}
+                                              title="Actions"
+                                            >
+                                              <MoreVertical className="size-4" />
+                                            </button>
+
+                                            {/* Action Menu Popover */}
+                                            {isMenuOpen && (
+                                              <div
+                                                ref={menuRef}
+                                                className="absolute right-0 top-10 z-30 w-48 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150"
+                                                onClick={(e) => e.stopPropagation()}
+                                              >
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setMenuOpenId(null);
+                                                    setEditingExpense(expense);
+                                                  }}
+                                                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0F4C5C] rounded-xl transition min-h-[40px]"
+                                                >
+                                                  <Pencil className="size-3.5 text-slate-500" />
+                                                  <span>Edit Expense</span>
+                                                </button>
+
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setMenuOpenId(null);
+                                                    setDeletingExpense(expense);
+                                                  }}
+                                                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition min-h-[40px]"
+                                                >
+                                                  <Trash2 className="size-3.5 text-rose-600" />
+                                                  <span>Delete</span>
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -228,25 +612,41 @@ export default function ExpensesView() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-[#F8FAFC] p-4 sm:p-6 shadow-xs">
+        {/* Right: Expense Distribution Panel (Unchanged) */}
+        <section className="rounded-2xl border border-slate-200 bg-[#F8FAFC] p-4 sm:p-6 shadow-xs h-fit">
           <p className="text-xs sm:text-sm font-bold text-[#0F4C5C]">Expense Distribution</p>
           <p className="text-[11px] text-slate-500 mt-0.5">Operational cost allocation by category</p>
-          
+
           <div className="mt-5 space-y-3">
-            {["Staff / Ironing Labour", "Staff / Wash Labour", "Supplies", "Utilities", "Rent", "Wages", "Maintenance", "Other"].map((cat) => {
+            {[
+              "Staff / Ironing Labour",
+              "Staff / Washing Labour",
+              "Supplies",
+              "Utilities",
+              "Rent",
+              "Wages",
+              "Maintenance",
+              "Other",
+            ].map((cat) => {
               const catTotal = apiExpenses
                 .filter((e) => e.category.toLowerCase() === cat.toLowerCase())
                 .reduce((sum, e) => sum + Number(e.amount || 0), 0);
-              const percentage = totalExpenseAmount > 0 ? Math.round((catTotal / totalExpenseAmount) * 100) : 0;
-              if (catTotal === 0 && (cat.includes("Labour"))) return null;
+              const percentage =
+                totalExpenseAmount > 0 ? Math.round((catTotal / totalExpenseAmount) * 100) : 0;
+              if (catTotal === 0 && cat.includes("Labour")) return null;
               return (
                 <div key={cat} className="space-y-1">
                   <div className="flex justify-between text-xs text-slate-600 font-medium">
                     <span>{cat}</span>
-                    <span>₹{catTotal.toLocaleString("en-IN")} ({percentage}%)</span>
+                    <span>
+                      ₹{catTotal.toLocaleString("en-IN")} ({percentage}%)
+                    </span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                    <div className="h-full bg-[#0F4C5C] rounded-full transition-all duration-500" style={{ width: `${percentage}%` }} />
+                    <div
+                      className="h-full bg-[#0F4C5C] rounded-full transition-all duration-500"
+                      style={{ width: `${percentage}%` }}
+                    />
                   </div>
                 </div>
               );

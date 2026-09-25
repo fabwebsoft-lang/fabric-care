@@ -15,9 +15,11 @@ const orderItemInput = z.object({
   name: z.string().min(1),
   quantity: z.number().int().positive(),
   price: z.number().nonnegative(),
+  staffWashRate: z.number().min(0).optional(),
   staffIroningRate: z.number().min(0).optional(),
   clothTags: z.array(z.string()).optional(),
 });
+
 
 function toApiOrder(o: any) {
   return {
@@ -192,7 +194,7 @@ export const ordersRouter = router({
         input.branchAddress ||
         (branchName.includes("SKT") ? "SKT Dindigul" : "17/B3, 1st street, Pandian Nagar, Dindigul");
 
-      // Auto-enrich items with live Product catalog ID and staffIroningRate
+      // Auto-enrich items with live Product catalog ID, staffIroningRate, and staffWashRate
       const dbProducts = await Product.find({ isArchived: { $ne: true } }).lean();
       const enrichedItems = (input.items || []).map((item) => {
         const itemCopy = { ...item };
@@ -214,6 +216,9 @@ export const ordersRouter = router({
           itemCopy.productId = matched._id.toString();
           if (itemCopy.staffIroningRate === undefined || itemCopy.staffIroningRate === 0) {
             itemCopy.staffIroningRate = matched.staffIroningRate ?? 10;
+          }
+          if (itemCopy.staffWashRate === undefined || itemCopy.staffWashRate === 0) {
+            itemCopy.staffWashRate = matched.staffWashRate ?? 15;
           }
         }
         return itemCopy;

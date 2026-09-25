@@ -57,12 +57,6 @@ export const expensesRouter = router({
       if (!existing || existing.isDeleted) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
       }
-      if (existing.isSystemGenerated) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "System-generated labour expenses cannot be edited manually.",
-        });
-      }
 
       const { id, expenseDate, ...rest } = input;
       const updated = await Expense.findByIdAndUpdate(
@@ -96,12 +90,6 @@ export const expensesRouter = router({
       const existing = await Expense.findById(input.id);
       if (!existing || existing.isDeleted) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
-      }
-      if (existing.isSystemGenerated) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "System-generated labour expenses cannot be deleted manually. To reverse this labour entry, move the order back to the previous step in Active Process.",
-        });
       }
 
       const userLabel = ctx.activeRole

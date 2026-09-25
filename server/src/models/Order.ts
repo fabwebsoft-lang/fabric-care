@@ -6,6 +6,7 @@ const orderItemSchema = new Schema(
     name: { type: String, required: true },
     quantity: { type: Number, required: true, default: 1 },
     price: { type: Number, required: true },
+    staffWashRate: { type: Number, default: 0 },
     staffIroningRate: { type: Number, default: 0 },
     clothTags: { type: [String], default: [] },
   },
