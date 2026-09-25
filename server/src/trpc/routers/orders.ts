@@ -97,7 +97,7 @@ export const ordersRouter = router({
     .input(
       z.object({
         customerRefId: z.string().optional(),
-        customerId: z.string().trim().min(1, "Customer ID is required"),
+        customerId: z.string().trim().optional(),
         customerName: z.string().trim().min(1, "Customer name is required"),
         phone: z.string().trim().min(1, "Phone number is required"),
         customerType: z.enum(["Normal", "Premium"]).default("Normal"),
@@ -121,7 +121,7 @@ export const ordersRouter = router({
     .mutation(async ({ input }) => {
       const id = await nextOrderId();
       const normPhone = normalizePhone(input.phone);
-      const cleanCustomerId = input.customerId.trim();
+      const cleanCustomerId = (input.customerId || "").trim();
 
       let orderCustomerId: string = cleanCustomerId;
       let existingCustomer: any = null;
@@ -134,7 +134,7 @@ export const ordersRouter = router({
         if (!existingCustomer) {
           existingCustomer = await Customer.findOne({
             $or: [
-              { customerId: input.customerRefId },
+              ...(cleanCustomerId ? [{ customerId: input.customerRefId }] : []),
               { normalizedPhone: normPhone },
               { phone: input.phone.trim() },
             ],
@@ -144,39 +144,45 @@ export const ordersRouter = router({
 
       // If not resolved via customerRefId, check if customer already exists by customerId or phone
       if (!existingCustomer) {
-        existingCustomer = await Customer.findOne({
-          $or: [
-            { customerId: { $regex: `^${cleanCustomerId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } },
-            { normalizedPhone: normPhone },
-            { phone: input.phone.trim() },
-          ],
-        });
+        const queryOr: any[] = [
+          { normalizedPhone: normPhone },
+          { phone: input.phone.trim() },
+        ];
+        if (cleanCustomerId) {
+          queryOr.unshift({
+            customerId: { $regex: `^${cleanCustomerId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
+          });
+        }
+        existingCustomer = await Customer.findOne({ $or: queryOr });
       }
 
       if (existingCustomer) {
-        if (!existingCustomer.customerId) {
+        if (!existingCustomer.customerId && cleanCustomerId) {
           existingCustomer.customerId = cleanCustomerId;
         }
-        orderCustomerId = existingCustomer.customerId || cleanCustomerId;
+        orderCustomerId = existingCustomer.customerId || cleanCustomerId || "";
         if (input.updateCustomerMaster) {
           existingCustomer.name = input.customerName;
           existingCustomer.phone = input.phone;
           existingCustomer.normalizedPhone = normPhone;
+          if (cleanCustomerId) existingCustomer.customerId = cleanCustomerId;
           if (input.address !== undefined) existingCustomer.address = input.address || null;
           if (input.alternatePhone !== undefined) existingCustomer.alternatePhone = input.alternatePhone || null;
           if (input.notes !== undefined) existingCustomer.notes = input.notes || null;
           await existingCustomer.save();
         }
       } else {
-        // Check Customer ID duplicate for new customer (case-insensitive)
-        const existingId = await Customer.findOne({
-          customerId: { $regex: `^${cleanCustomerId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
-        });
-        if (existingId) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "This Customer ID is already used",
+        // Check Customer ID duplicate for new customer (case-insensitive) if provided
+        if (cleanCustomerId) {
+          const existingId = await Customer.findOne({
+            customerId: { $regex: `^${cleanCustomerId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
           });
+          if (existingId) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "This Customer ID is already used",
+            });
+          }
         }
 
         // Check Phone duplicate for new customer
@@ -193,7 +199,7 @@ export const ordersRouter = router({
 
         // Create new customer record
         await Customer.create({
-          customerId: cleanCustomerId,
+          customerId: cleanCustomerId || null,
           name: input.customerName,
           phone: input.phone.trim(),
           normalizedPhone: normPhone,

@@ -50,8 +50,6 @@ const defaultCatalog = [
   { label: "Curtain", price: 150, staffIroningRate: 20 },
 ];
 
-const generateDefaultCustomerId = () => `CUST-${Math.floor(1000 + Math.random() * 9000)}`;
-
 export default function NewBillModal({
   onClose,
   onSuccess,
@@ -124,7 +122,7 @@ export default function NewBillModal({
     if (hasValidInitial && initialCustomer?.customerId && initialCustomer.customerId !== "undefined") {
       return initialCustomer.customerId;
     }
-    return generateDefaultCustomerId();
+    return "";
   });
   const [address, setAddress] = useState(() => {
     if (hasValidInitial && initialCustomer?.address && initialCustomer.address !== "undefined") {
@@ -284,7 +282,7 @@ export default function NewBillModal({
     const cleanPhone = c.phone && c.phone !== "undefined" ? c.phone.trim() : "";
     setCustomerName(cleanName);
     setPhone(cleanPhone);
-    setCustomerId(c.customerId && c.customerId !== "undefined" ? c.customerId : generateDefaultCustomerId());
+    setCustomerId(c.customerId && c.customerId !== "undefined" ? c.customerId : "");
     setAddress(c.address && c.address !== "undefined" ? c.address : "");
     setAlternatePhone(c.alternatePhone && c.alternatePhone !== "undefined" ? c.alternatePhone : "");
     setNotes(c.notes && c.notes !== "undefined" ? c.notes : "");
@@ -305,7 +303,7 @@ export default function NewBillModal({
     setSelectedCustomer(null);
     setCustomerName("");
     setPhone("");
-    setCustomerId(generateDefaultCustomerId());
+    setCustomerId("");
     setAddress("");
     setAlternatePhone("");
     setNotes("");
@@ -322,7 +320,7 @@ export default function NewBillModal({
     setCustomerMode("new");
     setSelectedCustomerId(null);
     setSelectedCustomer(null);
-    setCustomerId(generateDefaultCustomerId());
+    setCustomerId("");
     const cleanTerm = initialSearchTerm ? initialSearchTerm.replace(/\s*\([^)]*\)/g, "").trim() : "";
     if (cleanTerm && cleanTerm.toLowerCase() !== "undefined") {
       // If user typed digits, set as phone; otherwise set as name
@@ -454,22 +452,24 @@ export default function NewBillModal({
       toast.error("Mobile Number is required");
       return;
     }
-    const finalCustId = customerId.trim() || generateDefaultCustomerId();
+    const finalCustId = customerId.trim();
     if (items.length === 0) {
       toast.error("Please add at least 1 cloth item to the bill");
       return;
     }
 
-    const cleanCustId = finalCustId.toLowerCase();
-    // Check if Customer ID is already used by another customer (case-insensitive & trimmed)
-    const duplicateIdCust = customersData.find(
-      (c) => c.customerId && c.customerId.trim().toLowerCase() === cleanCustId && c.id !== selectedCustomerId
-    );
-    if (duplicateIdCust) {
-      toast.error("This Customer ID is already used", {
-        description: `Customer ID "${finalCustId}" is already assigned to ${duplicateIdCust.name} (${duplicateIdCust.phone}).`,
-      });
-      return;
+    if (finalCustId) {
+      const cleanCustId = finalCustId.toLowerCase();
+      // Check if Customer ID is already used by another customer (case-insensitive & trimmed)
+      const duplicateIdCust = customersData.find(
+        (c) => c.customerId && c.customerId.trim().toLowerCase() === cleanCustId && c.id !== selectedCustomerId
+      );
+      if (duplicateIdCust) {
+        toast.error("This Customer ID is already used", {
+          description: `Customer ID "${finalCustId}" is already assigned to ${duplicateIdCust.name} (${duplicateIdCust.phone}).`,
+        });
+        return;
+      }
     }
 
     const normPhone = normalizePhone(phone);
@@ -488,7 +488,7 @@ export default function NewBillModal({
 
     createOrderMutation.mutate({
       customerRefId: isExisting ? (selectedCustomerId || undefined) : undefined,
-      customerId: finalCustId,
+      customerId: finalCustId || undefined,
       customerName: customerName.trim(),
       phone: phone.trim() || "0000000000",
       customerType: "Normal",
@@ -784,17 +784,16 @@ export default function NewBillModal({
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[11px] font-semibold text-[#0F4C5C]">Customer ID *</label>
+                  <label className="block text-[11px] font-semibold text-[#0F4C5C]">Customer ID (Optional)</label>
                   {selectedCustomerId && selectedCustomer?.customerId ? (
                     <span className="text-[10px] text-slate-500 font-medium">Locked (Saved)</span>
                   ) : (
-                    <span className="text-[10px] text-emerald-600 font-medium">Auto-generated</span>
+                    <span className="text-[10px] text-slate-400 font-medium">Manual Entry</span>
                   )}
                 </div>
                 <input
                   type="text"
-                  required
-                  placeholder="Customer ID"
+                  placeholder="e.g. CUST-1001 (optional)"
                   value={customerId}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerId(e.target.value)}
                   readOnly={Boolean(selectedCustomerId && selectedCustomer?.customerId)}
