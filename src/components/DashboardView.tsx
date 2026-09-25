@@ -93,82 +93,82 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* KPI Stat Cards Grid: 2x3 on mobile, 3x2 on tablet, 6x1 on desktop */}
-      <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
+      {/* KPI Stat Cards Grid: 3x2 on mobile & tablet, 6x1 on desktop */}
+      <div className="grid gap-2 sm:gap-3.5 xl:gap-4 grid-cols-3 xl:grid-cols-6">
         {/* Today's Sales */}
         <div
           onClick={() => onNavigate("Orders")}
-          className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-2 cursor-pointer hover:border-[#0F4C5C]/30 transition hover:shadow-sm"
+          className="bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer hover:border-[#0F4C5C]/30 transition hover:shadow-sm"
         >
-          <div className="flex justify-between items-center text-slate-500 text-[11px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-semibold gap-1">
             <span className="truncate">Today's Sales</span>
-            <div className="p-1.5 sm:p-2 bg-[#0F4C5C]/10 text-[#0F4C5C] rounded-lg sm:rounded-xl shrink-0">
-              <IndianRupee className="size-3.5 sm:size-4" />
+            <div className="p-1 sm:p-1.5 md:p-2 bg-[#0F4C5C]/10 text-[#0F4C5C] rounded-md sm:rounded-xl shrink-0">
+              <IndianRupee className="size-3 sm:size-3.5 md:size-4" />
             </div>
           </div>
-          <div>
-            <p className="text-lg sm:text-xl font-bold text-[#0F4C5C] tracking-tight">
+          <div className="min-w-0">
+            <p className="text-sm sm:text-lg md:text-xl font-bold text-[#0F4C5C] tracking-tight truncate">
               ₹{metrics.todaysSales.toLocaleString("en-IN")}
             </p>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">Total new bills today</p>
+            <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">Total new bills</p>
           </div>
         </div>
 
         {/* Collected Today */}
         <div
           onClick={() => onNavigate("Statements")}
-          className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-2 cursor-pointer hover:border-emerald-300 transition hover:shadow-sm"
+          className="bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer hover:border-emerald-300 transition hover:shadow-sm"
         >
-          <div className="flex justify-between items-center text-slate-500 text-[11px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-semibold gap-1">
             <span className="truncate">Collected Today</span>
-            <div className="p-1.5 sm:p-2 bg-emerald-100 text-emerald-700 rounded-lg sm:rounded-xl shrink-0">
-              <CircleDollarSign className="size-3.5 sm:size-4" />
+            <div className="p-1 sm:p-1.5 md:p-2 bg-emerald-100 text-emerald-700 rounded-md sm:rounded-xl shrink-0">
+              <CircleDollarSign className="size-3 sm:size-3.5 md:size-4" />
             </div>
           </div>
-          <div>
-            <p className="text-lg sm:text-xl font-bold text-emerald-600 tracking-tight">
+          <div className="min-w-0">
+            <p className="text-sm sm:text-lg md:text-xl font-bold text-emerald-600 tracking-tight truncate">
               ₹{metrics.todaysCollected.toLocaleString("en-IN")}
             </p>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">Cash/UPI received</p>
+            <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">Cash/UPI received</p>
           </div>
         </div>
 
         {/* Outstanding Dues */}
         <div
           onClick={() => onNavigate("Orders")}
-          className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-2 cursor-pointer hover:border-rose-300 transition hover:shadow-sm"
+          className="bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer hover:border-rose-300 transition hover:shadow-sm"
         >
-          <div className="flex justify-between items-center text-slate-500 text-[11px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-semibold gap-1">
             <span className="truncate">Outstanding Dues</span>
-            <div className="p-1.5 sm:p-2 bg-rose-100 text-rose-700 rounded-lg sm:rounded-xl shrink-0">
-              <Clock className="size-3.5 sm:size-4" />
+            <div className="p-1 sm:p-1.5 md:p-2 bg-rose-100 text-rose-700 rounded-md sm:rounded-xl shrink-0">
+              <Clock className="size-3 sm:size-3.5 md:size-4" />
             </div>
           </div>
-          <div>
-            <p className="text-lg sm:text-xl font-bold text-rose-600 tracking-tight">
+          <div className="min-w-0">
+            <p className="text-sm sm:text-lg md:text-xl font-bold text-rose-600 tracking-tight truncate">
               ₹{metrics.todaysPending.toLocaleString("en-IN")}
             </p>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">Uncollected balances</p>
+            <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">Uncollected balance</p>
           </div>
         </div>
 
         {/* Outstanding Processes (KPI) */}
         <div
           onClick={() => onNavigate("Active process")}
-          className="bg-white p-3.5 sm:p-4 rounded-2xl border border-amber-200/90 bg-amber-50/20 shadow-xs flex flex-col justify-between space-y-2 cursor-pointer hover:border-amber-400 transition hover:shadow-sm"
+          className="bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-amber-200/90 bg-amber-50/20 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer hover:border-amber-400 transition hover:shadow-sm"
         >
-          <div className="flex justify-between items-center text-slate-600 text-[11px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-600 text-[10px] sm:text-xs font-semibold gap-1">
             <span className="truncate">Outstanding Processes</span>
-            <div className="p-1.5 sm:p-2 bg-amber-100 text-amber-700 rounded-lg sm:rounded-xl shrink-0">
-              <WashingMachine className="size-3.5 sm:size-4" />
+            <div className="p-1 sm:p-1.5 md:p-2 bg-amber-100 text-amber-700 rounded-md sm:rounded-xl shrink-0">
+              <WashingMachine className="size-3 sm:size-3.5 md:size-4" />
             </div>
           </div>
-          <div>
-            <p className="text-lg sm:text-xl font-bold text-amber-600 tracking-tight">
+          <div className="min-w-0">
+            <p className="text-sm sm:text-lg md:text-xl font-bold text-amber-600 tracking-tight truncate">
               {outstandingProcessesCount} {outstandingProcessesCount === 1 ? "Order" : "Orders"}
             </p>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
-              {receivedCount} intake · {processingCount} wash · {ironingCount} iron
+            <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">
+              {receivedCount} in · {processingCount} wash · {ironingCount} iron
             </p>
           </div>
         </div>
@@ -176,20 +176,20 @@ export default function DashboardView({
         {/* Need to Deliver (KPI) */}
         <div
           onClick={() => onNavigate("Active process")}
-          className="bg-white p-3.5 sm:p-4 rounded-2xl border border-indigo-200/90 bg-indigo-50/20 shadow-xs flex flex-col justify-between space-y-2 cursor-pointer hover:border-indigo-400 transition hover:shadow-sm"
+          className="bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-indigo-200/90 bg-indigo-50/20 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer hover:border-indigo-400 transition hover:shadow-sm"
         >
-          <div className="flex justify-between items-center text-slate-600 text-[11px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-600 text-[10px] sm:text-xs font-semibold gap-1">
             <span className="truncate">Need to Deliver</span>
-            <div className="p-1.5 sm:p-2 bg-indigo-100 text-indigo-700 rounded-lg sm:rounded-xl shrink-0">
-              <PackageCheck className="size-3.5 sm:size-4" />
+            <div className="p-1 sm:p-1.5 md:p-2 bg-indigo-100 text-indigo-700 rounded-md sm:rounded-xl shrink-0">
+              <PackageCheck className="size-3 sm:size-3.5 md:size-4" />
             </div>
           </div>
-          <div>
-            <p className="text-lg sm:text-xl font-bold text-indigo-600 tracking-tight">
+          <div className="min-w-0">
+            <p className="text-sm sm:text-lg md:text-xl font-bold text-indigo-600 tracking-tight truncate">
               {needToDeliverCount} {needToDeliverCount === 1 ? "Order" : "Orders"}
             </p>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">
-              Ready for pickup/delivery
+            <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">
+              Ready for pickup
             </p>
           </div>
         </div>
@@ -197,19 +197,19 @@ export default function DashboardView({
         {/* Total In Shop */}
         <div
           onClick={() => onNavigate("Active process")}
-          className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-2 cursor-pointer hover:border-slate-300 transition hover:shadow-sm"
+          className="bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer hover:border-slate-300 transition hover:shadow-sm"
         >
-          <div className="flex justify-between items-center text-slate-500 text-[11px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-semibold gap-1">
             <span className="truncate">Total in Shop</span>
-            <div className="p-1.5 sm:p-2 bg-sky-100 text-sky-700 rounded-lg sm:rounded-xl shrink-0">
-              <TrendingUp className="size-3.5 sm:size-4" />
+            <div className="p-1 sm:p-1.5 md:p-2 bg-sky-100 text-sky-700 rounded-md sm:rounded-xl shrink-0">
+              <TrendingUp className="size-3 sm:size-3.5 md:size-4" />
             </div>
           </div>
-          <div>
-            <p className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
+          <div className="min-w-0">
+            <p className="text-sm sm:text-lg md:text-xl font-bold text-slate-800 tracking-tight truncate">
               {activeProcessCount} {activeProcessCount === 1 ? "Order" : "Orders"}
             </p>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">Active total workload</p>
+            <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">Active workload</p>
           </div>
         </div>
       </div>
