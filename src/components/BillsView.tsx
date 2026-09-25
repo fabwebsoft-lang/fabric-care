@@ -250,7 +250,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
       const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return timeB - timeA;
     });
-  }, [orders, statusFilter, searchQuery, dateFilter, customFromDate, customToDate]);
+  }, [orders, statusFilter, branchFilter, searchQuery, dateFilter, customFromDate, customToDate]);
 
   // Summary Metrics for current filtered view
   const summary = useMemo(() => {
