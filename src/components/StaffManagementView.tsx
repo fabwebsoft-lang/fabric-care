@@ -121,44 +121,44 @@ export default function StaffManagementView() {
       </div>
 
       {/* Service Filter Tabs (All / Ironing / Washing) */}
-      <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 rounded-2xl w-fit border border-slate-200/70">
+      <div className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-slate-100 rounded-xl sm:rounded-2xl w-full sm:w-fit border border-slate-200/70">
         <button
           type="button"
           onClick={() => setServiceFilter("all")}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10.5px] sm:text-xs font-semibold sm:font-bold whitespace-nowrap transition ${
             serviceFilter === "all"
               ? "bg-[#0F4C5C] text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
-          <Layers className="size-3.5" />
-          All Services
+          <Layers className="size-3 sm:size-3.5 shrink-0" />
+          <span>All Services</span>
         </button>
 
         <button
           type="button"
           onClick={() => setServiceFilter("ironing")}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10.5px] sm:text-xs font-semibold sm:font-bold whitespace-nowrap transition ${
             serviceFilter === "ironing"
               ? "bg-[#0F4C5C] text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
-          <Sparkles className="size-3.5 text-amber-300" />
-          Ironing Labour
+          <Sparkles className="size-3 sm:size-3.5 text-amber-300 shrink-0" />
+          <span>Ironing Labour</span>
         </button>
 
         <button
           type="button"
           onClick={() => setServiceFilter("washing")}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10.5px] sm:text-xs font-semibold sm:font-bold whitespace-nowrap transition ${
             serviceFilter === "washing"
               ? "bg-[#0F4C5C] text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
-          <Droplets className="size-3.5 text-blue-300" />
-          Washing Labour
+          <Droplets className="size-3 sm:size-3.5 text-blue-300 shrink-0" />
+          <span>Washing Labour</span>
         </button>
       </div>
 
