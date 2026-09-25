@@ -29,6 +29,7 @@ import {
   RefreshCw,
   Building2,
   Store,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -151,8 +152,23 @@ export default function NewBillModal({
   const [customItemPrice, setCustomItemPrice] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
 
-  // Branch Selection State
+  // Quick Wash (2x Rate) State
+  const [isQuickWash, setIsQuickWash] = useState(false);
+
+  const handleToggleQuickWash = (nextVal: boolean) => {
+    setIsQuickWash(nextVal);
+    // Recalculate all existing items immediately
+    setItems((current: OrderItemInput[]) =>
+      current.map((item: OrderItemInput) => ({
+        ...item,
+        price: nextVal ? item.price * 2 : Math.max(1, Math.round(item.price / 2)),
+      }))
+    );
+  };
+
+  // Branch Selection State (Collapsible)
   const [selectedBranchId, setSelectedBranchId] = useState<string>(() => getStoredBranchId());
+  const [isBranchExpanded, setIsBranchExpanded] = useState(false);
   const selectedBranch = useMemo(() => getBranchById(selectedBranchId), [selectedBranchId]);
   const branchPrefix = useMemo(() => getBranchPrefix(selectedBranch.shortName), [selectedBranch]);
 
@@ -187,6 +203,7 @@ export default function NewBillModal({
   const handleBranchSelect = (branchId: string) => {
     setSelectedBranchId(branchId);
     saveStoredBranchId(branchId);
+    setIsBranchExpanded(false);
   };
 
   // Bill Date State
@@ -372,22 +389,23 @@ export default function NewBillModal({
   };
 
   const activeCatalog = useMemo(() => {
+    const multiplier = isQuickWash ? 2 : 1;
     const activeDbItems = dbProducts.filter((p: any) => p.status === "Active");
     if (activeDbItems.length > 0) {
       return activeDbItems.map((p: any) => ({
         id: p.id,
         label: p.name,
-        price: p.price,
+        price: p.price * multiplier,
         staffIroningRate: p.staffIroningRate ?? 0,
       }));
     }
     return defaultCatalog.map((c) => ({
       id: undefined,
       label: c.label,
-      price: c.price,
+      price: c.price * multiplier,
       staffIroningRate: c.staffIroningRate,
     }));
-  }, [dbProducts]);
+  }, [dbProducts, isQuickWash]);
 
   const addItemToBill = (label: string, price: number, productId?: string, staffIroningRate?: number) => {
     setItems((current: OrderItemInput[]) => {
@@ -414,7 +432,8 @@ export default function NewBillModal({
 
   const handleAddCustomItem = () => {
     if (!customItemName.trim()) return;
-    const priceNum = Number(customItemPrice) || 50;
+    const basePrice = Number(customItemPrice) || 50;
+    const priceNum = isQuickWash ? basePrice * 2 : basePrice;
     const trimmed = customItemName.trim();
     // Try to match against existing DB product
     const matched = dbProducts.find((p: any) => p.name.toLowerCase() === trimmed.toLowerCase());
@@ -513,7 +532,7 @@ export default function NewBillModal({
       alternatePhone: alternatePhone.trim() || undefined,
       notes: notes.trim() || undefined,
       items,
-      serviceType: "Standard Laundry",
+      serviceType: isQuickWash ? "Quick Wash" : "Standard Laundry",
       branch: selectedBranch.shortName,
       branchAddress: selectedBranch.address,
       orderDate: billDate ? new Date(`${billDate}T12:00:00`).toISOString() : undefined,
@@ -558,68 +577,102 @@ export default function NewBillModal({
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6">
-          {/* Shop Branch Selection */}
-          <div className="rounded-xl border border-slate-200 bg-white p-3.5 sm:p-4 space-y-2.5 shadow-2xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-              <label className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-[#0F4C5C] flex items-center gap-1.5">
-                <Building2 className="size-3.5 sm:size-4 text-[#0F4C5C]" /> Billing Branch
-              </label>
-              <span className="text-[10px] text-slate-500 font-medium">
-                Choose branch address for bill & receipt
-              </span>
+          {/* Shop Branch Selection (Collapsible) */}
+          <div className="rounded-xl border border-slate-200 bg-white shadow-2xs overflow-hidden transition-all duration-200">
+            <div
+              onClick={() => setIsBranchExpanded((prev) => !prev)}
+              className="flex items-center justify-between p-3 sm:p-3.5 cursor-pointer select-none bg-slate-50/70 hover:bg-slate-100/80 transition"
+              role="button"
+              tabIndex={0}
+              aria-expanded={isBranchExpanded}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Building2 className="size-3.5 sm:size-4 text-[#0F4C5C] shrink-0" />
+                <div className="flex flex-wrap items-center gap-1.5 text-xs sm:text-sm">
+                  <span className="font-bold uppercase tracking-wider text-[#0F4C5C] text-[11px] sm:text-xs">
+                    Billing Branch:
+                  </span>
+                  <span className="font-bold text-slate-800 truncate">
+                    {selectedBranch.name}
+                  </span>
+                  <span className="text-[9px] font-extrabold bg-[#0F4C5C] text-white px-1.5 py-0.5 rounded shrink-0">
+                    ACTIVE
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[10px] text-slate-500 font-medium hidden sm:inline">
+                  {isBranchExpanded ? "Click to collapse" : "Change branch"}
+                </span>
+                <div
+                  className={`size-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 transition-transform duration-200 ${
+                    isBranchExpanded ? "rotate-180" : "rotate-0"
+                  }`}
+                >
+                  <ChevronDown className="size-3.5" />
+                </div>
+              </div>
             </div>
 
-            {/* Responsive Branch Selector Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {SHOP_BRANCHES.map((b) => {
-                const isSelected = selectedBranchId === b.id;
-                return (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => handleBranchSelect(b.id)}
-                    className={`relative flex items-start text-left p-3 rounded-xl border transition-all duration-150 active:scale-[0.99] ${
-                      isSelected
-                        ? "border-[#0F4C5C] bg-[#0F4C5C]/5 ring-1 ring-[#0F4C5C] shadow-xs"
-                        : "border-slate-200 bg-slate-50/50 hover:bg-slate-100/70 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 w-full min-w-0">
-                      <div
-                        className={`mt-0.5 size-4 rounded-full border flex items-center justify-center shrink-0 transition ${
-                          isSelected ? "border-[#0F4C5C] bg-[#0F4C5C]" : "border-slate-300 bg-white"
+            {/* Expanded Branch Selector Grid */}
+            {isBranchExpanded && (
+              <div className="p-3.5 sm:p-4 border-t border-slate-100 space-y-2.5 bg-white animate-in fade-in duration-150">
+                <p className="text-[10px] text-slate-500 font-medium">
+                  Choose branch address for bill & receipt
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {SHOP_BRANCHES.map((b) => {
+                    const isSelected = selectedBranchId === b.id;
+                    return (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => handleBranchSelect(b.id)}
+                        className={`relative flex items-start text-left p-3 rounded-xl border transition-all duration-150 active:scale-[0.99] ${
+                          isSelected
+                            ? "border-[#0F4C5C] bg-[#0F4C5C]/5 ring-1 ring-[#0F4C5C] shadow-xs"
+                            : "border-slate-200 bg-slate-50/50 hover:bg-slate-100/70 hover:border-slate-300"
                         }`}
                       >
-                        {isSelected && <span className="size-1.5 rounded-full bg-white" />}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1.5">
-                          <span
-                            className={`text-xs font-bold truncate ${
-                              isSelected ? "text-[#0F4C5C]" : "text-slate-800"
+                        <div className="flex items-start gap-2.5 w-full min-w-0">
+                          <div
+                            className={`mt-0.5 size-4 rounded-full border flex items-center justify-center shrink-0 transition ${
+                              isSelected ? "border-[#0F4C5C] bg-[#0F4C5C]" : "border-slate-300 bg-white"
                             }`}
                           >
-                            {b.name}
-                          </span>
-                          {isSelected && (
-                            <span className="text-[9px] font-extrabold bg-[#0F4C5C] text-white px-1.5 py-0.5 rounded shrink-0">
-                              ACTIVE
-                            </span>
-                          )}
+                            {isSelected && <span className="size-1.5 rounded-full bg-white" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1.5">
+                              <span
+                                className={`text-xs font-bold truncate ${
+                                  isSelected ? "text-[#0F4C5C]" : "text-slate-800"
+                                }`}
+                              >
+                                {b.name}
+                              </span>
+                              {isSelected && (
+                                <span className="text-[9px] font-extrabold bg-[#0F4C5C] text-white px-1.5 py-0.5 rounded shrink-0">
+                                  ACTIVE
+                                </span>
+                              )}
+                            </div>
+                            <p
+                              className="text-[11px] text-slate-500 font-normal leading-tight mt-1 line-clamp-2"
+                              title={b.address}
+                            >
+                              <MapPin className="size-2.5 inline mr-1 text-slate-400 shrink-0" />
+                              {b.address}
+                            </p>
+                          </div>
                         </div>
-                        <p
-                          className="text-[11px] text-slate-500 font-normal leading-tight mt-1 line-clamp-2"
-                          title={b.address}
-                        >
-                          <MapPin className="size-2.5 inline mr-1 text-slate-400 shrink-0" />
-                          {b.address}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Customer Information */}
@@ -900,11 +953,41 @@ export default function NewBillModal({
 
           {/* Cloth Items & Catalog */}
           <div className="rounded-xl border border-slate-200 bg-white p-3.5 sm:p-4 space-y-4 shadow-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-[#0F4C5C] flex items-center gap-1.5">
-                <Tag className="size-3.5 sm:size-4" /> Quick Item Selector
-              </span>
-              <span className="text-[10px] text-slate-500">Tap to add to bill</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-[#0F4C5C] flex items-center gap-1.5">
+                  <Tag className="size-3.5 sm:size-4" /> Quick Item Selector
+                </span>
+                <span className="text-[10px] text-slate-400">Tap to add</span>
+              </div>
+
+              {/* Quick Wash (2x Rate) Toggle Button */}
+              <button
+                type="button"
+                onClick={() => handleToggleQuickWash(!isQuickWash)}
+                className={`flex items-center justify-between sm:justify-start gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all duration-200 cursor-pointer select-none ${
+                  isQuickWash
+                    ? "bg-amber-500 text-white border-amber-600 shadow-sm ring-2 ring-amber-400/40"
+                    : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-300"
+                }`}
+                title="Automatically double the rate for express/quick wash service"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Zap className={`size-3.5 ${isQuickWash ? "text-yellow-100 fill-yellow-100" : "text-amber-600 fill-amber-600"}`} />
+                  <span>⚡ Quick Wash (2x rate)</span>
+                </div>
+                <div
+                  className={`w-7 h-4 rounded-full p-0.5 transition-colors ${
+                    isQuickWash ? "bg-amber-700" : "bg-slate-300"
+                  }`}
+                >
+                  <div
+                    className={`size-3 rounded-full bg-white transition-transform ${
+                      isQuickWash ? "translate-x-3" : "translate-x-0"
+                    }`}
+                  />
+                </div>
+              </button>
             </div>
 
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
