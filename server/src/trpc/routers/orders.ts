@@ -21,7 +21,22 @@ const orderItemInput = z.object({
 });
 
 
+function normalizeServerBranch(branch?: string | null, branchAddress?: string | null): { name: "Pandian Nagar" | "SKT Dindigul"; address: string } {
+  const text = `${branch || ""} ${branchAddress || ""}`.toLowerCase().replace(/[-_]/g, " ");
+  if (text.includes("skt") || text.includes("branch 2")) {
+    return {
+      name: "SKT Dindigul",
+      address: branchAddress && branchAddress.toLowerCase().includes("skt") ? branchAddress : "SKT Dindigul",
+    };
+  }
+  return {
+    name: "Pandian Nagar",
+    address: branchAddress && !branchAddress.toLowerCase().includes("skt") ? branchAddress : "17/B3, 1st street, Pandian Nagar, Dindigul",
+  };
+}
+
 function toApiOrder(o: any) {
+  const norm = normalizeServerBranch(o.branch, o.branchAddress);
   return {
     id: o._id as string,
     customerId: (o.customerId as string | null) || null,
@@ -37,8 +52,8 @@ function toApiOrder(o: any) {
     amountPaid: o.amountPaid,
     discount: o.discount,
     items: o.items,
-    branch: o.branch || "Pandian Nagar",
-    branchAddress: o.branchAddress || (o.branch?.includes("SKT") ? "SKT Dindigul" : "17/B3, 1st street, Pandian Nagar, Dindigul"),
+    branch: norm.name,
+    branchAddress: norm.address,
     createdAt: o.createdAt!.toISOString(),
     updatedAt: o.updatedAt!.toISOString(),
   };
@@ -189,10 +204,7 @@ export const ordersRouter = router({
         });
       }
 
-      const branchName = input.branch || (input.branchAddress?.includes("SKT") ? "SKT Dindigul" : "Pandian Nagar");
-      const branchAddr =
-        input.branchAddress ||
-        (branchName.includes("SKT") ? "SKT Dindigul" : "17/B3, 1st street, Pandian Nagar, Dindigul");
+      const normBranch = normalizeServerBranch(input.branch, input.branchAddress);
 
       // Auto-enrich items with live Product catalog ID, staffIroningRate, and staffWashRate
       const dbProducts = await Product.find({ isArchived: { $ne: true } }).lean();
@@ -238,8 +250,8 @@ export const ordersRouter = router({
         amountPaid: input.amountPaid,
         discount: input.discount,
         items: enrichedItems,
-        branch: branchName,
-        branchAddress: branchAddr,
+        branch: normBranch.name,
+        branchAddress: normBranch.address,
       });
 
       return toApiOrder(order);
