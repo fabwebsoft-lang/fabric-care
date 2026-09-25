@@ -6,6 +6,7 @@ import {
   getStoredBranchId,
   saveStoredBranchId,
   getBranchById,
+  getBranchPrefix,
   type ShopBranch,
 } from "@/lib/branches";
 import {
@@ -64,20 +65,7 @@ export default function NewBillModal({
   const { data: dbProducts = [] } = trpc.products.list.useQuery();
   const { data: orders = [] } = trpc.orders.list.useQuery();
 
-  const nextBillNumber = useMemo(() => {
-    let maxNum = 0;
-    for (const o of orders) {
-      const match = (o.id || "").match(/^FC-(\d+)$/);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        if (!isNaN(num) && num > maxNum) {
-          maxNum = num;
-        }
-      }
-    }
-    const nextNum = maxNum + 1;
-    return `FC-${nextNum < 10000 ? String(nextNum).padStart(4, "0") : nextNum}`;
-  }, [orders]);
+
 
   const hasValidInitial = Boolean(
     initialCustomer &&
@@ -166,6 +154,35 @@ export default function NewBillModal({
   // Branch Selection State
   const [selectedBranchId, setSelectedBranchId] = useState<string>(() => getStoredBranchId());
   const selectedBranch = useMemo(() => getBranchById(selectedBranchId), [selectedBranchId]);
+  const branchPrefix = useMemo(() => getBranchPrefix(selectedBranch.shortName), [selectedBranch]);
+
+  const nextBillNumber = useMemo(() => {
+    let maxNum = 0;
+    const regex = new RegExp(`^${branchPrefix}-(\\d+)$`);
+    for (const o of orders) {
+      const match = (o.id || "").match(regex);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+    // If PN and no PN- orders yet, check legacy FC- orders
+    if (branchPrefix === "PN" && maxNum === 0) {
+      for (const o of orders) {
+        const match = (o.id || "").match(/^FC-(\d+)$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      }
+    }
+    const nextNum = maxNum + 1;
+    return `${branchPrefix}-${nextNum < 10000 ? String(nextNum).padStart(4, "0") : nextNum}`;
+  }, [orders, branchPrefix]);
 
   const handleBranchSelect = (branchId: string) => {
     setSelectedBranchId(branchId);

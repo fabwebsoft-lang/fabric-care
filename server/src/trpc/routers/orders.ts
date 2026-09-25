@@ -59,15 +59,23 @@ function toApiOrder(o: any) {
   };
 }
 
-async function nextOrderId(): Promise<string> {
-  const fcOrders = await Order.find(
-    { _id: { $regex: /^FC-\d+$/ } },
+function getBranchPrefix(branchNameOrAddress?: string | null): "PN" | "SKT" {
+  const norm = normalizeServerBranch(branchNameOrAddress);
+  return norm.name === "SKT Dindigul" ? "SKT" : "PN";
+}
+
+async function nextOrderId(branchNameOrAddress?: string | null): Promise<string> {
+  const prefix = getBranchPrefix(branchNameOrAddress);
+  const regex = new RegExp(`^${prefix}-(\\d+)$`);
+
+  const existingOrders = await Order.find(
+    { _id: { $regex: new RegExp(`^${prefix}-\\d+$`) } },
     { _id: 1 }
   ).lean();
 
   let maxNum = 0;
-  for (const o of fcOrders) {
-    const match = (o._id as string).match(/^FC-(\d+)$/);
+  for (const o of existingOrders) {
+    const match = (o._id as string).match(regex);
     if (match) {
       const num = parseInt(match[1], 10);
       if (!isNaN(num) && num > maxNum) {
@@ -76,12 +84,29 @@ async function nextOrderId(): Promise<string> {
     }
   }
 
+  // If PN and no PN- orders yet exist, look at existing legacy FC- orders for continuity
+  if (prefix === "PN" && maxNum === 0) {
+    const fcOrders = await Order.find(
+      { _id: { $regex: /^FC-\d+$/ } },
+      { _id: 1 }
+    ).lean();
+    for (const o of fcOrders) {
+      const match = (o._id as string).match(/^FC-(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+
   let nextNum = maxNum + 1;
-  let candidateId = `FC-${nextNum < 10000 ? String(nextNum).padStart(4, "0") : nextNum}`;
+  let candidateId = `${prefix}-${nextNum < 10000 ? String(nextNum).padStart(4, "0") : nextNum}`;
 
   while (await Order.exists({ _id: candidateId })) {
     nextNum++;
-    candidateId = `FC-${nextNum < 10000 ? String(nextNum).padStart(4, "0") : nextNum}`;
+    candidateId = `${prefix}-${nextNum < 10000 ? String(nextNum).padStart(4, "0") : nextNum}`;
   }
 
   return candidateId;
@@ -119,7 +144,8 @@ export const ordersRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const id = await nextOrderId();
+      const normBranch = normalizeServerBranch(input.branch, input.branchAddress);
+      const id = await nextOrderId(normBranch.name);
       const normPhone = normalizePhone(input.phone);
       const cleanCustomerId = (input.customerId || "").trim();
 
@@ -209,8 +235,6 @@ export const ordersRouter = router({
           notes: input.notes?.trim() || null,
         });
       }
-
-      const normBranch = normalizeServerBranch(input.branch, input.branchAddress);
 
       // Auto-enrich items with live Product catalog ID, staffIroningRate, and staffWashRate
       const dbProducts = await Product.find({ isArchived: { $ne: true } }).lean();

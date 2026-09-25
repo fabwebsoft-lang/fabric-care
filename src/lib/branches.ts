@@ -87,3 +87,8 @@ export function matchesBranchFilter(
   return orderBranch === targetBranch;
 }
 
+export function getBranchPrefix(branchOrAddress?: string | null): "PN" | "SKT" {
+  const norm = normalizeBranchShortName(branchOrAddress);
+  return norm === "SKT Dindigul" ? "SKT" : "PN";
+}
+
