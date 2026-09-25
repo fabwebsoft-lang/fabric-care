@@ -160,7 +160,7 @@ export default function StatementsView() {
               {periodTitles[timeRange]}
             </h2>
             <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-              Revenue (sum of bills) − Staff Labour costs − General expenses = Net Profit
+              Financial statement and profit performance summary
             </p>
           </div>
 
@@ -215,17 +215,6 @@ export default function StatementsView() {
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Financial Formula Callout */}
-      <div className="bg-[#0F4C5C]/5 border border-[#0F4C5C]/20 p-3 sm:p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2 text-[#0F4C5C] font-semibold">
-          <TrendingUp className="size-4 shrink-0" />
-          <span>Financial Equation:</span>
-          <span className="font-mono bg-white px-2 py-1 rounded-lg border border-[#0F4C5C]/20 font-bold text-slate-800">
-            Revenue (₹{totalRevenue.toLocaleString("en-IN")}) − Labour Costs (₹{totalLabourCost.toLocaleString("en-IN")}) − Other Expenses (₹{totalOtherExpenses.toLocaleString("en-IN")}) = Net (₹{netProfit.toLocaleString("en-IN")})
-          </span>
         </div>
       </div>
 
