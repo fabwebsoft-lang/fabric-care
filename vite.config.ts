@@ -15,12 +15,15 @@ export default defineConfig({
     emptyOutDir: true,
     cssMinify: true,
     minify: "esbuild",
+    target: "es2020",
+    cssCodeSplit: true,
+    modulePreload: { polyfill: false },
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes("node_modules")) {
-            if (id.includes("react") || id.includes("wouter")) {
+            if (id.includes("react-dom") || id.includes("react/") || id.includes("wouter")) {
               return "vendor-core";
             }
             if (id.includes("@tanstack")) {

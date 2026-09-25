@@ -23,7 +23,15 @@ export default function LoginScreen({ onSwitchToSignup }: { onSwitchToSignup: ()
       <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 sm:p-8 space-y-6">
         <div className="flex flex-col items-center gap-3 text-center">
           <div className="grid size-12 place-items-center rounded-2xl bg-[#0F4C5C]">
-            <img src="/fabric-care-logo.png" alt="Fabric Care logo" className="size-7 object-contain" />
+            <img
+              src="/fabric-care-logo.png"
+              alt="Fabric Care logo"
+              width="28"
+              height="28"
+              fetchPriority="high"
+              loading="eager"
+              className="size-7 object-contain"
+            />
           </div>
           <div>
             <h1 className="font-display text-lg font-bold text-[#0F4C5C]">Fabric Care</h1>

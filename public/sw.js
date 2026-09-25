@@ -1,4 +1,4 @@
-const CACHE_NAME = "fabric-care-shell-v5";
+const CACHE_NAME = "fabric-care-shell-v6";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
