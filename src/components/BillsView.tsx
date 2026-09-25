@@ -406,7 +406,12 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
 
             {/* Date Filter Dropdown Popover */}
             {showDatePicker && (
-              <div className="absolute right-0 sm:left-0 top-11 z-40 w-64 max-w-[calc(100vw-32px)] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl space-y-2 text-xs">
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => setShowDatePicker(false)}
+                />
+                <div className="absolute left-0 top-11 z-40 w-64 max-w-[calc(100vw-32px)] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl space-y-2 text-xs">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <span className="font-bold text-slate-800 text-xs">Filter by Date (IST)</span>
                   {dateFilter !== "all" && (
@@ -487,8 +492,9 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </>
+          )}
+        </div>
 
           {/* New Order Button */}
           <button
