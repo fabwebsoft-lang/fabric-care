@@ -439,6 +439,7 @@ export const trpc = {
       ironing: {
         todayStats: { invalidate: () => qc.invalidateQueries({ queryKey: ["ironing.todayStats"] }) },
         getActiveTask: { invalidate: () => qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] }) },
+        getActiveWashingTask: { invalidate: () => qc.invalidateQueries({ queryKey: ["ironing.getActiveWashingTask"] }) },
         reports: { invalidate: () => qc.invalidateQueries({ queryKey: ["ironing.reports"] }) },
       },
       reports: {
