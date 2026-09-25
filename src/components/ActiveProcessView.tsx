@@ -693,9 +693,9 @@ export default function ActiveProcessView({
           order={startWashingOrder}
           onClose={() => setStartWashingOrder(null)}
           onStart={(orderId, staffId) =>
-            startWashingMutation.mutate({ orderId, staffId })
+            completeWashingMutation.mutate({ orderId, staffId })
           }
-          isPending={startWashingMutation.isPending}
+          isPending={completeWashingMutation.isPending}
         />
       )}
 
@@ -826,7 +826,7 @@ function StartWashingModal({
               Who is doing this washing?
             </h3>
             <p className="text-[11px] sm:text-xs text-slate-500">
-              Assign an active staff member to track their washing labour
+              Assign an active staff member to complete washing and record labour
             </p>
           </div>
           <button
@@ -886,11 +886,11 @@ function StartWashingModal({
 
           <div className="p-3 bg-blue-50/70 border border-blue-200/70 rounded-xl text-[11px] text-blue-900 space-y-1">
             <p className="font-semibold flex items-center gap-1.5">
-              <WashingMachine className="size-3.5 text-blue-600 shrink-0" />
-              Starting Washing creates NO expense.
+              <CheckCircle2 className="size-3.5 text-blue-600 shrink-0" />
+              Complete Washing & Move to Next Stage
             </p>
             <p className="text-blue-700 text-[10px]">
-              Labour earning and linked internal expense are calculated and recorded only upon completing washing.
+              Washing will be completed for the assigned staff, labour expense recorded automatically, and the order will move forward to Step 3 (Ironing).
             </p>
           </div>
 
@@ -907,8 +907,8 @@ function StartWashingModal({
               disabled={isPending || !selectedStaffId}
               className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
-              <WashingMachine className="size-4" />
-              {isPending ? "Starting..." : "Start Washing"}
+              <CheckCircle2 className="size-4" />
+              {isPending ? "Completing..." : "Complete Washing & Move to Next Step"}
             </button>
           </div>
         </form>
