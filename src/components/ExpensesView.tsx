@@ -626,6 +626,7 @@ export default function ExpensesView() {
               "Rent",
               "Wages",
               "Maintenance",
+              "Transport",
               "Other",
             ].map((cat) => {
               const catTotal = apiExpenses
@@ -797,6 +798,7 @@ function ExpenseModal({
                 <option>Utilities</option>
                 <option>Rent</option>
                 <option>Maintenance</option>
+                <option>Transport</option>
                 <option>Other</option>
               </select>
             </label>
