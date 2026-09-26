@@ -548,23 +548,40 @@ export default function NewBillModal({
     });
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0F4C5C]/50 backdrop-blur-sm p-2 sm:p-4 md:p-6 flex justify-center items-center min-h-screen">
-      <div className="relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-[#0F4C5C]/50 backdrop-blur-xs p-2 sm:p-4 md:p-6 flex justify-center items-center min-h-screen"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-bill-title"
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#0F4C5C]/20 bg-[#0F4C5C] px-4 py-3.5 sm:px-5 sm:py-4 text-white shrink-0">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="grid size-8 sm:size-9 place-items-center rounded-xl bg-white/10 hover:bg-white/20 transition text-white"
-              aria-label="Back"
+              className="grid size-11 min-h-[44px] min-w-[44px] place-items-center rounded-xl bg-white/10 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white transition text-white cursor-pointer"
+              aria-label="Back to workspace"
             >
-              <ArrowLeft className="size-4 sm:size-5" />
+              <ArrowLeft className="size-5" aria-hidden="true" />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="font-display text-base sm:text-lg font-bold">New Laundry Bill</h2>
+                <h2 id="new-bill-title" className="font-display text-base sm:text-lg font-bold">New Laundry Bill</h2>
                 <span className="rounded-full bg-[#FFF4D6] px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-[#9A6A12]">
                   PENDING
                 </span>
@@ -575,9 +592,10 @@ export default function NewBillModal({
           <button
             type="button"
             onClick={onClose}
-            className="grid size-8 place-items-center rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition"
+            className="grid size-11 min-h-[44px] min-w-[44px] place-items-center rounded-lg text-white/70 hover:text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white transition cursor-pointer"
+            aria-label="Close modal"
           >
-            <X className="size-4 sm:size-5" />
+            <X className="size-5" aria-hidden="true" />
           </button>
         </div>
 

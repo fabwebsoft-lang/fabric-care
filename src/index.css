@@ -117,6 +117,12 @@
       font-size: 16px !important;
     }
   }
+  /* Focus visible accessibility for WCAG 2.2 AA */
+  :focus-visible {
+    outline: 2px solid #0F4C5C !important;
+    outline-offset: 2px !important;
+  }
+
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),
@@ -127,6 +133,7 @@
   input[type="checkbox"]:not(:disabled),
   input[type="radio"]:not(:disabled) {
     @apply cursor-pointer;
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Custom Clean Scrollbar */

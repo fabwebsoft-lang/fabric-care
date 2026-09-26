@@ -175,19 +175,36 @@ export default function InvoiceModal({
     setShowShareMenu(false);
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4 md:p-6 flex justify-center items-center">
-      <div className="relative w-full max-w-3xl bg-white sm:rounded-3xl shadow-2xl border-0 sm:border border-slate-200 flex flex-col h-[100dvh] sm:h-auto sm:max-h-[92vh] overflow-hidden my-auto">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-0 sm:p-4 md:p-6 flex justify-center items-center"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="invoice-modal-title"
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-3xl bg-white sm:rounded-3xl shadow-2xl border-0 sm:border border-slate-200 flex flex-col h-[100dvh] sm:h-auto sm:max-h-[92vh] overflow-hidden my-auto"
+      >
         {/* Modal Top Bar */}
         <div className="bg-white border-b border-slate-200 px-3.5 sm:px-5 py-2.5 sm:py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0 z-10">
           <div className="flex items-center justify-between sm:justify-start gap-2">
             <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-              <div className="size-7 sm:size-8 rounded-lg bg-[#0F4C5C] text-white flex items-center justify-center font-bold text-xs shrink-0">
+              <div className="size-7 sm:size-8 rounded-lg bg-[#0F4C5C] text-white flex items-center justify-center font-bold text-xs shrink-0" aria-hidden="true">
                 <FileText className="size-3.5 sm:size-4" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="font-mono text-xs font-bold text-[#0F4C5C]">{normalizedOrder.id}</span>
+                  <h2 id="invoice-modal-title" className="font-mono text-xs sm:text-sm font-bold text-[#0F4C5C]">{normalizedOrder.id}</h2>
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${isPaid ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>
                     {isPaid ? "PAID" : `DUE ${formatRupee(balanceDue)}`}
                   </span>
@@ -198,11 +215,12 @@ export default function InvoiceModal({
 
             {/* Close Button on Mobile */}
             <button
+              type="button"
               onClick={onClose}
-              className="sm:hidden size-8 grid place-items-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0"
-              aria-label="Close modal"
+              className="sm:hidden size-11 min-h-[44px] min-w-[44px] grid place-items-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-[#0F4C5C] transition shrink-0 cursor-pointer"
+              aria-label="Close invoice dialog"
             >
-              <X className="size-4" />
+              <X className="size-5" aria-hidden="true" />
             </button>
           </div>
 

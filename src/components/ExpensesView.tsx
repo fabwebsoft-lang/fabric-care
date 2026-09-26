@@ -729,6 +729,14 @@ function ExpenseModal({
   });
   const [notes, setNotes] = useState(initialExpense?.notes || "");
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
@@ -751,16 +759,26 @@ function ExpenseModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-3 sm:p-4 backdrop-blur-sm min-h-screen">
-      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-3 sm:p-4 backdrop-blur-sm min-h-screen"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="expense-modal-title"
+        className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150"
+      >
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h2 className="font-display text-base sm:text-lg font-bold text-[#0F4C5C]">
+          <h2 id="expense-modal-title" className="font-display text-base sm:text-lg font-bold text-[#0F4C5C]">
             {isEditing ? "Edit Expense" : "Add an Expense"}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="grid size-9 place-items-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition"
+            className="grid size-9 place-items-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition min-h-[44px] min-w-[44px]"
             aria-label="Close"
           >
             <X className="size-4" />

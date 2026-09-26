@@ -93,134 +93,148 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* KPI Stat Cards Grid: 3x2 on mobile & tablet, 6x1 on desktop */}
-      <div className="grid gap-2 sm:gap-3.5 xl:gap-4 grid-cols-3 xl:grid-cols-6">
+      {/* KPI Stat Cards Grid: 2 cols on mobile (320px-430px), 3 cols on tablet, 6 cols on desktop */}
+      <div className="grid gap-2.5 sm:gap-3.5 xl:gap-4 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 w-full max-w-full">
         {/* Today's Sales */}
-        <div
+        <button
+          type="button"
           onClick={() => onNavigate("Orders")}
-          className="bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer hover:border-[#0F4C5C]/30 transition hover:shadow-sm"
+          aria-label={`Today's Sales: ₹${metrics.todaysSales.toLocaleString("en-IN")}, click to view orders`}
+          className="bg-white p-3 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 text-left cursor-pointer hover:border-[#0F4C5C]/30 focus-visible:ring-2 focus-visible:ring-[#0F4C5C] transition hover:shadow-sm"
         >
-          <div className="flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-600 text-xs font-semibold gap-1 w-full">
             <span className="truncate">Today's Sales</span>
-            <div className="p-1 sm:p-1.5 md:p-2 bg-[#0F4C5C]/10 text-[#0F4C5C] rounded-md sm:rounded-xl shrink-0">
-              <IndianRupee className="size-3 sm:size-3.5 md:size-4" />
+            <div className="p-1 sm:p-1.5 md:p-2 bg-[#0F4C5C]/10 text-[#0F4C5C] rounded-md sm:rounded-xl shrink-0" aria-hidden="true">
+              <IndianRupee className="size-3.5 md:size-4" />
             </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm sm:text-lg md:text-xl font-bold text-[#0F4C5C] tracking-tight truncate">
+          <div className="min-w-0 w-full">
+            <p className="text-base sm:text-lg md:text-xl font-bold text-[#0F4C5C] tracking-tight truncate">
               ₹{metrics.todaysSales.toLocaleString("en-IN")}
             </p>
-            <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">Total new bills</p>
+            <p className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 truncate">Total new bills</p>
           </div>
-        </div>
+        </button>
 
         {/* Collected Today */}
-        <div
+        <button
+          type="button"
           onClick={() => onNavigate("Statements")}
-          className="bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer hover:border-emerald-300 transition hover:shadow-sm"
+          aria-label={`Collected Today: ₹${metrics.todaysCollected.toLocaleString("en-IN")}, click to view statements`}
+          className="bg-white p-3 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 text-left cursor-pointer hover:border-emerald-300 focus-visible:ring-2 focus-visible:ring-emerald-600 transition hover:shadow-sm"
         >
-          <div className="flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-600 text-xs font-semibold gap-1 w-full">
             <span className="truncate">Collected Today</span>
-            <div className="p-1 sm:p-1.5 md:p-2 bg-emerald-100 text-emerald-700 rounded-md sm:rounded-xl shrink-0">
-              <CircleDollarSign className="size-3 sm:size-3.5 md:size-4" />
+            <div className="p-1 sm:p-1.5 md:p-2 bg-emerald-100 text-emerald-700 rounded-md sm:rounded-xl shrink-0" aria-hidden="true">
+              <CircleDollarSign className="size-3.5 md:size-4" />
             </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm sm:text-lg md:text-xl font-bold text-emerald-600 tracking-tight truncate">
+          <div className="min-w-0 w-full">
+            <p className="text-base sm:text-lg md:text-xl font-bold text-emerald-600 tracking-tight truncate">
               ₹{metrics.todaysCollected.toLocaleString("en-IN")}
             </p>
-            <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">Cash/UPI received</p>
+            <p className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 truncate">Cash/UPI received</p>
           </div>
-        </div>
+        </button>
 
         {/* Outstanding Dues */}
-        <div
+        <button
+          type="button"
           onClick={() => onNavigate("Orders")}
-          className="bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer hover:border-rose-300 transition hover:shadow-sm"
+          aria-label={`Outstanding Dues: ₹${metrics.todaysPending.toLocaleString("en-IN")}, click to view unpaid bills`}
+          className="bg-white p-3 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 text-left cursor-pointer hover:border-rose-300 focus-visible:ring-2 focus-visible:ring-rose-600 transition hover:shadow-sm"
         >
-          <div className="flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-600 text-xs font-semibold gap-1 w-full">
             <span className="truncate">Outstanding Dues</span>
-            <div className="p-1 sm:p-1.5 md:p-2 bg-rose-100 text-rose-700 rounded-md sm:rounded-xl shrink-0">
-              <Clock className="size-3 sm:size-3.5 md:size-4" />
+            <div className="p-1 sm:p-1.5 md:p-2 bg-rose-100 text-rose-700 rounded-md sm:rounded-xl shrink-0" aria-hidden="true">
+              <Clock className="size-3.5 md:size-4" />
             </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm sm:text-lg md:text-xl font-bold text-rose-600 tracking-tight truncate">
+          <div className="min-w-0 w-full">
+            <p className="text-base sm:text-lg md:text-xl font-bold text-rose-600 tracking-tight truncate">
               ₹{metrics.todaysPending.toLocaleString("en-IN")}
             </p>
-            <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">Uncollected balance</p>
+            <p className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 truncate">Uncollected balance</p>
           </div>
-        </div>
+        </button>
 
         {/* Outstanding Processes (KPI) */}
-        <div
+        <button
+          type="button"
           onClick={() => onNavigate("Active process")}
-          className="bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-amber-200/90 bg-amber-50/20 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer hover:border-amber-400 transition hover:shadow-sm"
+          aria-label={`Outstanding Processes: ${outstandingProcessesCount} orders, click to view process board`}
+          className="bg-white p-3 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-amber-200/90 bg-amber-50/20 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 text-left cursor-pointer hover:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-600 transition hover:shadow-sm"
         >
-          <div className="flex justify-between items-center text-slate-600 text-[10px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-700 text-xs font-semibold gap-1 w-full">
             <span className="truncate">Outstanding Processes</span>
-            <div className="p-1 sm:p-1.5 md:p-2 bg-amber-100 text-amber-700 rounded-md sm:rounded-xl shrink-0">
-              <WashingMachine className="size-3 sm:size-3.5 md:size-4" />
+            <div className="p-1 sm:p-1.5 md:p-2 bg-amber-100 text-amber-700 rounded-md sm:rounded-xl shrink-0" aria-hidden="true">
+              <WashingMachine className="size-3.5 md:size-4" />
             </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm sm:text-lg md:text-xl font-bold text-amber-600 tracking-tight truncate">
+          <div className="min-w-0 w-full">
+            <p className="text-base sm:text-lg md:text-xl font-bold text-amber-600 tracking-tight truncate">
               {outstandingProcessesCount} {outstandingProcessesCount === 1 ? "Order" : "Orders"}
             </p>
-            <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">
+            <p className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 truncate">
               {receivedCount} in · {processingCount} wash · {ironingCount} iron
             </p>
           </div>
-        </div>
+        </button>
 
         {/* Need to Deliver (KPI) */}
-        <div
+        <button
+          type="button"
           onClick={() => onNavigate("Active process")}
-          className="bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-indigo-200/90 bg-indigo-50/20 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer hover:border-indigo-400 transition hover:shadow-sm"
+          aria-label={`Need to Deliver: ${needToDeliverCount} orders ready for pickup, click to view`}
+          className="bg-white p-3 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-indigo-200/90 bg-indigo-50/20 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 text-left cursor-pointer hover:border-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-600 transition hover:shadow-sm"
         >
-          <div className="flex justify-between items-center text-slate-600 text-[10px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-700 text-xs font-semibold gap-1 w-full">
             <span className="truncate">Need to Deliver</span>
-            <div className="p-1 sm:p-1.5 md:p-2 bg-indigo-100 text-indigo-700 rounded-md sm:rounded-xl shrink-0">
-              <PackageCheck className="size-3 sm:size-3.5 md:size-4" />
+            <div className="p-1 sm:p-1.5 md:p-2 bg-indigo-100 text-indigo-700 rounded-md sm:rounded-xl shrink-0" aria-hidden="true">
+              <PackageCheck className="size-3.5 md:size-4" />
             </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm sm:text-lg md:text-xl font-bold text-indigo-600 tracking-tight truncate">
+          <div className="min-w-0 w-full">
+            <p className="text-base sm:text-lg md:text-xl font-bold text-indigo-600 tracking-tight truncate">
               {needToDeliverCount} {needToDeliverCount === 1 ? "Order" : "Orders"}
             </p>
-            <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">
+            <p className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 truncate">
               Ready for pickup
             </p>
           </div>
-        </div>
+        </button>
 
         {/* Total In Shop */}
-        <div
+        <button
+          type="button"
           onClick={() => onNavigate("Active process")}
-          className="bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer hover:border-slate-300 transition hover:shadow-sm"
+          aria-label={`Total in Shop: ${activeProcessCount} active orders, click to view`}
+          className="bg-white p-3 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 text-left cursor-pointer hover:border-slate-300 focus-visible:ring-2 focus-visible:ring-[#0F4C5C] transition hover:shadow-sm"
         >
-          <div className="flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-semibold gap-1">
+          <div className="flex justify-between items-center text-slate-600 text-xs font-semibold gap-1 w-full">
             <span className="truncate">Total in Shop</span>
-            <div className="p-1 sm:p-1.5 md:p-2 bg-sky-100 text-sky-700 rounded-md sm:rounded-xl shrink-0">
-              <TrendingUp className="size-3 sm:size-3.5 md:size-4" />
+            <div className="p-1 sm:p-1.5 md:p-2 bg-sky-100 text-sky-700 rounded-md sm:rounded-xl shrink-0" aria-hidden="true">
+              <TrendingUp className="size-3.5 md:size-4" />
             </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm sm:text-lg md:text-xl font-bold text-slate-800 tracking-tight truncate">
+          <div className="min-w-0 w-full">
+            <p className="text-base sm:text-lg md:text-xl font-bold text-slate-800 tracking-tight truncate">
               {activeProcessCount} {activeProcessCount === 1 ? "Order" : "Orders"}
             </p>
-            <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-400 mt-0.5 truncate">Active workload</p>
+            <p className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 truncate">Active workload</p>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Ironing Labour & Staff Today (Subtle operational card) */}
-      <div
+      <button
+        type="button"
         onClick={() => onNavigate("Staff Management")}
-        className="bg-gradient-to-r from-purple-50/70 via-white to-slate-50 p-4 sm:p-5 rounded-2xl border border-purple-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer hover:border-purple-300 transition group hover:shadow-sm"
+        aria-label="Ironing Staff Today: View Staff Management and labour overview"
+        className="w-full text-left bg-gradient-to-r from-purple-50/70 via-white to-slate-50 p-4 sm:p-5 rounded-2xl border border-purple-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer hover:border-purple-300 focus-visible:ring-2 focus-visible:ring-purple-600 transition group hover:shadow-sm"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-purple-100 text-purple-700 rounded-xl group-hover:scale-105 transition shrink-0">
+          <div className="p-2.5 bg-purple-100 text-purple-700 rounded-xl group-hover:scale-105 transition shrink-0" aria-hidden="true">
             <Sparkles className="size-5" />
           </div>
           <div>
@@ -230,7 +244,7 @@ export default function DashboardView({
                 IST Live
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+            <p className="text-[11px] text-slate-600 mt-0.5">
               Staff labour tracking & automated internal expense calculation
             </p>
           </div>
@@ -238,22 +252,22 @@ export default function DashboardView({
 
         <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2.5 sm:pt-0 border-purple-100 text-xs">
           <div>
-            <span className="text-[10px] font-medium text-slate-500 block">Ironed Pieces</span>
+            <span className="text-[10px] font-medium text-slate-600 block">Ironed Pieces</span>
             <span className="text-sm font-bold text-slate-900 font-mono">{ironingStats?.todayPieces ?? 0} pcs</span>
           </div>
           <div>
-            <span className="text-[10px] font-medium text-slate-500 block">Labour Cost</span>
+            <span className="text-[10px] font-medium text-slate-600 block">Labour Cost</span>
             <span className="text-sm font-bold text-purple-700 font-mono">₹{ironingStats?.todayLabourCost ?? 0}</span>
           </div>
           <div>
-            <span className="text-[10px] font-medium text-slate-500 block">Active Ironing Staff</span>
+            <span className="text-[10px] font-medium text-slate-600 block">Active Ironing Staff</span>
             <span className="text-sm font-bold text-slate-800 font-mono">
               {ironingStats?.activeIroningStaffToday ?? 0} staff
             </span>
           </div>
-          <ChevronRight className="size-4 text-slate-400 group-hover:text-purple-700 group-hover:translate-x-0.5 transition hidden sm:block" />
+          <ChevronRight className="size-4 text-slate-400 group-hover:text-purple-700 group-hover:translate-x-0.5 transition hidden sm:block" aria-hidden="true" />
         </div>
-      </div>
+      </button>
 
       {/* 7-Day Revenue Trend Chart */}
       <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">

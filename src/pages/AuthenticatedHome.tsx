@@ -276,6 +276,24 @@ export default function AuthenticatedHome({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [activeSection]);
 
+  // Lock background scroll and handle Escape when mobile nav is open
+  useEffect(() => {
+    if (showMobileNav) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          setShowMobileNav(false);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+  }, [showMobileNav]);
+
   const createOrder = (input: NewOrderInput) => {
     createOrderMutation.mutate(input, {
       onSuccess: (createdOrder) => {
@@ -442,11 +460,12 @@ export default function AuthenticatedHome({
           <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-3.5 sm:px-8 lg:px-10 backdrop-blur-xl w-full max-w-full">
             <div className="flex items-center gap-3">
               <button
-                className="grid size-10 place-items-center rounded-xl border border-slate-200 bg-white text-[#0F4C5C] transition hover:border-slate-300 hover:text-[#0F4C5C] lg:hidden shrink-0"
+                className="grid size-11 min-h-[44px] min-w-[44px] place-items-center rounded-xl border border-slate-200 bg-white text-[#0F4C5C] transition hover:border-slate-300 hover:text-[#0F4C5C] focus-visible:ring-2 focus-visible:ring-[#0F4C5C] lg:hidden shrink-0 cursor-pointer"
                 onClick={() => setShowMobileNav(true)}
-                aria-label="Open navigation"
+                aria-label="Open navigation menu"
+                aria-expanded={showMobileNav}
               >
-                <Menu className="size-[18px]" />
+                <Menu className="size-[20px]" aria-hidden="true" />
               </button>
               <div className="min-w-0">
                 <p className="hidden text-[11px] font-semibold uppercase tracking-[.13em] text-[#0F4C5C] sm:block">
@@ -457,19 +476,21 @@ export default function AuthenticatedHome({
                     year: "numeric",
                   })}
                 </p>
-                <p className="font-display text-[18px] font-semibold tracking-[-.02em] text-[#0F4C5C] sm:text-[20px] truncate">
+                <h1 className="font-display text-[18px] font-semibold tracking-[-.02em] text-[#0F4C5C] sm:text-[20px] truncate">
                   {sectionTitle}
-                </p>
+                </h1>
               </div>
             </div>
             <div className="relative flex items-center gap-2 sm:gap-3 shrink-0">
               {canManageRoles ? (
                 <button
+                  type="button"
                   onClick={() => navigate("Roles")}
-                  className="hidden items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 sm:flex hover:border-[#0F4C5C]/30 transition"
+                  className="hidden items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 sm:flex hover:border-[#0F4C5C]/30 focus-visible:ring-2 focus-visible:ring-[#0F4C5C] transition cursor-pointer"
                   title="Click to view permissions and switch role in simulator"
+                  aria-label={`Role simulator, current role: ${activeRole}`}
                 >
-                  <ShieldCheck className="size-3.5 text-[#0F4C5C]" />
+                  <ShieldCheck className="size-3.5 text-[#0F4C5C]" aria-hidden="true" />
                   <span className="text-[11px] font-bold text-[#0F4C5C] capitalize">
                     {activeRole}
                   </span>
@@ -479,7 +500,7 @@ export default function AuthenticatedHome({
                 </button>
               ) : (
                 <div className="hidden items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 sm:flex">
-                  <ShieldCheck className="size-3.5 text-[#0F4C5C]" />
+                  <ShieldCheck className="size-3.5 text-[#0F4C5C]" aria-hidden="true" />
                   <span className="text-[11px] font-bold text-[#0F4C5C] capitalize">
                     {activeRole}
                   </span>
@@ -487,24 +508,29 @@ export default function AuthenticatedHome({
               )}
 
               <button
+                type="button"
                 onClick={() => {
                   setShowNotifications((value) => !value);
                   setShowProfileMenu(false);
                 }}
-                className="relative grid size-11 place-items-center rounded-xl border border-slate-200 bg-white text-[#0F4C5C] transition hover:border-slate-300 hover:text-[#0F4C5C]"
+                className="relative grid size-11 min-h-[44px] min-w-[44px] place-items-center rounded-xl border border-slate-200 bg-white text-[#0F4C5C] transition hover:border-slate-300 hover:text-[#0F4C5C] focus-visible:ring-2 focus-visible:ring-[#0F4C5C] cursor-pointer"
                 aria-label="Notifications"
+                aria-expanded={showNotifications}
               >
-                <Bell className="size-[17px]" strokeWidth={1.8} />
+                <Bell className="size-[18px]" strokeWidth={1.8} aria-hidden="true" />
                 {!notificationsRead && (
-                  <span className="absolute right-2 top-2 size-1.5 rounded-full bg-[#0F4C5C] ring-2 ring-white" />
+                  <span className="absolute right-2 top-2 size-2 rounded-full bg-[#0F4C5C] ring-2 ring-white" aria-hidden="true" />
                 )}
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setShowProfileMenu((value) => !value);
                   setShowNotifications(false);
                 }}
-                className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-left transition hover:border-slate-300"
+                className="flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-left transition hover:border-slate-300 focus-visible:ring-2 focus-visible:ring-[#0F4C5C] cursor-pointer"
+                aria-label={`User menu for ${user?.name ?? "Ashfaq"}`}
+                aria-expanded={showProfileMenu}
               >
                 <div className="grid size-7 place-items-center rounded-lg bg-slate-100 text-[10px] font-bold text-[#0F4C5C]">
                   {(user?.name ?? "Ashfaq")
@@ -517,13 +543,14 @@ export default function AuthenticatedHome({
                 <span className="hidden text-[11px] font-semibold text-[#0F4C5C] sm:block">
                   {user?.name ?? "Ashfaq"}
                 </span>
-                <ChevronDown className="hidden size-3.5 text-[#0F4C5C] sm:block" />
+                <ChevronDown className="hidden size-3.5 text-[#0F4C5C] sm:block" aria-hidden="true" />
               </button>
               {showNotifications && (
                 <NotificationPanel
                   orders={orders}
                   notificationsEnabled={settingsForm.customerNotifications}
                   onMarkRead={() => setNotificationsRead(true)}
+                  onClose={() => setShowNotifications(false)}
                 />
               )}
               {showProfileMenu && (
@@ -533,6 +560,7 @@ export default function AuthenticatedHome({
                   canManageRoles={canManageRoles}
                   onSettings={() => navigate("Settings")}
                   onRoles={() => navigate("Roles")}
+                  onClose={() => setShowProfileMenu(false)}
                   onLogout={async () => {
                     try {
                       await logout();
@@ -576,11 +604,15 @@ export default function AuthenticatedHome({
 
       {showMobileNav && (
         <div
-          className="fixed inset-0 z-40 bg-[#0F4C5C]/35 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-40 bg-[#0F4C5C]/40 backdrop-blur-xs lg:hidden"
           onClick={() => setShowMobileNav(false)}
+          aria-hidden="true"
         >
           <aside
-            className="flex h-full w-[min(82vw,300px)] flex-col justify-between bg-[#0F4C5C] px-5 py-6 text-white shadow-[18px_0_50px_rgba(15,76,92,.25)]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Main Navigation Menu"
+            className="flex h-full w-[min(82vw,300px)] flex-col justify-between bg-[#0F4C5C] px-5 py-6 text-white shadow-[18px_0_50px_rgba(15,76,92,.25)] overflow-y-auto"
             onClick={(event) => event.stopPropagation()}
           >
             <div>
@@ -606,16 +638,16 @@ export default function AuthenticatedHome({
                 </div>
                 <button
                   onClick={() => setShowMobileNav(false)}
-                  className="grid size-9 place-items-center rounded-xl text-white/80 hover:bg-white/[.12] hover:text-white shrink-0"
+                  className="grid size-11 min-h-[44px] min-w-[44px] place-items-center rounded-xl text-white/80 hover:bg-white/[.12] hover:text-white shrink-0 focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
                   aria-label="Close navigation"
                 >
-                  <X className="size-5" />
+                  <X className="size-5" aria-hidden="true" />
                 </button>
               </div>
               <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-white/60">
                 Workspace
               </p>
-              <nav className="space-y-1 mb-6">
+              <nav className="space-y-1 mb-6" aria-label="Workspace navigation">
                 {visibleNavItems.map(({ label, icon: Icon }) => (
                   <button
                     key={label}
@@ -623,13 +655,13 @@ export default function AuthenticatedHome({
                       navigate(label);
                       setShowMobileNav(false);
                     }}
-                    className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition-all duration-150 ${
+                    className={`group flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition-all duration-150 focus-visible:ring-2 focus-visible:ring-white cursor-pointer ${
                       activeSection === label
                         ? "bg-white/15 text-white shadow-inner"
                         : "text-white/80 hover:bg-white/[.10] hover:text-white"
                     }`}
                   >
-                    <Icon className="size-[17px] text-white/80" strokeWidth={1.9} />
+                    <Icon className="size-[18px] text-white/80" strokeWidth={1.9} aria-hidden="true" />
                     <span className="flex-1">{label}</span>
                     {label === "Active process" && overviewMetrics.inProcessCount > 0 && (
                       <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] font-bold text-white">
@@ -649,16 +681,16 @@ export default function AuthenticatedHome({
               <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-white/60">
                 Manage
               </p>
-              <nav className="space-y-1.5">
+              <nav className="space-y-1.5" aria-label="Management navigation">
                 {canManageRoles && (
                   <button
                     onClick={() => {
                       setShowMobileNav(false);
                       navigate("Roles");
                     }}
-                    className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-white/80 hover:bg-white/[.10] hover:text-white"
+                    className="group flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-white/80 hover:bg-white/[.10] hover:text-white focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
                   >
-                    <ShieldCheck className="size-[17px] text-white/80" strokeWidth={1.9} /> Roles &
+                    <ShieldCheck className="size-[18px] text-white/80" strokeWidth={1.9} aria-hidden="true" /> Roles &
                     Access
                   </button>
                 )}
@@ -667,18 +699,18 @@ export default function AuthenticatedHome({
                     setShowMobileNav(false);
                     navigate("Settings");
                   }}
-                  className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-white/80 hover:bg-white/[.10] hover:text-white"
+                  className="group flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-white/80 hover:bg-white/[.10] hover:text-white focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
                 >
-                  <Settings className="size-[17px] text-white/80" strokeWidth={1.9} /> Settings
+                  <Settings className="size-[18px] text-white/80" strokeWidth={1.9} aria-hidden="true" /> Settings
                 </button>
                 <button
                   onClick={() => {
                     setShowMobileNav(false);
                     setShowHelp(true);
                   }}
-                  className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-white/80 hover:bg-white/[.10] hover:text-white"
+                  className="group flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-white/80 hover:bg-white/[.10] hover:text-white focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
                 >
-                  <HelpCircle className="size-[17px] text-white/80" strokeWidth={1.9} /> Help
+                  <HelpCircle className="size-[18px] text-white/80" strokeWidth={1.9} aria-hidden="true" /> Help
                   center
                 </button>
                 {!installed && (
@@ -687,9 +719,9 @@ export default function AuthenticatedHome({
                       setShowMobileNav(false);
                       handleInstallClick();
                     }}
-                    className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-emerald-300 hover:bg-white/[.10] hover:text-emerald-200"
+                    className="group flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-emerald-300 hover:bg-white/[.10] hover:text-emerald-200 focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
                   >
-                    <Download className="size-[17px] text-emerald-300" strokeWidth={1.9} /> Install
+                    <Download className="size-[18px] text-emerald-300" strokeWidth={1.9} aria-hidden="true" /> Install
                     App
                   </button>
                 )}
@@ -771,61 +803,81 @@ function NotificationPanel({
   orders,
   notificationsEnabled,
   onMarkRead,
+  onClose,
 }: {
   orders: Order[];
   notificationsEnabled: boolean;
   onMarkRead: () => void;
+  onClose: () => void;
 }) {
   const readyOrders = orders.filter((order) => order.status === "Ready");
   const dueOrders = orders.filter((order) => order.balance !== "Paid");
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="absolute right-0 sm:right-[54px] top-[52px] z-30 w-[300px] max-w-[calc(100vw-32px)] rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_16px_45px_rgba(17,17,17,.12)]">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <p className="text-[12px] font-bold text-[#0F4C5C]">Notifications</p>
-          <p className="mt-1 text-[10px] text-slate-500">Live from your current orders</p>
-        </div>
-        <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-[#0F4C5C]">
-          {notificationsEnabled ? readyOrders.length + dueOrders.length : 0} new
-        </span>
-      </div>
-      {notificationsEnabled ? (
-        <div className="space-y-3 text-[11px] text-slate-700">
-          {readyOrders.length ? (
-            <p>
-              <span className="font-semibold text-[#0F4C5C]">
-                {readyOrders.length} order{readyOrders.length === 1 ? " is" : "s are"}
-              </span>{" "}
-              ready for pickup.
-            </p>
-          ) : null}
-          {dueOrders.length ? (
-            <p>
-              <span className="font-semibold text-[#0F4C5C]">
-                {dueOrders.length} customer{dueOrders.length === 1 ? " has" : "s have"}
-              </span>{" "}
-              an outstanding balance.
-            </p>
-          ) : null}
-          <p className="text-slate-500">Workspace data is synced from the database.</p>
-          {!readyOrders.length && !dueOrders.length && (
-            <p className="rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-slate-500">
-              You are all caught up.
-            </p>
-          )}
-        </div>
-      ) : (
-        <p className="rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-[11px] text-slate-500">
-          Customer notifications are disabled in Settings.
-        </p>
-      )}
-      <button
-        onClick={onMarkRead}
-        className="mt-4 w-full rounded-xl border border-slate-200 py-2.5 text-[10px] font-bold text-[#0F4C5C] transition hover:bg-slate-50"
+    <>
+      <div className="fixed inset-0 z-20" onClick={onClose} aria-hidden="true" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Notifications"
+        className="absolute right-0 sm:right-[54px] top-[52px] z-30 w-[300px] max-w-[calc(100vw-32px)] rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_16px_45px_rgba(17,17,17,.12)]"
       >
-        Mark as read
-      </button>
-    </div>
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <p className="text-[12px] font-bold text-[#0F4C5C]">Notifications</p>
+            <p className="mt-1 text-[10px] text-slate-600">Live from your current orders</p>
+          </div>
+          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-[#0F4C5C]">
+            {notificationsEnabled ? readyOrders.length + dueOrders.length : 0} new
+          </span>
+        </div>
+        {notificationsEnabled ? (
+          <div className="space-y-3 text-[11px] text-slate-700">
+            {readyOrders.length ? (
+              <p>
+                <span className="font-semibold text-[#0F4C5C]">
+                  {readyOrders.length} order{readyOrders.length === 1 ? " is" : "s are"}
+                </span>{" "}
+                ready for pickup.
+              </p>
+            ) : null}
+            {dueOrders.length ? (
+              <p>
+                <span className="font-semibold text-[#0F4C5C]">
+                  {dueOrders.length} customer{dueOrders.length === 1 ? " has" : "s have"}
+                </span>{" "}
+                an outstanding balance.
+              </p>
+            ) : null}
+            <p className="text-slate-600">Workspace data is synced from the database.</p>
+            {!readyOrders.length && !dueOrders.length && (
+              <p className="rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-slate-600">
+                You are all caught up.
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-[11px] text-slate-600">
+            Customer notifications are disabled in Settings.
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={onMarkRead}
+          className="mt-4 w-full min-h-[44px] rounded-xl border border-slate-200 py-2.5 text-xs font-bold text-[#0F4C5C] hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#0F4C5C] transition cursor-pointer"
+        >
+          Mark as read
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -835,6 +887,7 @@ function ProfileMenu({
   canManageRoles,
   onSettings,
   onRoles,
+  onClose,
   onLogout,
 }: {
   user: { name?: string | null; email?: string | null; role?: string | null } | null;
@@ -842,52 +895,72 @@ function ProfileMenu({
   canManageRoles: boolean;
   onSettings: () => void;
   onRoles: () => void;
+  onClose: () => void;
   onLogout: () => void | Promise<void>;
 }) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="absolute right-0 top-[52px] z-30 w-[270px] max-w-[calc(100vw-32px)] rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_16px_45px_rgba(17,17,17,.12)]">
-      <div className="mb-4 flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200/80 p-3">
-        <div className="grid size-10 place-items-center rounded-xl bg-white text-[11px] font-bold text-[#0F4C5C] shadow-2xs border border-slate-200/60">
-          {(user?.name ?? "Ashfaq")
-            .split(" ")
-            .map((part: string) => part[0])
-            .join("")
-            .slice(0, 2)
-            .toUpperCase()}
+    <>
+      <div className="fixed inset-0 z-20" onClick={onClose} aria-hidden="true" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="User profile menu"
+        className="absolute right-0 top-[52px] z-30 w-[270px] max-w-[calc(100vw-32px)] rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_16px_45px_rgba(17,17,17,.12)]"
+      >
+        <div className="mb-4 flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200/80 p-3">
+          <div className="grid size-10 place-items-center rounded-xl bg-white text-[11px] font-bold text-[#0F4C5C] shadow-2xs border border-slate-200/60">
+            {(user?.name ?? "Ashfaq")
+              .split(" ")
+              .map((part: string) => part[0])
+              .join("")
+              .slice(0, 2)
+              .toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-[12px] font-bold text-[#0F4C5C]">{user?.name ?? "Ashfaq"}</p>
+            <p className="mt-0.5 truncate text-[10px] text-slate-600">
+              {user?.email ?? "asfaq94.md@gmail.com"}
+            </p>
+            <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-[#0F4C5C]/10 text-[#0F4C5C] text-[9px] font-bold uppercase">
+              Role: {activeRole}
+            </span>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="truncate text-[12px] font-bold text-[#0F4C5C]">{user?.name ?? "Ashfaq"}</p>
-          <p className="mt-0.5 truncate text-[10px] text-slate-500">
-            {user?.email ?? "asfaq94.md@gmail.com"}
-          </p>
-          <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-[#0F4C5C]/10 text-[#0F4C5C] text-[9px] font-bold uppercase">
-            Role: {activeRole}
-          </span>
-        </div>
-      </div>
-      <div className="space-y-1">
-        {canManageRoles && (
+        <div className="space-y-1">
+          {canManageRoles && (
+            <button
+              type="button"
+              onClick={onRoles}
+              className="flex min-h-[44px] w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold text-[#0F4C5C] hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#0F4C5C] transition cursor-pointer"
+            >
+              <ShieldCheck className="size-4" aria-hidden="true" /> Roles & access control
+            </button>
+          )}
           <button
-            onClick={onRoles}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[11px] font-semibold text-[#0F4C5C] transition hover:bg-slate-50"
+            type="button"
+            onClick={onSettings}
+            className="flex min-h-[44px] w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold text-[#0F4C5C] hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#0F4C5C] transition cursor-pointer"
           >
-            <ShieldCheck className="size-4" /> Roles & access control
+            <Settings className="size-4" aria-hidden="true" /> Account and shop settings
           </button>
-        )}
-        <button
-          onClick={onSettings}
-          className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[11px] font-semibold text-[#0F4C5C] transition hover:bg-slate-50"
-        >
-          <Settings className="size-4" /> Account and shop settings
-        </button>
-        <button
-          onClick={onLogout}
-          className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[11px] font-semibold text-rose-600 transition hover:bg-rose-50"
-        >
-          <LogOut className="size-4" /> Sign out
-        </button>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="flex min-h-[44px] w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 focus-visible:ring-2 focus-visible:ring-rose-600 transition cursor-pointer"
+          >
+            <LogOut className="size-4" aria-hidden="true" /> Sign out
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

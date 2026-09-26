@@ -44,59 +44,71 @@ export default function SignupScreen({ onSwitchToLogin }: { onSwitchToLogin: () 
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
+            <label htmlFor="signup-name" className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Full Name
+            </label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" aria-hidden="true" />
               <input
+                id="signup-name"
                 type="text"
                 required
                 autoFocus
+                autoComplete="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
-                className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
+                className="w-full pl-10 pr-3 py-3 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C] focus:border-[#0F4C5C] transition"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+            <label htmlFor="signup-email" className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Email Address
+            </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" aria-hidden="true" />
               <input
+                id="signup-email"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
+                className="w-full pl-10 pr-3 py-3 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C] focus:border-[#0F4C5C] transition"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+            <label htmlFor="signup-password" className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Password
+            </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" aria-hidden="true" />
               <input
+                id="signup-password"
                 type={showPassword ? "text" : "password"}
                 required
                 minLength={6}
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 6 characters"
-                className="w-full pl-9 pr-10 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C]"
+                className="w-full pl-10 pr-11 py-3 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0F4C5C] focus:border-[#0F4C5C] transition"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 focus:outline-none focus:text-[#0F4C5C] rounded-lg transition"
+                className="absolute right-2 top-1/2 -translate-y-1/2 min-h-[36px] min-w-[36px] grid place-items-center text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F4C5C] rounded-lg transition"
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 title={showPassword ? "Hide password" : "Show password"}
               >
-                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {showPassword ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
               </button>
             </div>
           </div>
@@ -104,16 +116,17 @@ export default function SignupScreen({ onSwitchToLogin }: { onSwitchToLogin: () 
           <button
             type="submit"
             disabled={signupMutation.isPending}
-            className="w-full py-2.5 bg-[#0F4C5C] text-white text-xs font-bold rounded-xl hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center justify-center gap-2 active:scale-95 disabled:opacity-60"
+            className="w-full min-h-[44px] py-3 bg-[#0F4C5C] text-white text-xs sm:text-sm font-bold rounded-xl hover:bg-[#0F4C5C]/90 focus-visible:ring-2 focus-visible:ring-[#0F4C5C] focus-visible:ring-offset-2 transition shadow-xs flex items-center justify-center gap-2 active:scale-95 disabled:opacity-60 cursor-pointer"
           >
-            <UserPlus className="size-4" />
+            <UserPlus className="size-4" aria-hidden="true" />
             {signupMutation.isPending ? "Creating account…" : "Create Account"}
           </button>
         </form>
 
         <button
+          type="button"
           onClick={onSwitchToLogin}
-          className="w-full text-center text-xs font-semibold text-[#0F4C5C] hover:underline"
+          className="w-full min-h-[44px] py-2 text-center text-xs font-semibold text-[#0F4C5C] hover:underline focus-visible:ring-2 focus-visible:ring-[#0F4C5C] rounded-lg cursor-pointer"
         >
           Already have an account? Sign in
         </button>

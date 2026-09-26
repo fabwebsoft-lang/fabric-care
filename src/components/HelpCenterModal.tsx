@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { X, Globe, Phone, MessageSquare, Clock, ExternalLink } from "lucide-react";
 
 interface HelpCenterModalProps {
@@ -5,13 +6,30 @@ interface HelpCenterModalProps {
 }
 
 export default function HelpCenterModal({ onClose }: HelpCenterModalProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[#0F4C5C]/40 px-4 py-4 backdrop-blur-sm">
-      <div className="max-h-[calc(100dvh-32px)] w-full max-w-[440px] overflow-y-auto rounded-[24px] border border-slate-200 bg-white p-5 sm:p-6 shadow-[0_24px_80px_rgba(17,17,17,.12)]">
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-[#0F4C5C]/40 px-4 py-4 backdrop-blur-xs"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="help-center-title"
+        onClick={(e) => e.stopPropagation()}
+        className="max-h-[calc(100dvh-32px)] w-full max-w-[440px] overflow-y-auto rounded-[24px] border border-slate-200 bg-white p-5 sm:p-6 shadow-[0_24px_80px_rgba(17,17,17,.12)]"
+      >
         {/* Header */}
         <div className="mb-4 flex items-start justify-between border-b border-slate-100 pb-3">
           <div>
-            <h2 className="font-display text-[20px] font-bold tracking-[-.03em] text-[#0F4C5C]">
+            <h2 id="help-center-title" className="font-display text-[20px] font-bold tracking-[-.03em] text-[#0F4C5C]">
               Help Center
             </h2>
             <p className="text-[12px] font-medium text-slate-500 mt-0.5">
@@ -20,10 +38,10 @@ export default function HelpCenterModal({ onClose }: HelpCenterModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="grid size-9 place-items-center rounded-xl bg-slate-100 text-[#0F4C5C] transition hover:bg-slate-200"
-            aria-label="Close"
+            className="grid size-11 min-h-[44px] min-w-[44px] place-items-center rounded-xl bg-slate-100 text-[#0F4C5C] transition hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-[#0F4C5C] cursor-pointer"
+            aria-label="Close Help Center"
           >
-            <X className="size-4" />
+            <X className="size-4" aria-hidden="true" />
           </button>
         </div>
 

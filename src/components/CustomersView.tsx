@@ -407,12 +407,30 @@ function CustomerFormModal({
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
-      <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+    <div
+      className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="customer-modal-title"
+        className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
+      >
         <div className="flex justify-between items-start border-b border-slate-100 pb-3">
           <div>
-            <h3 className="text-base sm:text-lg font-bold text-[#0F4C5C]">
+            <h3 id="customer-modal-title" className="text-base sm:text-lg font-bold text-[#0F4C5C]">
               {isEditing ? "Edit Customer" : "Add Customer"}
             </h3>
             <p className="text-[11px] sm:text-xs text-slate-500">
@@ -424,7 +442,7 @@ function CustomerFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="grid size-8 place-items-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+            className="grid size-8 place-items-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition min-h-[44px] min-w-[44px]"
             aria-label="Close"
           >
             <X className="size-4" />
