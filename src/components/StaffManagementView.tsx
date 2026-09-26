@@ -357,6 +357,7 @@ export default function StaffManagementView() {
         </div>
 
         {/* Staff Breakdown Table */}
+        {/* Staff Breakdown: Mobile Cards (<sm) + Desktop Table (>=sm) */}
         {isLoadingReport ? (
           <div className="py-8 text-center text-xs text-slate-400">Loading labour report...</div>
         ) : !reportData || reportData.staffBreakdown.length === 0 ? (
@@ -364,80 +365,139 @@ export default function StaffManagementView() {
             No {serviceFilter === "all" ? "labour" : serviceFilter} tasks completed for the selected period.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50/70">
-                  <th className="py-3 px-3">Staff Member</th>
-                  <th className="py-3 px-3 text-center">Tasks Completed</th>
-                  <th className="py-3 px-3 text-center">Total Pieces</th>
-                  {serviceFilter === "all" && (
-                    <>
-                      <th className="py-3 px-3 text-right">Ironing</th>
-                      <th className="py-3 px-3 text-right">Washing</th>
-                    </>
-                  )}
-                  <th className="py-3 px-3 text-right">Labour Earnings</th>
-                  <th className="py-3 px-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {reportData.staffBreakdown.map((item) => (
-                  <tr
-                    key={item.staffId}
-                    className="hover:bg-slate-50/80 transition cursor-pointer"
-                    onClick={() => setSelectedStaffDetail(item)}
-                  >
-                    <td className="py-3.5 px-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="size-8 rounded-full bg-[#0F4C5C]/10 text-[#0F4C5C] font-bold flex items-center justify-center text-xs">
-                          {item.staffName.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <span className="font-bold text-slate-800 block">{item.staffName}</span>
-                          {serviceFilter === "all" && (
-                            <span className="text-[10px] text-slate-400">
-                              {item.ironingPieces ?? 0} iron · {item.washingPieces ?? 0} wash
-                            </span>
-                          )}
-                        </div>
+          <>
+            {/* Mobile View: Clean Staff Cards */}
+            <div className="space-y-3 sm:hidden">
+              {reportData.staffBreakdown.map((item) => (
+                <div
+                  key={item.staffId}
+                  onClick={() => setSelectedStaffDetail(item)}
+                  className="p-3.5 rounded-xl border border-slate-200/90 bg-white hover:border-[#0F4C5C]/30 transition space-y-2.5 active:scale-98 cursor-pointer shadow-2xs"
+                >
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="size-8 rounded-full bg-[#0F4C5C]/10 text-[#0F4C5C] font-bold flex items-center justify-center text-xs">
+                        {item.staffName.slice(0, 2).toUpperCase()}
                       </div>
-                    </td>
-                    <td className="py-3.5 px-3 text-center font-semibold text-slate-700">
-                      {item.completedTasksCount}
-                    </td>
-                    <td className="py-3.5 px-3 text-center font-bold text-slate-800">
-                      {item.totalPieces} pcs
-                    </td>
+                      <div>
+                        <span className="font-bold text-slate-800 text-xs block">{item.staffName}</span>
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {item.completedTasksCount} tasks completed
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">Earnings</span>
+                      <span className="text-xs font-bold text-emerald-700">
+                        ₹{item.totalEarnings.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2 rounded-lg text-slate-600">
+                    <div>
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold">Total Pieces</span>
+                      <span className="font-bold text-slate-800">{item.totalPieces} pcs</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold">Breakdown</span>
+                      <span className="font-medium text-slate-700">
+                        {item.ironingPieces ?? 0} iron · {item.washingPieces ?? 0} wash
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedStaffDetail(item);
+                    }}
+                    className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-[#0F4C5C] text-[11px] font-bold rounded-lg transition flex items-center justify-center gap-1 active:scale-95"
+                  >
+                    <History className="size-3" /> View Tasks & History
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop View: Full Table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50/70">
+                    <th className="py-3 px-3">Staff Member</th>
+                    <th className="py-3 px-3 text-center">Tasks Completed</th>
+                    <th className="py-3 px-3 text-center">Total Pieces</th>
                     {serviceFilter === "all" && (
                       <>
-                        <td className="py-3.5 px-3 text-right font-medium text-slate-600">
-                          ₹{(item.ironingEarnings ?? 0).toLocaleString("en-IN")}
-                        </td>
-                        <td className="py-3.5 px-3 text-right font-medium text-blue-700">
-                          ₹{(item.washingEarnings ?? 0).toLocaleString("en-IN")}
-                        </td>
+                        <th className="py-3 px-3 text-right">Ironing</th>
+                        <th className="py-3 px-3 text-right">Washing</th>
                       </>
                     )}
-                    <td className="py-3.5 px-3 text-right font-bold text-emerald-700 text-sm">
-                      ₹{item.totalEarnings.toLocaleString("en-IN")}
-                    </td>
-                    <td className="py-3.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedStaffDetail(item)}
-                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-[#0F4C5C] text-[11px] font-bold rounded-lg transition inline-flex items-center gap-1"
-                      >
-                        <History className="size-3" /> View History
-                      </button>
-                    </td>
+                    <th className="py-3 px-3 text-right">Labour Earnings</th>
+                    <th className="py-3 px-3 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {reportData.staffBreakdown.map((item) => (
+                    <tr
+                      key={item.staffId}
+                      className="hover:bg-slate-50/80 transition cursor-pointer"
+                      onClick={() => setSelectedStaffDetail(item)}
+                    >
+                      <td className="py-3.5 px-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="size-8 rounded-full bg-[#0F4C5C]/10 text-[#0F4C5C] font-bold flex items-center justify-center text-xs">
+                            {item.staffName.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <span className="font-bold text-slate-800 block">{item.staffName}</span>
+                            {serviceFilter === "all" && (
+                              <span className="text-[10px] text-slate-400">
+                                {item.ironingPieces ?? 0} iron · {item.washingPieces ?? 0} wash
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-3 text-center font-semibold text-slate-700">
+                        {item.completedTasksCount}
+                      </td>
+                      <td className="py-3.5 px-3 text-center font-bold text-slate-800">
+                        {item.totalPieces} pcs
+                      </td>
+                      {serviceFilter === "all" && (
+                        <>
+                          <td className="py-3.5 px-3 text-right font-medium text-slate-600">
+                            ₹{(item.ironingEarnings ?? 0).toLocaleString("en-IN")}
+                          </td>
+                          <td className="py-3.5 px-3 text-right font-medium text-blue-700">
+                            ₹{(item.washingEarnings ?? 0).toLocaleString("en-IN")}
+                          </td>
+                        </>
+                      )}
+                      <td className="py-3.5 px-3 text-right font-bold text-emerald-700 text-sm">
+                        ₹{item.totalEarnings.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStaffDetail(item)}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-[#0F4C5C] text-[11px] font-bold rounded-lg transition inline-flex items-center gap-1"
+                        >
+                          <History className="size-3" /> View History
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
+
 
       {/* SECTION 2: Staff Member Directory & Status Management */}
       <section className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">

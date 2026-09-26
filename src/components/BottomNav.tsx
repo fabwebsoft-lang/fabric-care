@@ -1,10 +1,9 @@
 import { trpc, type Order } from "@/lib/trpc";
-import { useAccessControl } from "@/contexts/AccessControlContext";
 import {
   LayoutDashboard,
-  Plus,
+  ClipboardList,
   WashingMachine,
-  FileText,
+  UsersRound,
   Menu,
 } from "lucide-react";
 
@@ -39,24 +38,25 @@ export default function BottomNav({
 
   const isMoreActive =
     activeSection !== "Overview" &&
+    activeSection !== "Orders" &&
     activeSection !== "Active process" &&
-    activeSection !== "Orders";
+    activeSection !== "Customers";
 
   return (
     <nav
-      aria-label="Mobile Navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200/90 px-2 py-1.5 flex items-center justify-around lg:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
+      aria-label="Mobile Bottom Navigation"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200/90 px-1.5 py-1 flex items-center justify-around lg:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
     >
-      {/* 1. Home / Dashboard */}
+      {/* 1. HOME */}
       <button
         type="button"
         onClick={() => onNavigate("Overview")}
-        className={`relative flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all duration-150 min-w-[56px] cursor-pointer active:scale-90 select-none ${
+        className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all duration-150 min-w-[54px] cursor-pointer active:scale-90 select-none ${
           activeSection === "Overview"
             ? "text-[#0F4C5C] font-bold"
             : "text-slate-400 hover:text-slate-700"
         }`}
-        aria-label="Overview Dashboard"
+        aria-label="Home Dashboard"
       >
         <div
           className={`p-1 rounded-xl transition-colors ${
@@ -68,11 +68,32 @@ export default function BottomNav({
         <span className="text-[10px] tracking-tight mt-0.5 font-medium">Home</span>
       </button>
 
-      {/* 2. Process (Active Workflow) */}
+      {/* 2. ORDERS */}
+      <button
+        type="button"
+        onClick={() => onNavigate("Orders")}
+        className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all duration-150 min-w-[54px] cursor-pointer active:scale-90 select-none ${
+          activeSection === "Orders"
+            ? "text-[#0F4C5C] font-bold"
+            : "text-slate-400 hover:text-slate-700"
+        }`}
+        aria-label="Orders and Bills"
+      >
+        <div
+          className={`p-1 rounded-xl transition-colors ${
+            activeSection === "Orders" ? "bg-[#0F4C5C]/10 text-[#0F4C5C]" : ""
+          }`}
+        >
+          <ClipboardList className="size-5" strokeWidth={activeSection === "Orders" ? 2.3 : 1.8} />
+        </div>
+        <span className="text-[10px] tracking-tight mt-0.5 font-medium">Orders</span>
+      </button>
+
+      {/* 3. PROCESS */}
       <button
         type="button"
         onClick={() => onNavigate("Active process")}
-        className={`relative flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all duration-150 min-w-[56px] cursor-pointer active:scale-90 select-none ${
+        className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all duration-150 min-w-[54px] cursor-pointer active:scale-90 select-none ${
           activeSection === "Active process"
             ? "text-[#0F4C5C] font-bold"
             : "text-slate-400 hover:text-slate-700"
@@ -94,47 +115,32 @@ export default function BottomNav({
         <span className="text-[10px] tracking-tight mt-0.5 font-medium">Process</span>
       </button>
 
-      {/* 3. Center Action Button: + New Bill */}
+      {/* 4. CUSTOMERS */}
       <button
         type="button"
-        onClick={onNewOrder}
-        className="flex flex-col items-center justify-center text-[#0F4C5C] active:scale-90 transition-transform duration-150 -mt-5 cursor-pointer select-none group"
-        aria-label="Create New Bill"
-      >
-        <div className="size-12 bg-gradient-to-tr from-[#0F4C5C] to-[#176a80] text-white rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(15,76,92,0.35)] border-3 border-white group-hover:scale-105 transition-transform">
-          <Plus className="size-6" strokeWidth={2.6} />
-        </div>
-        <span className="text-[10px] font-bold mt-0.5 text-[#0F4C5C] tracking-tight">
-          New Bill
-        </span>
-      </button>
-
-      {/* 4. Bills / Orders */}
-      <button
-        type="button"
-        onClick={() => onNavigate("Orders")}
-        className={`relative flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all duration-150 min-w-[56px] cursor-pointer active:scale-90 select-none ${
-          activeSection === "Orders"
+        onClick={() => onNavigate("Customers")}
+        className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all duration-150 min-w-[54px] cursor-pointer active:scale-90 select-none ${
+          activeSection === "Customers"
             ? "text-[#0F4C5C] font-bold"
             : "text-slate-400 hover:text-slate-700"
         }`}
-        aria-label="Bills and Orders"
+        aria-label="Customer directory"
       >
         <div
           className={`p-1 rounded-xl transition-colors ${
-            activeSection === "Orders" ? "bg-[#0F4C5C]/10 text-[#0F4C5C]" : ""
+            activeSection === "Customers" ? "bg-[#0F4C5C]/10 text-[#0F4C5C]" : ""
           }`}
         >
-          <FileText className="size-5" strokeWidth={activeSection === "Orders" ? 2.3 : 1.8} />
+          <UsersRound className="size-5" strokeWidth={activeSection === "Customers" ? 2.3 : 1.8} />
         </div>
-        <span className="text-[10px] tracking-tight mt-0.5 font-medium">Bills</span>
+        <span className="text-[10px] tracking-tight mt-0.5 font-medium">Customers</span>
       </button>
 
-      {/* 5. Menu / More Drawer */}
+      {/* 5. MORE */}
       <button
         type="button"
         onClick={onOpenMenu}
-        className={`relative flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all duration-150 min-w-[56px] cursor-pointer active:scale-90 select-none ${
+        className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all duration-150 min-w-[54px] cursor-pointer active:scale-90 select-none ${
           isMoreActive
             ? "text-[#0F4C5C] font-bold"
             : "text-slate-400 hover:text-slate-700"
@@ -152,10 +158,11 @@ export default function BottomNav({
           )}
         </div>
         <span className="text-[10px] tracking-tight mt-0.5 font-medium">
-          {isMoreActive ? activeSection.split(" ")[0] : "Menu"}
+          {isMoreActive ? activeSection.split(" ")[0] : "More"}
         </span>
       </button>
     </nav>
   );
 }
+
 
