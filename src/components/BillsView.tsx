@@ -152,6 +152,9 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
       await Promise.all([
         utils.orders.list.invalidate(),
         utils.dashboard.stats.invalidate(),
+        utils.ironing.todayStats.invalidate(),
+        utils.ironing.reports.invalidate(),
+        utils.expenses.list.invalidate(),
         utils.recycleBin.counts.invalidate(),
         utils.recycleBin.list.invalidate(),
         utils.customers.list.invalidate(),

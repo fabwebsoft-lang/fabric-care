@@ -379,6 +379,132 @@ export const ordersRouter = router({
       return { count: updatedCount, ids: input.ids };
     }),
 
+  update: requirePermission("canCreateOrders")
+    .input(
+      z.object({
+        id: z.string(),
+        customerName: z.string().trim().optional(),
+        phone: z.string().trim().optional(),
+        customerType: z.enum(["Normal", "Premium"]).optional(),
+        serviceType: z.string().optional(),
+        deliveryType: z.enum(["Shop Collection", "Home Delivery"]).optional(),
+        dueAt: z.string().datetime().optional().nullable(),
+        totalAmount: z.number().nonnegative().optional(),
+        amountPaid: z.number().nonnegative().optional(),
+        discount: z.number().nonnegative().optional(),
+        storedClothesCode: z.string().optional().nullable(),
+        clothesCode: z.string().optional().nullable(),
+        items: z.array(orderItemInput).optional(),
+        branch: z.string().optional(),
+        branchAddress: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      let order = await Order.findById(input.id);
+      if (!order) {
+        order = await Order.findOne({ _id: input.id.trim() });
+      }
+      if (!order || order.isDeleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      }
+
+      if (input.customerName) order.customer = input.customerName;
+      if (input.phone) {
+        order.phone = input.phone.trim();
+      }
+      if (input.customerType) order.customerType = input.customerType;
+      if (input.serviceType) order.serviceType = input.serviceType;
+      if (input.deliveryType) order.deliveryType = input.deliveryType;
+      if (input.dueAt !== undefined) order.dueAt = input.dueAt ? new Date(input.dueAt) : null;
+      if (input.totalAmount !== undefined) order.totalAmount = input.totalAmount;
+      if (input.amountPaid !== undefined) order.amountPaid = input.amountPaid;
+      if (input.discount !== undefined) order.discount = input.discount;
+      if (input.storedClothesCode !== undefined) order.clothesCode = input.storedClothesCode || null;
+      if (input.clothesCode !== undefined) order.clothesCode = input.clothesCode || null;
+
+      if (input.items !== undefined) {
+        // Auto-enrich items with live Product catalog ID, staffIroningRate, and staffWashRate
+        const dbProducts = await Product.find({ isArchived: { $ne: true } }).lean();
+        const enrichedItems = input.items.map((item) => {
+          const itemCopy = { ...item };
+          let matched: any = null;
+          if (itemCopy.productId) {
+            matched = dbProducts.find((p: any) => p._id.toString() === String(itemCopy.productId));
+          }
+          if (!matched && itemCopy.name) {
+            const normName = itemCopy.name.toLowerCase().trim();
+            matched = dbProducts.find((p: any) => p.name.toLowerCase().trim() === normName);
+          }
+          if (matched) {
+            itemCopy.productId = matched._id.toString();
+            if (itemCopy.staffIroningRate === undefined || itemCopy.staffIroningRate === 0) {
+              itemCopy.staffIroningRate = matched.staffIroningRate ?? 10;
+            }
+            if (itemCopy.staffWashRate === undefined || itemCopy.staffWashRate === 0) {
+              itemCopy.staffWashRate = matched.staffWashRate ?? 15;
+            }
+          }
+          return itemCopy;
+        });
+        order.items = enrichedItems as any;
+      }
+
+      if (input.branch || input.branchAddress) {
+        const norm = normalizeServerBranch(input.branch || order.branch, input.branchAddress || order.branchAddress);
+        order.branch = norm.name;
+        order.branchAddress = norm.address;
+      }
+
+      await order.save();
+
+      // Update existing labour records linked to this order instead of creating new ones
+      const linkedTasks = await IroningTask.find({ orderId: order._id });
+      for (const task of linkedTasks) {
+        task.customer = order.customer;
+        if (input.items !== undefined && task.status === "Completed") {
+          const isWash = task.taskType === "washing";
+          const updatedItems = (order.items || []).map((item: any) => {
+            const cleanName = item.name.trim();
+            const qty = item.quantity && item.quantity > 0 ? item.quantity : 1;
+            const existingTaskItem = (task.items || []).find(
+              (ti: any) => (ti.name || "").toLowerCase().trim() === cleanName.toLowerCase().trim()
+            );
+            const rate = existingTaskItem ? existingTaskItem.staffRate : (isWash ? (item.staffWashRate || 15) : (item.staffIroningRate || 10));
+            return {
+              name: cleanName,
+              quantity: qty,
+              staffRate: rate,
+              staffEarning: qty * rate,
+            };
+          });
+
+          task.items = updatedItems as any;
+          task.totalPieces = updatedItems.reduce((acc: number, i: any) => acc + i.quantity, 0);
+          task.totalEarning = updatedItems.reduce((acc: number, i: any) => acc + i.staffEarning, 0);
+
+          // Update linked expense
+          const expenseCategory = isWash ? "Staff / Washing Labour" : "Staff / Ironing Labour";
+          let linkedExpense = await Expense.findOne({
+            $or: [
+              ...(task.expenseId ? [{ _id: task.expenseId }] : []),
+              ...(task.reference ? [{ reference: task.reference }] : []),
+              { orderId: order._id, category: expenseCategory, isSystemGenerated: true },
+            ],
+          });
+
+          if (linkedExpense) {
+            linkedExpense.amount = task.totalEarning;
+            linkedExpense.title = `${isWash ? "Washing" : "Ironing"} Labour - ${task.staffName}`;
+            linkedExpense.notes = `${isWash ? "Washing" : "Ironing"} labour for Order #${order._id} (${task.totalPieces} pcs @ ₹${task.totalEarning})`;
+            await linkedExpense.save();
+          }
+        }
+        await task.save();
+      }
+
+      return toApiOrder(order);
+    }),
+
   delete: requirePermission("canDeleteOrders")
     .input(z.object({ id: z.string(), reason: z.string().optional() }))
     .mutation(async ({ input, ctx }) => {
@@ -408,6 +534,18 @@ export const ordersRouter = router({
       order.deletedAt = now;
       order.deletedBy = userLabel;
       await order.save();
+
+      // Automatically void/remove its labour records
+      await IroningTask.updateMany(
+        { orderId: order._id },
+        { status: "Voided" }
+      );
+
+      // Automatically remove only system-generated labour expenses for this order (do not delete manual expenses)
+      await Expense.updateMany(
+        { orderId: order._id, isSystemGenerated: true },
+        { isDeleted: true, deletedAt: now, deletedBy: `System (Order ${order._id} Deleted)` }
+      );
 
       // Store deleted bill snapshot permanently in backend
       try {
@@ -446,6 +584,7 @@ export const ordersRouter = router({
   deleteAll: requirePermission("canDeleteOrders").mutation(async () => {
     await Order.deleteMany({});
     await IroningTask.deleteMany({});
+    await Expense.deleteMany({ isSystemGenerated: true });
     await DeletedBill.deleteMany({});
     return { success: true };
   }),

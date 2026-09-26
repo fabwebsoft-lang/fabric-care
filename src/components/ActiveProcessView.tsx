@@ -801,13 +801,16 @@ function StartWashingModal({
 }) {
   const { data: staffList = [], isLoading } = trpc.workers.activeStaffList.useQuery();
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPending || isSubmitting) return;
     if (!selectedStaffId) {
       toast.error("Please select a staff member to start washing");
       return;
     }
+    setIsSubmitting(true);
     onStart(order.id, selectedStaffId);
   };
 
@@ -905,11 +908,11 @@ function StartWashingModal({
             </button>
             <button
               type="submit"
-              disabled={isPending || !selectedStaffId}
+              disabled={isPending || isSubmitting || !selectedStaffId}
               className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
               <CheckCircle2 className="size-4" />
-              {isPending ? "Completing..." : "Complete Washing & Move to Next Step"}
+              {isPending || isSubmitting ? "Completing..." : "Complete Washing & Move to Next Step"}
             </button>
           </div>
         </form>
@@ -942,6 +945,7 @@ function CompleteWashingModal({
 
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
   const [customRates, setCustomRates] = useState<Record<string, number>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Product ID & Name to staffWashRate mappings
   const { productIdRateMap, productNameRateMap } = useMemo(() => {
@@ -1095,6 +1099,7 @@ function CompleteWashingModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPending || isSubmitting) return;
     if (!effectiveStaffId) {
       toast.error("Please select the staff member who did the washing");
       return;
@@ -1107,6 +1112,7 @@ function CompleteWashingModal({
       return;
     }
 
+    setIsSubmitting(true);
     const ratesOverride: Record<string, number> = {};
     calculatedItems.forEach((i) => {
       ratesOverride[i.name] = i.staffRate;
@@ -1323,11 +1329,11 @@ function CompleteWashingModal({
           </button>
           <button
             type="submit"
-            disabled={isPending || !effectiveStaffId || unconfiguredItems.length > 0}
+            disabled={isPending || isSubmitting || !effectiveStaffId || unconfiguredItems.length > 0}
             className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
           >
             <Check className="size-4" />
-            {isPending
+            {isPending || isSubmitting
               ? "Recording..."
               : totalEarnings > 0
               ? `Complete & Credit ₹${totalEarnings}`
@@ -1382,13 +1388,16 @@ function StartIroningModal({
 }) {
   const { data: staffList = [], isLoading } = trpc.workers.activeStaffList.useQuery();
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPending || isSubmitting) return;
     if (!selectedStaffId) {
       toast.error("Please select a staff member to start ironing");
       return;
     }
+    setIsSubmitting(true);
     onStart(order.id, selectedStaffId);
   };
 
@@ -1486,11 +1495,11 @@ function StartIroningModal({
             </button>
             <button
               type="submit"
-              disabled={isPending || !selectedStaffId}
+              disabled={isPending || isSubmitting || !selectedStaffId}
               className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-700 transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
               <Sparkles className="size-4" />
-              {isPending ? "Starting..." : "Start Ironing"}
+              {isPending || isSubmitting ? "Starting..." : "Start Ironing"}
             </button>
           </div>
         </form>
@@ -1523,6 +1532,7 @@ function CompleteIroningModal({
 
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
   const [customRates, setCustomRates] = useState<Record<string, number>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Product ID & Name to staffIroningRate mappings
   const { productIdRateMap, productNameRateMap } = useMemo(() => {
@@ -1679,6 +1689,7 @@ function CompleteIroningModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPending || isSubmitting) return;
     if (!effectiveStaffId) {
       toast.error("Please select the staff member who did the ironing");
       return;
@@ -1691,6 +1702,7 @@ function CompleteIroningModal({
       return;
     }
 
+    setIsSubmitting(true);
     const ratesOverride: Record<string, number> = {};
     calculatedItems.forEach((i) => {
       ratesOverride[i.name] = i.staffRate;
@@ -1907,11 +1919,11 @@ function CompleteIroningModal({
           </button>
           <button
             type="submit"
-            disabled={isPending || !effectiveStaffId || unconfiguredItems.length > 0}
+            disabled={isPending || isSubmitting || !effectiveStaffId || unconfiguredItems.length > 0}
             className="w-full sm:w-auto flex-1 py-2.5 sm:py-3 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
           >
             <Check className="size-4" />
-            {isPending
+            {isPending || isSubmitting
               ? "Recording..."
               : totalEarnings > 0
               ? `Complete & Credit ₹${totalEarnings}`

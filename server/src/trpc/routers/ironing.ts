@@ -185,24 +185,44 @@ export const ironingRouter = router({
       const totalPieces = taskItems.reduce((acc, i) => acc + i.quantity, 0);
       const totalEarning = taskItems.reduce((acc, i) => acc + i.staffEarning, 0);
 
-      // Void any previous in-progress washing task for this order if reassigning
-      await IroningTask.updateMany(
-        { orderId: input.orderId, taskType: "washing", status: "In Progress" },
-        { status: "Voided" }
-      );
-
-      const task = await IroningTask.create({
-        taskType: "washing",
+      let task = await IroningTask.findOne({
         orderId: input.orderId,
-        staffId: staff._id,
-        staffName: staff.name,
-        customer: order.customer,
-        items: taskItems,
-        totalPieces,
-        totalEarning,
-        status: "In Progress",
-        startedAt: new Date(),
-        assignedBy: ctx.activeRole || "Admin",
+        taskType: "washing",
+      }).sort({ createdAt: -1 });
+
+      if (!task) {
+        task = await IroningTask.create({
+          taskType: "washing",
+          orderId: input.orderId,
+          staffId: staff._id,
+          staffName: staff.name,
+          customer: order.customer,
+          items: taskItems,
+          totalPieces,
+          totalEarning,
+          status: "In Progress",
+          startedAt: new Date(),
+          assignedBy: ctx.activeRole || "Admin",
+        });
+      } else {
+        task.staffId = staff._id as mongoose.Types.ObjectId;
+        task.staffName = staff.name;
+        task.customer = order.customer;
+        task.items = taskItems as any;
+        task.totalPieces = totalPieces;
+        task.totalEarning = totalEarning;
+        task.status = "In Progress";
+        task.startedAt = new Date();
+        task.completedAt = null;
+        task.assignedBy = ctx.activeRole || "Admin";
+        await task.save();
+      }
+
+      // Clean up any extra duplicate washing tasks for this order
+      await IroningTask.deleteMany({
+        _id: { $ne: task._id },
+        orderId: input.orderId,
+        taskType: "washing",
       });
 
       // Advance Order to Processing status
@@ -328,11 +348,11 @@ export const ironingRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
       }
 
+      // Check if any washing task already exists for this order (whether In Progress or Completed)
       let task = await IroningTask.findOne({
         orderId: input.orderId,
         taskType: "washing",
-        status: "In Progress",
-      });
+      }).sort({ createdAt: -1 });
 
       if (!task) {
         if (!input.staffId) {
@@ -360,7 +380,24 @@ export const ironingRouter = router({
           startedAt: new Date(),
           assignedBy: ctx.activeRole || "Admin",
         });
+      } else {
+        // Update staff if provided and valid
+        if (input.staffId) {
+          const staff = await Worker.findById(input.staffId);
+          if (staff && staff.active && staff.role !== "pending") {
+            task.staffId = staff._id as mongoose.Types.ObjectId;
+            task.staffName = staff.name;
+          }
+        }
+        task.customer = order.customer;
       }
+
+      // Clean up any extra duplicate washing tasks for this order
+      await IroningTask.deleteMany({
+        _id: { $ne: task._id },
+        orderId: input.orderId,
+        taskType: "washing",
+      });
 
       const shop = await Shop.findOne();
       const fallbackDefaultRate = shop?.defaultStaffWashRate ?? 15;
@@ -433,7 +470,12 @@ export const ironingRouter = router({
 
       // Create or update linked internal Expense under "Staff / Washing Labour"
       let linkedExpense = await Expense.findOne({
-        $or: [{ reference }, { orderId: task.orderId, category: "Staff / Washing Labour", isSystemGenerated: true }],
+        $or: [
+          ...(task.expenseId ? [{ _id: task.expenseId }] : []),
+          { reference },
+          { taskId: task._id },
+          { orderId: task.orderId, category: "Staff / Washing Labour", isSystemGenerated: true },
+        ],
       });
 
       if (totalEarning > 0) {
@@ -470,6 +512,20 @@ export const ironingRouter = router({
           linkedExpense.deletedBy = null;
           await linkedExpense.save();
         }
+
+        // Clean up any extra duplicate system expenses for this washing labour
+        if (linkedExpense) {
+          await Expense.deleteMany({
+            _id: { $ne: linkedExpense._id },
+            orderId: task.orderId,
+            category: "Staff / Washing Labour",
+            isSystemGenerated: true,
+          });
+        }
+      } else if (linkedExpense) {
+        // If earning is 0, delete or mark deleted
+        await Expense.findByIdAndDelete(linkedExpense._id);
+        linkedExpense = null;
       }
 
       task.items = completedItems as any;
@@ -477,9 +533,7 @@ export const ironingRouter = router({
       task.totalEarning = totalEarning;
       task.status = "Completed";
       task.completedAt = new Date();
-      if (linkedExpense) {
-        task.expenseId = linkedExpense._id as mongoose.Types.ObjectId;
-      }
+      task.expenseId = linkedExpense ? (linkedExpense._id as mongoose.Types.ObjectId) : null;
       task.reference = reference;
       await task.save();
 
@@ -591,24 +645,45 @@ export const ironingRouter = router({
       const totalPieces = taskItems.reduce((acc, i) => acc + i.quantity, 0);
       const totalEarning = taskItems.reduce((acc, i) => acc + i.staffEarning, 0);
 
-      // Void any previous in-progress ironing task for this order if reassigning
-      await IroningTask.updateMany(
-        { orderId: input.orderId, taskType: { $ne: "washing" }, status: "In Progress" },
-        { status: "Voided" }
-      );
-
-      const task = await IroningTask.create({
-        taskType: "ironing",
+      let task = await IroningTask.findOne({
         orderId: input.orderId,
-        staffId: staff._id,
-        staffName: staff.name,
-        customer: order.customer,
-        items: taskItems,
-        totalPieces,
-        totalEarning,
-        status: "In Progress",
-        startedAt: new Date(),
-        assignedBy: ctx.activeRole || "Admin",
+        taskType: { $ne: "washing" },
+      }).sort({ createdAt: -1 });
+
+      if (!task) {
+        task = await IroningTask.create({
+          taskType: "ironing",
+          orderId: input.orderId,
+          staffId: staff._id,
+          staffName: staff.name,
+          customer: order.customer,
+          items: taskItems,
+          totalPieces,
+          totalEarning,
+          status: "In Progress",
+          startedAt: new Date(),
+          assignedBy: ctx.activeRole || "Admin",
+        });
+      } else {
+        task.taskType = "ironing";
+        task.staffId = staff._id as mongoose.Types.ObjectId;
+        task.staffName = staff.name;
+        task.customer = order.customer;
+        task.items = taskItems as any;
+        task.totalPieces = totalPieces;
+        task.totalEarning = totalEarning;
+        task.status = "In Progress";
+        task.startedAt = new Date();
+        task.completedAt = null;
+        task.assignedBy = ctx.activeRole || "Admin";
+        await task.save();
+      }
+
+      // Clean up any extra duplicate ironing tasks for this order
+      await IroningTask.deleteMany({
+        _id: { $ne: task._id },
+        orderId: input.orderId,
+        taskType: { $ne: "washing" },
       });
 
       // Advance Order to Ironing status
@@ -736,13 +811,12 @@ export const ironingRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
       }
 
+      // Check if any ironing task already exists for this order (whether In Progress or Completed)
       let task = await IroningTask.findOne({
         orderId: input.orderId,
         taskType: { $ne: "washing" },
-        status: "In Progress",
-      });
+      }).sort({ createdAt: -1 });
 
-      // For orders that were already in Ironing before assignment tracking or needing fallback
       if (!task) {
         if (!input.staffId) {
           throw new TRPCError({
@@ -769,7 +843,24 @@ export const ironingRouter = router({
           startedAt: new Date(),
           assignedBy: ctx.activeRole || "Admin",
         });
+      } else {
+        // Update staff if provided and valid
+        if (input.staffId) {
+          const staff = await Worker.findById(input.staffId);
+          if (staff && staff.active && staff.role !== "pending") {
+            task.staffId = staff._id as mongoose.Types.ObjectId;
+            task.staffName = staff.name;
+          }
+        }
+        task.customer = order.customer;
       }
+
+      // Clean up any extra duplicate ironing tasks for this order
+      await IroningTask.deleteMany({
+        _id: { $ne: task._id },
+        orderId: input.orderId,
+        taskType: { $ne: "washing" },
+      });
 
       const shop = await Shop.findOne();
       const fallbackDefaultRate = shop?.defaultStaffIroningRate ?? 10;
@@ -845,7 +936,12 @@ export const ironingRouter = router({
 
       // Create or update linked internal Expense if earning > 0
       let linkedExpense = await Expense.findOne({
-        $or: [{ reference }, { orderId: task.orderId, category: "Staff / Ironing Labour", isSystemGenerated: true }],
+        $or: [
+          ...(task.expenseId ? [{ _id: task.expenseId }] : []),
+          { reference },
+          { taskId: task._id },
+          { orderId: task.orderId, category: "Staff / Ironing Labour", isSystemGenerated: true },
+        ],
       });
 
       if (totalEarning > 0) {
@@ -882,6 +978,20 @@ export const ironingRouter = router({
           linkedExpense.deletedBy = null;
           await linkedExpense.save();
         }
+
+        // Clean up any extra duplicate system expenses for this ironing labour
+        if (linkedExpense) {
+          await Expense.deleteMany({
+            _id: { $ne: linkedExpense._id },
+            orderId: task.orderId,
+            category: "Staff / Ironing Labour",
+            isSystemGenerated: true,
+          });
+        }
+      } else if (linkedExpense) {
+        // If earning is 0, delete or mark deleted
+        await Expense.findByIdAndDelete(linkedExpense._id);
+        linkedExpense = null;
       }
 
       task.items = completedItems as any;
@@ -889,9 +999,7 @@ export const ironingRouter = router({
       task.totalEarning = totalEarning;
       task.status = "Completed";
       task.completedAt = new Date();
-      if (linkedExpense) {
-        task.expenseId = linkedExpense._id as mongoose.Types.ObjectId;
-      }
+      task.expenseId = linkedExpense ? (linkedExpense._id as mongoose.Types.ObjectId) : null;
       task.reference = reference;
       await task.save();
 
@@ -1050,9 +1158,13 @@ export const ironingRouter = router({
       const service = input?.service || "all";
       const { start, end } = getISTDateRange(period, input?.fromDate, input?.toDate);
 
+      const deletedOrders = await Order.find({ isDeleted: true }, { _id: 1 }).lean();
+      const deletedOrderIds = deletedOrders.map((o) => String(o._id));
+
       const filter: Record<string, any> = {
         status: "Completed",
         completedAt: { $gte: start, $lte: end },
+        orderId: { $nin: deletedOrderIds },
       };
 
       if (service === "ironing") {
@@ -1184,6 +1296,9 @@ export const ironingRouter = router({
   todayStats: approvedProcedure.query(async () => {
     const { start, end } = getISTDateRange("today");
 
+    const deletedOrders = await Order.find({ isDeleted: true }, { _id: 1 }).lean();
+    const deletedOrderIds = deletedOrders.map((o) => String(o._id));
+
     const [
       todayCompletedIroning,
       todayCompletedWashing,
@@ -1194,16 +1309,18 @@ export const ironingRouter = router({
       IroningTask.find({
         taskType: { $ne: "washing" },
         status: "Completed",
+        orderId: { $nin: deletedOrderIds },
         completedAt: { $gte: start, $lte: end },
       }).lean(),
       IroningTask.find({
         taskType: "washing",
         status: "Completed",
+        orderId: { $nin: deletedOrderIds },
         completedAt: { $gte: start, $lte: end },
       }).lean(),
       Worker.countDocuments({ active: true, role: { $ne: "pending" } }),
-      IroningTask.countDocuments({ taskType: { $ne: "washing" }, status: "In Progress" }),
-      IroningTask.countDocuments({ taskType: "washing", status: "In Progress" }),
+      IroningTask.countDocuments({ taskType: { $ne: "washing" }, status: "In Progress", orderId: { $nin: deletedOrderIds } }),
+      IroningTask.countDocuments({ taskType: "washing", status: "In Progress", orderId: { $nin: deletedOrderIds } }),
     ]);
 
     const todayPieces = todayCompletedIroning.reduce((sum, t) => sum + (t.totalPieces || 0), 0);

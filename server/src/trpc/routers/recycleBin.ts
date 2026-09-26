@@ -280,6 +280,16 @@ export const recycleBinRouter = router({
           console.error("Failed to update DeletedBill status on restore:", e);
         }
 
+        // Restore linked labour records and expenses for this order
+        await IroningTask.updateMany(
+          { orderId: restored._id, status: "Voided" },
+          { status: "Completed" }
+        );
+        await Expense.updateMany(
+          { orderId: restored._id, isSystemGenerated: true },
+          { isDeleted: false, deletedAt: null, deletedBy: null }
+        );
+
         return { success: true, message: `Order ${restored._id} restored successfully` };
       }
 
@@ -326,6 +336,8 @@ export const recycleBinRouter = router({
     .mutation(async ({ input }) => {
       if (input.type === "order") {
         await DeletedBill.deleteMany({ orderId: input.id });
+        await IroningTask.deleteMany({ orderId: input.id });
+        await Expense.deleteMany({ orderId: input.id, isSystemGenerated: true });
         let deleted = await Order.findByIdAndDelete(input.id);
         if (!deleted) {
           deleted = await Order.findOneAndDelete({ _id: input.id.trim() });
@@ -376,6 +388,7 @@ export const recycleBinRouter = router({
 
       if (type === "all" || type === "order") {
         const deletedOrders = await Order.find({ isDeleted: true });
+        const deletedOrderIds = deletedOrders.map((o) => String(o._id));
         for (const o of deletedOrders) {
           try {
             await DeletedBill.findOneAndUpdate(
@@ -406,6 +419,8 @@ export const recycleBinRouter = router({
             console.error("Failed to archive DeletedBill on emptyBin:", e);
           }
         }
+        await IroningTask.deleteMany({ orderId: { $in: deletedOrderIds } });
+        await Expense.deleteMany({ orderId: { $in: deletedOrderIds }, isSystemGenerated: true });
         const res = await Order.deleteMany({ isDeleted: true });
         ordersDeleted = res.deletedCount || 0;
       }

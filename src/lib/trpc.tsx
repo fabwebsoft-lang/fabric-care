@@ -572,8 +572,9 @@ export const trpc = {
         }),
     },
     create: {
-      useMutation: (options?: { onSuccess?: (data: Order) => void; onError?: (err: Error) => void }) =>
-        useMutation({
+      useMutation: (options?: { onSuccess?: (data: Order) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
           mutationFn: async (input: any) => {
             try {
               return toDisplayOrder(await client.orders.create.mutate(input));
@@ -581,13 +582,46 @@ export const trpc = {
               throw new Error(errorMessage(err));
             }
           },
-          onSuccess: options?.onSuccess,
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            qc.invalidateQueries({ queryKey: ["customers.list"] });
+            options?.onSuccess?.(data);
+          },
           onError: options?.onError,
-        }),
+        });
+      },
+    },
+    update: {
+      useMutation: (options?: { onSuccess?: (data: Order) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: any) => {
+            try {
+              return toDisplayOrder(await client.orders.update.mutate(input));
+            } catch (err) {
+              throw new Error(errorMessage(err));
+            }
+          },
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveWashingTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["ironing.reports"] });
+            qc.invalidateQueries({ queryKey: ["expenses.list"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            qc.invalidateQueries({ queryKey: ["customers.list"] });
+            options?.onSuccess?.(data);
+          },
+          onError: options?.onError,
+        });
+      },
     },
     updateStatus: {
-      useMutation: (options?: { onSuccess?: (data: Order) => void; onError?: (err: Error) => void }) =>
-        useMutation({
+      useMutation: (options?: { onSuccess?: (data: Order) => void; onError?: (err: Error) => void }) => {
+        const qc = useQueryClient();
+        return useMutation({
           mutationFn: async (input: { id: string; status: Order["status"]; deliveryType?: "Shop Collection" | "Home Delivery" }) => {
             try {
               const res = await client.orders.updateStatus.mutate(input as any);
@@ -611,9 +645,19 @@ export const trpc = {
               throw new Error(msg);
             }
           },
-          onSuccess: options?.onSuccess,
+          onSuccess: (data) => {
+            qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveWashingTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["ironing.reports"] });
+            qc.invalidateQueries({ queryKey: ["expenses.list"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            options?.onSuccess?.(data);
+          },
           onError: options?.onError,
-        }),
+        });
+      },
     },
     bulkUpdateStatus: {
       useMutation: (options?: {
@@ -728,9 +772,15 @@ export const trpc = {
           },
           onSuccess: async () => {
             qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveWashingTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["ironing.reports"] });
+            qc.invalidateQueries({ queryKey: ["expenses.list"] });
             qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
             qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
             qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            qc.invalidateQueries({ queryKey: ["customers.list"] });
             options?.onSuccess?.();
           },
           onError: options?.onError,
@@ -751,12 +801,15 @@ export const trpc = {
           },
           onSuccess: async () => {
             qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveWashingTask"] });
             qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
             qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
             qc.invalidateQueries({ queryKey: ["ironing.reports"] });
+            qc.invalidateQueries({ queryKey: ["expenses.list"] });
             qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
             qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
             qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            qc.invalidateQueries({ queryKey: ["customers.list"] });
             options?.onSuccess?.();
           },
           onError: options?.onError,
@@ -1691,6 +1744,10 @@ export const trpc = {
             qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
             qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
             qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveWashingTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["ironing.reports"] });
             qc.invalidateQueries({ queryKey: ["customers.list"] });
             qc.invalidateQueries({ queryKey: ["expenses.list"] });
             qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
@@ -1716,6 +1773,14 @@ export const trpc = {
           onSuccess: (data) => {
             qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
             qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
+            qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveWashingTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["ironing.reports"] });
+            qc.invalidateQueries({ queryKey: ["customers.list"] });
+            qc.invalidateQueries({ queryKey: ["expenses.list"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
             options?.onSuccess?.(data);
           },
           onError: options?.onError,
@@ -1739,6 +1804,10 @@ export const trpc = {
             qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
             qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
             qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveWashingTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["ironing.reports"] });
             qc.invalidateQueries({ queryKey: ["customers.list"] });
             qc.invalidateQueries({ queryKey: ["expenses.list"] });
             qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
