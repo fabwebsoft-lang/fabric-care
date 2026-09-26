@@ -16,36 +16,7 @@ export default defineConfig({
     cssMinify: true,
     minify: "esbuild",
     target: "es2020",
-    chunkSizeWarningLimit: 600,
-    rollupOptions: {
-      output: {
-        manualChunks: (id) => {
-          if (id.includes("node_modules")) {
-            if (id.includes("react/") || id.includes("react-dom/") || id.includes("wouter")) {
-              return "vendor-react";
-            }
-            if (id.includes("@trpc/") || id.includes("@tanstack/react-query")) {
-              return "vendor-trpc";
-            }
-            if (id.includes("recharts") || id.includes("d3-") || id.includes("victory-vendor")) {
-              return "vendor-charts";
-            }
-            if (id.includes("framer-motion")) {
-              return "vendor-motion";
-            }
-            if (id.includes("@radix-ui/")) {
-              return "vendor-radix";
-            }
-            if (id.includes("lucide-react")) {
-              return "vendor-icons";
-            }
-            if (id.includes("date-fns")) {
-              return "vendor-date";
-            }
-          }
-        },
-      },
-    },
+    chunkSizeWarningLimit: 1000,
   },
   server: {
     port: 3000,
