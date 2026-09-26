@@ -40,6 +40,7 @@ import { useAccessControl } from "@/contexts/AccessControlContext";
 import HelpCenterModal from "@/components/HelpCenterModal";
 import { usePWAInstall, IOSInstallGuideModal } from "@/components/InstallModal";
 import BottomNav, { type NavSection } from "@/components/BottomNav";
+import MobileNavBottomSheet from "@/components/MobileNavBottomSheet";
 
 const NewBillModal = lazy(() => import("@/components/NewBillModal"));
 const ActiveProcessView = lazy(() => import("@/components/ActiveProcessView"));
@@ -462,7 +463,7 @@ export default function AuthenticatedHome({
             <div className="flex items-center gap-3">
               <button
                 className="grid size-11 min-h-[44px] min-w-[44px] place-items-center rounded-xl border border-slate-200 bg-white text-[#0F4C5C] transition hover:border-slate-300 hover:text-[#0F4C5C] focus-visible:ring-2 focus-visible:ring-[#0F4C5C] lg:hidden shrink-0 cursor-pointer"
-                onClick={() => setShowMobileNav(true)}
+                onClick={() => setShowMobileNav((prev) => !prev)}
                 aria-label="Open navigation menu"
                 aria-expanded={showMobileNav}
               >
@@ -603,168 +604,31 @@ export default function AuthenticatedHome({
         </main>
       </div>
 
-      {showMobileNav && (
-        <div
-          className="fixed inset-0 z-40 bg-[#0F4C5C]/40 backdrop-blur-xs lg:hidden"
-          onClick={() => setShowMobileNav(false)}
-          aria-hidden="true"
-        >
-          <aside
-            role="dialog"
-            aria-modal="true"
-            aria-label="Main Navigation Menu"
-            className="flex h-full w-[min(82vw,300px)] flex-col justify-between bg-[#0F4C5C] px-5 py-6 text-white shadow-[18px_0_50px_rgba(15,76,92,.25)] overflow-y-auto"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div>
-              <div className="mb-8 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="grid size-10 place-items-center rounded-[14px] bg-[#F7F3EE] shadow-[0_8px_20px_rgba(15,76,92,.18)]">
-                    <img
-                      src="/fabric-care-logo.png"
-                      alt="Fabric Care logo"
-                      width="28"
-                      height="28"
-                      className="size-7 object-contain"
-                    />
-                  </div>
-                  <div>
-                    <p className="font-display text-[17px] font-semibold tracking-tight">
-                      Fabric Care
-                    </p>
-                    <p className="text-[10px] font-medium uppercase tracking-[.16em] text-[#F7F3EE]">
-                      You wear, we care
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowMobileNav(false)}
-                  className="grid size-11 min-h-[44px] min-w-[44px] place-items-center rounded-xl text-white/80 hover:bg-white/[.12] hover:text-white shrink-0 focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
-                  aria-label="Close navigation"
-                >
-                  <X className="size-5" aria-hidden="true" />
-                </button>
-              </div>
-              <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-white/60">
-                Workspace
-              </p>
-              <nav className="space-y-1 mb-6" aria-label="Workspace navigation">
-                {visibleNavItems.map(({ label, icon: Icon }) => (
-                  <button
-                    key={label}
-                    onClick={() => {
-                      navigate(label);
-                      setShowMobileNav(false);
-                    }}
-                    className={`group flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition-all duration-150 focus-visible:ring-2 focus-visible:ring-white cursor-pointer ${
-                      activeSection === label
-                        ? "bg-white/15 text-white shadow-inner"
-                        : "text-white/80 hover:bg-white/[.10] hover:text-white"
-                    }`}
-                  >
-                    <Icon className="size-[18px] text-white/80" strokeWidth={1.9} aria-hidden="true" />
-                    <span className="flex-1">{label}</span>
-                    {label === "Active process" && overviewMetrics.inProcessCount > 0 && (
-                      <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] font-bold text-white">
-                        {overviewMetrics.inProcessCount}
-                      </span>
-                    )}
-                    {label === "Recycle Bin" && (recycleBinCounts?.total ?? 0) > 0 && (
-                      <span className="rounded-full bg-rose-500/90 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-2xs">
-                        {recycleBinCounts?.total}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </nav>
-
-              <div className="my-5 h-px bg-white/[.09]" />
-              <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-white/60">
-                Manage
-              </p>
-              <nav className="space-y-1.5" aria-label="Management navigation">
-                {canManageRoles && (
-                  <button
-                    onClick={() => {
-                      setShowMobileNav(false);
-                      navigate("Roles");
-                    }}
-                    className="group flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-white/80 hover:bg-white/[.10] hover:text-white focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
-                  >
-                    <ShieldCheck className="size-[18px] text-white/80" strokeWidth={1.9} aria-hidden="true" /> Roles &
-                    Access
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    setShowMobileNav(false);
-                    navigate("Settings");
-                  }}
-                  className="group flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-white/80 hover:bg-white/[.10] hover:text-white focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
-                >
-                  <Settings className="size-[18px] text-white/80" strokeWidth={1.9} aria-hidden="true" /> Settings
-                </button>
-                <button
-                  onClick={() => {
-                    setShowMobileNav(false);
-                    setShowHelp(true);
-                  }}
-                  className="group flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-white/80 hover:bg-white/[.10] hover:text-white focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
-                >
-                  <HelpCircle className="size-[18px] text-white/80" strokeWidth={1.9} aria-hidden="true" /> Help
-                  center
-                </button>
-                {!installed && (
-                  <button
-                    onClick={() => {
-                      setShowMobileNav(false);
-                      handleInstallClick();
-                    }}
-                    className="group flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-emerald-300 hover:bg-white/[.10] hover:text-emerald-200 focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
-                  >
-                    <Download className="size-[18px] text-emerald-300" strokeWidth={1.9} aria-hidden="true" /> Install
-                    App
-                  </button>
-                )}
-              </nav>
-            </div>
-            <div className="space-y-2 mt-auto">
-              <div className="rounded-2xl border border-white/[.08] bg-white/[.045] p-3.5">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-[11px] font-medium text-white/80">
-                    <span className="size-2 rounded-full bg-emerald-400" /> Cloud sync on
-                  </span>
-                  <ChevronRight className="size-3.5 text-white/60" />
-                </div>
-                <p className="text-[10px] leading-4 text-white/60">
-                  Last synced just now across 2 devices
-                </p>
-              </div>
-              <div className="pt-2 pb-1 text-center">
-                <a
-                  href="https://mallist.online"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex flex-col items-center group transition py-0.5"
-                >
-                  <span className="text-[10px] font-medium text-white/50 group-hover:text-white/80 transition-colors">
-                    Powered by Mallist
-                  </span>
-                  <span className="text-[9px] text-white/35 group-hover:text-white/60 transition-colors">
-                    mallist.online
-                  </span>
-                </a>
-              </div>
-            </div>
-          </aside>
-        </div>
-      )}
+      {/* Mobile Bottom Sheet Navigation Menu */}
+      <MobileNavBottomSheet
+        isOpen={showMobileNav}
+        onClose={() => setShowMobileNav(false)}
+        activeSection={activeSection}
+        onNavigate={(s) => navigate(s as Section)}
+        inProcessCount={overviewMetrics.inProcessCount}
+        recycleCount={recycleBinCounts?.total ?? 0}
+        canViewReports={canViewReports}
+        canManageRoles={canManageRoles}
+        onOpenHelp={() => setShowHelp(true)}
+        onInstallApp={handleInstallClick}
+        isInstalled={installed}
+      />
 
       {/* Mobile Bottom Navigation Bar */}
       <BottomNav
         activeSection={activeSection}
-        onNavigate={(s) => navigate(s as Section)}
+        isMenuOpen={showMobileNav}
+        onNavigate={(s) => {
+          setShowMobileNav(false);
+          navigate(s as Section);
+        }}
         onNewOrder={() => {
+          setShowMobileNav(false);
           if (activeSection === "Customers") {
             window.dispatchEvent(new CustomEvent("open-add-customer"));
           } else {
@@ -772,7 +636,7 @@ export default function AuthenticatedHome({
             setShowNewOrder(true);
           }
         }}
-        onOpenMenu={() => setShowMobileNav(true)}
+        onOpenMenu={() => setShowMobileNav((prev) => !prev)}
       />
 
       {showNewOrder && (

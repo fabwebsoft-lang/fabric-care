@@ -25,11 +25,13 @@ export default function BottomNav({
   onNavigate,
   onNewOrder,
   onOpenMenu,
+  isMenuOpen = false,
 }: {
   activeSection: string;
   onNavigate: (section: NavSection) => void;
   onNewOrder: () => void;
   onOpenMenu: () => void;
+  isMenuOpen?: boolean;
 }) {
   const { data: orders = [] } = trpc.orders.list.useQuery();
   const { data: recycleBinCounts } = trpc.recycleBin.counts.useQuery(undefined);
@@ -37,15 +39,16 @@ export default function BottomNav({
   const recycleCount = recycleBinCounts?.total ?? 0;
 
   const isMoreActive =
-    activeSection !== "Overview" &&
-    activeSection !== "Orders" &&
-    activeSection !== "Active process" &&
-    activeSection !== "Customers";
+    isMenuOpen ||
+    (activeSection !== "Overview" &&
+      activeSection !== "Orders" &&
+      activeSection !== "Active process" &&
+      activeSection !== "Customers");
 
   return (
     <nav
       aria-label="Mobile Bottom Navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200/90 px-1.5 py-1 flex items-center justify-around lg:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-slate-200/90 px-1.5 py-1 flex items-center justify-around lg:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
     >
       {/* 1. HOME */}
       <button
