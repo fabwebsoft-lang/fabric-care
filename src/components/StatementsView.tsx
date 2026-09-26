@@ -345,7 +345,58 @@ export default function StatementsView() {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile View (< sm): Cards */}
+        <div className="grid gap-2.5 grid-cols-1 sm:hidden">
+          {dailyBreakdown.map((row: any, idx: number) => (
+            <div
+              key={idx}
+              className="bg-slate-50/80 rounded-xl border border-slate-200/80 p-3 space-y-2.5 text-xs"
+            >
+              <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                <span className="font-bold text-[#0F4C5C] text-xs sm:text-sm">
+                  {row.label || row.date}
+                </span>
+                <span className="text-[10px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                  {row.orders || 0} {row.orders === 1 ? "order" : "orders"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="bg-white p-2 rounded-lg border border-slate-100">
+                  <span className="text-[9px] text-slate-400 block uppercase font-bold">Billed</span>
+                  <span className="font-bold text-slate-800">
+                    ₹{(row.sales || 0).toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="bg-white p-2 rounded-lg border border-slate-100">
+                  <span className="text-[9px] text-slate-400 block uppercase font-bold">Collected</span>
+                  <span className="font-bold text-emerald-600">
+                    ₹{(row.collected || 0).toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="bg-white p-2 rounded-lg border border-slate-100">
+                  <span className="text-[9px] text-slate-400 block uppercase font-bold">Expenses</span>
+                  <span className="font-bold text-rose-600">
+                    ₹{(row.expenses || 0).toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="bg-white p-2 rounded-lg border border-slate-100">
+                  <span className="text-[9px] text-slate-400 block uppercase font-bold">Net Profit</span>
+                  <span
+                    className={`font-bold ${
+                      (row.net || 0) >= 0 ? "text-emerald-700" : "text-rose-700"
+                    }`}
+                  >
+                    ₹{(row.net || 0).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop View (>= sm): Table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 text-slate-400 font-semibold text-[10px] uppercase tracking-wider">

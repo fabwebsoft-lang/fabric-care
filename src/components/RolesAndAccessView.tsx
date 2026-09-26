@@ -309,7 +309,57 @@ export default function RolesAndAccessView() {
           <p className="text-[11px] sm:text-xs text-slate-500">Overview of access levels and restrictions enforced per role</p>
         </div>
 
-        <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+        {/* Mobile View (< sm): Interactive Role Capabilities Breakdown */}
+        <div className="space-y-3 sm:hidden">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+            <span>Viewing Role:</span>
+            <span className="capitalize px-2 py-0.5 rounded-lg bg-[#0F4C5C] text-white text-[11px] font-bold">
+              {activeRole}
+            </span>
+          </div>
+
+          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white overflow-hidden">
+            {permissionsMatrix.map((item, idx) => {
+              const isAllowed = item[activeRole as "admin" | "manager" | "staff"];
+              return (
+                <div key={idx} className="p-3 flex items-start justify-between gap-2.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-bold text-xs text-slate-800">{item.feature}</p>
+                      {item.tag && (
+                        <span
+                          className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider ${
+                            item.tag.includes("Admin")
+                              ? "bg-purple-100 text-purple-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {item.tag}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{item.description}</p>
+                  </div>
+
+                  <div className="shrink-0 pt-0.5">
+                    {isAllowed ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                        <Check className="size-3" /> Allowed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">
+                        <Lock className="size-3" /> Blocked
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Desktop View (>= sm): Full Matrix Table */}
+        <div className="hidden sm:block overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
           <table className="w-full min-w-[500px] text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/70 text-slate-700 font-bold">
