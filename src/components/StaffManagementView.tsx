@@ -604,19 +604,19 @@ export default function StaffManagementView() {
 
       {/* MODAL: Detailed History per Staff Member */}
       {selectedStaffDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-4 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 p-3 sm:p-6 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto">
+          <div className="w-full max-w-2xl max-h-[85vh] sm:max-h-[80vh] flex flex-col rounded-2xl sm:rounded-3xl bg-white shadow-2xl border border-slate-200/90 overflow-hidden my-auto animate-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-full bg-[#0F4C5C] text-white font-bold flex items-center justify-center text-sm shadow-xs">
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/90 shrink-0 gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="size-10 rounded-full bg-[#0F4C5C] text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
                   {selectedStaffDetail.staffName.slice(0, 2).toUpperCase()}
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-800">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-slate-800 truncate">
                     {selectedStaffDetail.staffName} — Labour History
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 truncate">
                     {selectedStaffDetail.completedTasksCount} tasks ({selectedStaffDetail.ironingPieces ?? 0} iron · {selectedStaffDetail.washingPieces ?? 0} wash) · ₹{selectedStaffDetail.totalEarnings} total earning
                   </p>
                 </div>
@@ -624,14 +624,15 @@ export default function StaffManagementView() {
               <button
                 type="button"
                 onClick={() => setSelectedStaffDetail(null)}
-                className="size-8 rounded-lg hover:bg-slate-200/70 flex items-center justify-center text-slate-400 hover:text-slate-600 transition"
+                className="size-9 min-h-[36px] min-w-[36px] rounded-xl hover:bg-slate-200/80 active:bg-slate-300 flex items-center justify-center text-slate-500 hover:text-slate-800 transition active:scale-95 cursor-pointer shrink-0"
+                aria-label="Close modal"
               >
-                <X className="size-4" />
+                <X className="size-5" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1 text-xs">
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1 min-h-0 text-xs overscroll-contain">
               {selectedStaffDetail.tasks.length === 0 ? (
                 <div className="py-8 text-center text-slate-400">No tasks logged in this period.</div>
               ) : (
@@ -699,11 +700,11 @@ export default function StaffManagementView() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50">
+            <div className="p-3.5 sm:p-4 border-t border-slate-100 flex items-center justify-end bg-slate-50 shrink-0">
               <button
                 type="button"
                 onClick={() => setSelectedStaffDetail(null)}
-                className="px-4 py-2 bg-[#0F4C5C] text-white font-bold text-xs rounded-xl shadow-xs"
+                className="w-full sm:w-auto px-6 py-2.5 bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 active:bg-[#0F4C5C] text-white font-bold text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer text-center"
               >
                 Close
               </button>
@@ -714,8 +715,8 @@ export default function StaffManagementView() {
 
       {/* MODAL: Toggle Active Warning / Confirm */}
       {staffToToggle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-4 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto">
+          <div className="w-full max-w-sm rounded-2xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 my-auto animate-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3">
               <div className="size-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
                 <AlertTriangle className="size-5" />
@@ -740,7 +741,7 @@ export default function StaffManagementView() {
               <button
                 type="button"
                 onClick={() => setStaffToToggle(null)}
-                className="flex-1 py-2.5 border border-slate-300 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50"
+                className="flex-1 py-2.5 border border-slate-300 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 active:scale-95 transition"
               >
                 Cancel
               </button>
@@ -748,7 +749,7 @@ export default function StaffManagementView() {
                 type="button"
                 onClick={() => toggleActiveMutation.mutate({ workerId: staffToToggle.id })}
                 disabled={toggleActiveMutation.isPending}
-                className="flex-1 py-2.5 bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 text-white text-xs font-bold rounded-xl transition shadow-xs"
+                className="flex-1 py-2.5 bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 text-white text-xs font-bold rounded-xl transition shadow-xs disabled:opacity-50 active:scale-95"
               >
                 {toggleActiveMutation.isPending ? "Updating..." : "Confirm"}
               </button>
@@ -802,13 +803,13 @@ function AddStaffModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-4 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto">
+      <div className="w-full max-w-sm rounded-2xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 my-auto animate-in zoom-in-95 duration-150">
         <div className="flex justify-between items-center border-b border-slate-100 pb-3">
           <h3 className="text-base font-bold text-[#0F4C5C] flex items-center gap-2">
             <Plus className="size-4" /> Add Staff Member
           </h3>
-          <button onClick={onClose} className="size-7 grid place-items-center text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="size-8 rounded-lg hover:bg-slate-100 grid place-items-center text-slate-400 hover:text-slate-600 active:scale-95 transition">
             <X className="size-4" />
           </button>
         </div>
@@ -858,14 +859,14 @@ function AddStaffModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 border border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50"
+              className="flex-1 py-2.5 border border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 active:scale-95 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 py-2.5 bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 text-white font-bold rounded-xl transition shadow-xs disabled:opacity-50"
+              className="flex-1 py-2.5 bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 text-white font-bold rounded-xl transition shadow-xs disabled:opacity-50 active:scale-95"
             >
               {isSubmitting ? "Adding..." : "Add Staff"}
             </button>
@@ -897,11 +898,11 @@ function EditStaffModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-4 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto">
+      <div className="w-full max-w-sm rounded-2xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 my-auto animate-in zoom-in-95 duration-150">
         <div className="flex justify-between items-center border-b border-slate-100 pb-3">
           <h3 className="text-base font-bold text-[#0F4C5C]">Edit Staff Member</h3>
-          <button onClick={onClose} className="size-7 grid place-items-center text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="size-8 rounded-lg hover:bg-slate-100 grid place-items-center text-slate-400 hover:text-slate-600 active:scale-95 transition">
             <X className="size-4" />
           </button>
         </div>
@@ -935,14 +936,14 @@ function EditStaffModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 border border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50"
+              className="flex-1 py-2.5 border border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 active:scale-95 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 py-2.5 bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 text-white font-bold rounded-xl transition shadow-xs disabled:opacity-50"
+              className="flex-1 py-2.5 bg-[#0F4C5C] hover:bg-[#0F4C5C]/90 text-white font-bold rounded-xl transition shadow-xs disabled:opacity-50 active:scale-95"
             >
               {isSubmitting ? "Saving..." : "Save Changes"}
             </button>
