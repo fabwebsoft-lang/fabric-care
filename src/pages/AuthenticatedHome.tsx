@@ -39,6 +39,7 @@ import { toast } from "sonner";
 import { useAccessControl } from "@/contexts/AccessControlContext";
 import HelpCenterModal from "@/components/HelpCenterModal";
 import { usePWAInstall, IOSInstallGuideModal } from "@/components/InstallModal";
+import BottomNav, { type NavSection } from "@/components/BottomNav";
 
 const NewBillModal = lazy(() => import("@/components/NewBillModal"));
 const ActiveProcessView = lazy(() => import("@/components/ActiveProcessView"));
@@ -456,7 +457,7 @@ export default function AuthenticatedHome({
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 pb-20 lg:pb-0 w-full max-w-full overflow-x-hidden">
+        <main className="min-w-0 flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0 w-full max-w-full overflow-x-hidden">
           <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-3.5 sm:px-8 lg:px-10 backdrop-blur-xl w-full max-w-full">
             <div className="flex items-center gap-3">
               <button
@@ -759,24 +760,20 @@ export default function AuthenticatedHome({
         </div>
       )}
 
-      {/* Mobile Floating Action Button (FAB) */}
-      {!showNewOrder && (
-        <button
-          onClick={() => {
-            if (activeSection === "Customers") {
-              window.dispatchEvent(new CustomEvent("open-add-customer"));
-            } else {
-              setNewOrderCustomer(null);
-              setShowNewOrder(true);
-            }
-          }}
-          aria-label={activeSection === "Customers" ? "Add Customer" : "New Bill"}
-          title={activeSection === "Customers" ? "Add Customer" : "New Bill"}
-          className="fixed right-5 bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] z-30 flex size-14 items-center justify-center rounded-full bg-[#0F4C5C] text-white shadow-[0_8px_25px_rgba(15,76,92,0.38)] transition-all hover:scale-105 active:scale-95 lg:hidden border-2 border-white/25 focus:outline-none focus:ring-4 focus:ring-[#0F4C5C]/30 cursor-pointer"
-        >
-          <Plus className="size-7" strokeWidth={2.5} />
-        </button>
-      )}
+      {/* Mobile Bottom Navigation Bar */}
+      <BottomNav
+        activeSection={activeSection}
+        onNavigate={(s) => navigate(s as Section)}
+        onNewOrder={() => {
+          if (activeSection === "Customers") {
+            window.dispatchEvent(new CustomEvent("open-add-customer"));
+          } else {
+            setNewOrderCustomer(null);
+            setShowNewOrder(true);
+          }
+        }}
+        onOpenMenu={() => setShowMobileNav(true)}
+      />
 
       {showNewOrder && (
         <Suspense fallback={null}>

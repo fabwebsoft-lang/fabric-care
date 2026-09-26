@@ -312,12 +312,12 @@ export default function ActiveProcessView({
         </div>
       </div>
 
-      {/* KPI Metric Cards: 3x2 on mobile, 5x1 on desktop */}
-      <div className="grid gap-2 sm:gap-3 grid-cols-3 lg:grid-cols-5">
+      {/* KPI Metric Cards: 2x2+1 on mobile, 5x1 on desktop */}
+      <div className="grid gap-2 sm:gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
         {/* STEP 1: Collect from Customer */}
         <div
           onClick={() => setActiveTab(activeTab === "Received" ? "All" : "Received")}
-          className={`bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
+          className={`bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
             activeTab === "Received"
               ? "border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20"
               : "border-slate-200/90 hover:border-amber-300"
@@ -330,20 +330,20 @@ export default function ActiveProcessView({
             </div>
           </div>
           <div className="min-w-0">
-            <p className="text-sm sm:text-lg md:text-2xl font-bold text-amber-700 tracking-tight truncate">
+            <p className="text-base sm:text-lg md:text-2xl font-bold text-amber-700 tracking-tight truncate">
               {counts.Received} <span className="text-[10px] sm:text-xs font-normal text-slate-500">Orders</span>
             </p>
-            <p className="text-[9px] sm:text-[10px] md:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
+            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
               Collect from Customer
             </p>
-            <p className="text-[8px] sm:text-[9px] text-slate-400 truncate">Intake & Tagged</p>
+            <p className="text-[9px] text-slate-400 truncate">Intake & Tagged</p>
           </div>
         </div>
 
         {/* STEP 2: Start Wash / Dry Clean */}
         <div
           onClick={() => setActiveTab(activeTab === "Processing" ? "All" : "Processing")}
-          className={`bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
+          className={`bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
             activeTab === "Processing"
               ? "border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/20"
               : "border-slate-200/90 hover:border-blue-300"
@@ -356,20 +356,20 @@ export default function ActiveProcessView({
             </div>
           </div>
           <div className="min-w-0">
-            <p className="text-sm sm:text-lg md:text-2xl font-bold text-blue-700 tracking-tight truncate">
+            <p className="text-base sm:text-lg md:text-2xl font-bold text-blue-700 tracking-tight truncate">
               {counts.Processing} <span className="text-[10px] sm:text-xs font-normal text-slate-500">Orders</span>
             </p>
-            <p className="text-[9px] sm:text-[10px] md:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
+            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
               Start Wash / Dry Clean
             </p>
-            <p className="text-[8px] sm:text-[9px] text-slate-400 truncate">In Wash Cycle</p>
+            <p className="text-[9px] text-slate-400 truncate">In Wash Cycle</p>
           </div>
         </div>
 
         {/* STEP 3: Ironing */}
         <div
           onClick={() => setActiveTab(activeTab === "Ironing" ? "All" : "Ironing")}
-          className={`bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
+          className={`bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
             activeTab === "Ironing"
               ? "border-purple-500 ring-2 ring-purple-500/20 bg-purple-50/20"
               : "border-slate-200/90 hover:border-purple-300"
@@ -382,20 +382,20 @@ export default function ActiveProcessView({
             </div>
           </div>
           <div className="min-w-0">
-            <p className="text-sm sm:text-lg md:text-2xl font-bold text-purple-700 tracking-tight truncate">
+            <p className="text-base sm:text-lg md:text-2xl font-bold text-purple-700 tracking-tight truncate">
               {counts.Ironing} <span className="text-[10px] sm:text-xs font-normal text-slate-500">Orders</span>
             </p>
-            <p className="text-[9px] sm:text-[10px] md:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
+            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
               Ironing & Pressing
             </p>
-            <p className="text-[8px] sm:text-[9px] text-slate-400 truncate">Steam Press & Fold</p>
+            <p className="text-[9px] text-slate-400 truncate">Steam Press & Fold</p>
           </div>
         </div>
 
         {/* STEP 4: Shop Collection / Delivery */}
         <div
           onClick={() => setActiveTab(activeTab === "Ready" ? "All" : "Ready")}
-          className={`bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
+          className={`bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
             activeTab === "Ready"
               ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20"
               : "border-slate-200/90 hover:border-emerald-300"
@@ -408,20 +408,20 @@ export default function ActiveProcessView({
             </div>
           </div>
           <div className="min-w-0">
-            <p className="text-sm sm:text-lg md:text-2xl font-bold text-emerald-700 tracking-tight truncate">
+            <p className="text-base sm:text-lg md:text-2xl font-bold text-emerald-700 tracking-tight truncate">
               {counts.Ready} <span className="text-[10px] sm:text-xs font-normal text-slate-500">Orders</span>
             </p>
-            <p className="text-[9px] sm:text-[10px] md:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
+            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
               Shop Collection / Delivery
             </p>
-            <p className="text-[8px] sm:text-[9px] text-slate-400 truncate">Ready for handover</p>
+            <p className="text-[9px] text-slate-400 truncate">Ready for handover</p>
           </div>
         </div>
 
         {/* STEP 5: Payment Collection */}
         <div
           onClick={() => setActiveTab(activeTab === "Collected" ? "All" : "Collected")}
-          className={`bg-white p-2 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
+          className={`col-span-2 sm:col-span-1 lg:col-span-1 bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border shadow-xs flex flex-col justify-between space-y-1 sm:space-y-2 cursor-pointer transition ${
             activeTab === "Collected"
               ? "border-[#0F4C5C] ring-2 ring-[#0F4C5C]/20 bg-[#0F4C5C]/5"
               : "border-slate-200/90 hover:border-[#0F4C5C]/30"
@@ -434,16 +434,17 @@ export default function ActiveProcessView({
             </div>
           </div>
           <div className="min-w-0">
-            <p className="text-sm sm:text-lg md:text-2xl font-bold text-[#0F4C5C] tracking-tight truncate">
+            <p className="text-base sm:text-lg md:text-2xl font-bold text-[#0F4C5C] tracking-tight truncate">
               {counts.Collected} <span className="text-[10px] sm:text-xs font-normal text-slate-500">Orders</span>
             </p>
-            <p className="text-[9px] sm:text-[10px] md:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
+            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-700 mt-0.5 truncate">
               Payment Collection
             </p>
-            <p className="text-[8px] sm:text-[9px] text-slate-400 truncate">Settled & Done</p>
+            <p className="text-[9px] text-slate-400 truncate">Settled & Done</p>
           </div>
         </div>
       </div>
+
 
       {/* Tabs - Horizontally scrollable independently with no-page-overflow containment */}
       <div className="w-full min-w-0 overflow-x-auto overscroll-x-contain py-1 no-scrollbar">
