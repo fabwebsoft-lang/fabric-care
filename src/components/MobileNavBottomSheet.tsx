@@ -77,8 +77,6 @@ export default function MobileNavBottomSheet({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   // 1. Workspace items (Overview, Orders, Active process, Staff Management, Products, Customers, Expenses, Statements, Recycle Bin)
   const workspaceItems: TileItem[] = [
     {
@@ -196,21 +194,27 @@ export default function MobileNavBottomSheet({
 
   return (
     <div
-      className="fixed inset-0 z-40 lg:hidden flex flex-col justify-end"
+      className={`fixed inset-0 z-40 lg:hidden flex flex-col justify-end transition-visibility duration-200 ${
+        isOpen ? "pointer-events-auto visible" : "pointer-events-none invisible"
+      }`}
       role="dialog"
       aria-modal="true"
       aria-label="Navigation menu"
     >
-      {/* Dimmed backdrop - NO blur filter so content behind & bottom nav is not blurred */}
+      {/* Dimmed backdrop - fast opacity transition */}
       <div
-        className="fixed inset-0 bg-slate-900/60 transition-opacity duration-200 animate-in fade-in"
+        className={`fixed inset-0 bg-slate-900/60 transition-opacity duration-200 ease-out ${
+          isOpen ? "opacity-100" : "opacity-0"
+        }`}
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Bottom Sheet Sheet Panel */}
+      {/* Bottom Sheet Sheet Panel - GPU accelerated transform */}
       <div
-        className="relative z-10 w-full max-h-[85vh] bg-white rounded-t-[28px] shadow-[0_-12px_45px_rgba(0,0,0,0.22)] flex flex-col border-t border-slate-200/90 animate-in slide-in-from-bottom duration-300 ease-out"
+        className={`relative z-10 w-full max-h-[85vh] bg-white rounded-t-[28px] shadow-[0_-12px_45px_rgba(0,0,0,0.22)] flex flex-col border-t border-slate-200/90 transition-transform duration-200 ease-out will-change-transform ${
+          isOpen ? "translate-y-0" : "translate-y-full"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drag handle */}

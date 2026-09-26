@@ -41,19 +41,19 @@ import HelpCenterModal from "@/components/HelpCenterModal";
 import { usePWAInstall, IOSInstallGuideModal } from "@/components/InstallModal";
 import BottomNav, { type NavSection } from "@/components/BottomNav";
 import MobileNavBottomSheet from "@/components/MobileNavBottomSheet";
+import DashboardView from "@/components/DashboardView";
+import BillsView from "@/components/BillsView";
+import ActiveProcessView from "@/components/ActiveProcessView";
+import CustomersView from "@/components/CustomersView";
+import StaffManagementView from "@/components/StaffManagementView";
+import ProductsView from "@/components/ProductsView";
+import ExpensesView from "@/components/ExpensesView";
+import StatementsView from "@/components/StatementsView";
+import RolesAndAccessView from "@/components/RolesAndAccessView";
+import SettingsViewComponent from "@/components/SettingsView";
+import RecycleBinView from "@/components/RecycleBinView";
 
 const NewBillModal = lazy(() => import("@/components/NewBillModal"));
-const ActiveProcessView = lazy(() => import("@/components/ActiveProcessView"));
-const BillsView = lazy(() => import("@/components/BillsView"));
-const CustomersView = lazy(() => import("@/components/CustomersView"));
-const StatementsView = lazy(() => import("@/components/StatementsView"));
-const SettingsViewComponent = lazy(() => import("@/components/SettingsView"));
-const RolesAndAccessView = lazy(() => import("@/components/RolesAndAccessView"));
-const DashboardView = lazy(() => import("@/components/DashboardView"));
-const ExpensesView = lazy(() => import("@/components/ExpensesView"));
-const ProductsView = lazy(() => import("@/components/ProductsView"));
-const RecycleBinView = lazy(() => import("@/components/RecycleBinView"));
-const StaffManagementView = lazy(() => import("@/components/StaffManagementView"));
 
 type Section =
   | "Overview"
@@ -825,21 +825,6 @@ function ProfileMenu({
   );
 }
 
-function ViewFallback() {
-  return (
-    <div className="space-y-4 py-6 animate-pulse">
-      <div className="h-8 w-48 rounded-xl bg-[#0F4C5C]/10" />
-      <div className="grid gap-2.5 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-        <div className="h-28 rounded-2xl bg-white/70 shadow-sm" />
-        <div className="h-28 rounded-2xl bg-white/70 shadow-sm" />
-        <div className="h-28 rounded-2xl bg-white/70 shadow-sm" />
-        <div className="h-28 rounded-2xl bg-white/70 shadow-sm" />
-      </div>
-      <div className="h-64 rounded-2xl bg-white/70 shadow-sm" />
-    </div>
-  );
-}
-
 function SectionView({
   section,
   onNewOrder,
@@ -849,27 +834,35 @@ function SectionView({
   onNewOrder: (cust?: any) => void;
   onNavigate: (section: Section) => void;
 }) {
-  return (
-    <Suspense fallback={<ViewFallback />}>
-      {section === "Active process" && (
+  switch (section) {
+    case "Active process":
+      return (
         <ActiveProcessView
           onNewOrder={onNewOrder}
           onNavigateToOrders={() => onNavigate("Orders")}
           onNavigateToProducts={() => onNavigate("Products")}
         />
-      )}
-      {section === "Orders" && <BillsView onNewOrder={onNewOrder} />}
-      {section === "Staff Management" && <StaffManagementView />}
-      {section === "Products" && <ProductsView onNewOrder={onNewOrder} />}
-      {section === "Customers" && <CustomersView onNewOrder={onNewOrder} />}
-      {section === "Statements" && <StatementsView />}
-      {section === "Roles" && <RolesAndAccessView />}
-      {section === "Settings" && <SettingsViewComponent />}
-      {section === "Expenses" && <ExpensesView />}
-      {section === "Recycle Bin" && <RecycleBinView />}
-      {section === "Overview" && (
-        <DashboardView onNavigate={onNavigate} onNewOrder={onNewOrder} />
-      )}
-    </Suspense>
-  );
+      );
+    case "Orders":
+      return <BillsView onNewOrder={onNewOrder} />;
+    case "Staff Management":
+      return <StaffManagementView />;
+    case "Products":
+      return <ProductsView onNewOrder={onNewOrder} />;
+    case "Customers":
+      return <CustomersView onNewOrder={onNewOrder} />;
+    case "Statements":
+      return <StatementsView />;
+    case "Roles":
+      return <RolesAndAccessView />;
+    case "Settings":
+      return <SettingsViewComponent />;
+    case "Expenses":
+      return <ExpensesView />;
+    case "Recycle Bin":
+      return <RecycleBinView />;
+    case "Overview":
+    default:
+      return <DashboardView onNavigate={onNavigate} onNewOrder={onNewOrder} />;
+  }
 }
