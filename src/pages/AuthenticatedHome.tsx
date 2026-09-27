@@ -458,7 +458,7 @@ export default function AuthenticatedHome({
         </aside>
 
         <main className="min-w-0 flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0 w-full max-w-full overflow-x-hidden">
-          <header className="sticky top-0 z-20 hidden lg:flex h-[76px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 sm:px-8 lg:px-10 backdrop-blur-xl w-full max-w-full">
+          <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 sm:px-8 lg:px-10 backdrop-blur-xl w-full max-w-full">
             <div className="min-w-0 pr-2">
               <p className="hidden text-[11px] font-semibold uppercase tracking-[.13em] text-[#0F4C5C] sm:block">
                 {new Date().toLocaleDateString("en-US", {
@@ -570,7 +570,7 @@ export default function AuthenticatedHome({
             </div>
           </header>
 
-          <div className="mx-auto max-w-[1480px] px-3.5 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-4 sm:px-8 sm:py-6 lg:px-10 lg:py-8 w-full max-w-full overflow-x-hidden">
+          <div className="mx-auto max-w-[1480px] px-3 py-4 sm:px-8 sm:py-6 lg:px-10 lg:py-8 w-full max-w-full overflow-x-hidden">
             <SectionView
               section={activeSection}
               onNewOrder={(cust?: any) => {
