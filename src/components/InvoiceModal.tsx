@@ -13,6 +13,7 @@ import {
   Layers,
   FileText,
   SlidersHorizontal,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -185,7 +186,7 @@ export default function InvoiceModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-0 sm:p-4 md:p-6 flex justify-center items-center"
+      className="fixed inset-0 z-[70] overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-0 sm:p-4 md:p-6 flex flex-col sm:justify-center sm:items-center"
       onClick={onClose}
     >
       <div
@@ -574,36 +575,42 @@ export default function InvoiceModal({
         </div>
 
         {/* Modal Bottom Footer Actions */}
-        <div className="bg-white border-t border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-2 shrink-0">
-          <div className="flex items-center gap-2">
+        <div className="bg-white border-t border-slate-200 px-3 sm:px-5 py-2.5 sm:py-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+          {/* Top Row on Mobile, Left on Desktop: SMS & Share Options */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {onSendSms && (
               <button
+                type="button"
                 onClick={onSendSms}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95"
+                className="flex-1 sm:flex-initial min-h-[40px] px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
               >
                 <MessageSquare className="size-3.5 text-[#0F4C5C]" /> Send SMS
               </button>
             )}
             <button
+              type="button"
               onClick={() => setShowShareMenu(true)}
-              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95"
+              className="flex-1 sm:flex-initial min-h-[40px] px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
             >
               <Share2 className="size-3.5 text-[#0F4C5C]" /> More Share Options
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Bottom Row on Mobile, Right on Desktop: Delete Bill & Print Bill */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {canDelete && onDelete && (
               <button
+                type="button"
                 onClick={onDelete}
-                className="px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200 font-bold rounded-xl text-xs hover:bg-rose-100 transition active:scale-95"
+                className="flex-1 sm:flex-initial min-h-[40px] px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200 font-bold rounded-xl text-xs hover:bg-rose-100 transition active:scale-95 flex items-center justify-center gap-1.5"
               >
-                Delete Bill
+                <Trash2 className="size-3.5" /> Delete Bill
               </button>
             )}
             <button
+              type="button"
               onClick={handlePrint}
-              className="px-4 py-2 bg-[#0F4C5C] text-white font-bold rounded-xl text-xs hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center gap-1.5 active:scale-95"
+              className="flex-1 sm:flex-initial min-h-[40px] px-4 py-2 bg-[#0F4C5C] text-white font-bold rounded-xl text-xs hover:bg-[#0F4C5C]/90 transition shadow-xs flex items-center justify-center gap-1.5 active:scale-95"
             >
               <Printer className="size-3.5" /> Print Bill
             </button>
@@ -613,7 +620,7 @@ export default function InvoiceModal({
 
       {/* Share Sub-Modal */}
       {showShareMenu && (
-        <div className="fixed inset-0 z-60 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 border border-slate-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>

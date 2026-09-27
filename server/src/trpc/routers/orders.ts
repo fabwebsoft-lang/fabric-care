@@ -581,6 +581,79 @@ export const ordersRouter = router({
       return { success: true };
     }),
 
+  bulkDelete: requirePermission("canDeleteOrders")
+    .input(z.object({ ids: z.array(z.string()), reason: z.string().optional() }))
+    .mutation(async ({ input, ctx }) => {
+      const userLabel = ctx.activeRole
+        ? String(ctx.activeRole).charAt(0).toUpperCase() + String(ctx.activeRole).slice(1)
+        : "Admin";
+      const now = new Date();
+
+      for (const id of input.ids) {
+        let order = await Order.findById(id);
+        if (!order) {
+          order = await Order.findOne({ _id: id.trim() });
+        }
+        if (!order) {
+          order = await Order.findOne({
+            $or: [
+              { _id: { $regex: `^${id.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } },
+              ...(mongoose.isValidObjectId(id.trim()) ? [{ _id: new (mongoose.Types.ObjectId as any)(id.trim()) }] : []),
+            ],
+          });
+        }
+
+        if (order) {
+          order.isDeleted = true;
+          order.deletedAt = now;
+          order.deletedBy = userLabel;
+          await order.save();
+
+          await IroningTask.updateMany(
+            { orderId: order._id },
+            { status: "Voided" }
+          );
+
+          await Expense.updateMany(
+            { orderId: order._id, isSystemGenerated: true },
+            { isDeleted: true, deletedAt: now, deletedBy: `System (Order ${order._id} Deleted)` }
+          );
+
+          try {
+            await DeletedBill.findOneAndUpdate(
+              { orderId: order._id },
+              {
+                orderId: order._id,
+                customerId: order.customerId,
+                customer: order.customer,
+                phone: order.phone,
+                customerType: order.customerType,
+                clothesCode: order.clothesCode,
+                serviceType: order.serviceType,
+                status: order.status,
+                deliveryType: order.deliveryType,
+                dueAt: order.dueAt,
+                totalAmount: order.totalAmount,
+                amountPaid: order.amountPaid,
+                discount: order.discount,
+                items: order.items,
+                originalCreatedAt: order.createdAt,
+                deletedAt: now,
+                deletedBy: userLabel,
+                reason: input.reason || "Bulk deleted bill",
+                action: "moved_to_recycle_bin",
+              },
+              { upsert: true, new: true }
+            );
+          } catch (err) {
+            console.error("Failed to archive deleted bill snapshot:", err);
+          }
+        }
+      }
+
+      return { success: true, count: input.ids.length };
+    }),
+
   deleteAll: requirePermission("canDeleteOrders").mutation(async () => {
     await Order.deleteMany({});
     await IroningTask.deleteMany({});

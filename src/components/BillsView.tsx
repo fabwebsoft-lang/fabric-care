@@ -167,6 +167,58 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
     onError: (err: Error) => toast.error("Failed to move bill to Recycle Bin", { description: err.message }),
   });
 
+  const bulkDeleteOrdersMutation = trpc.orders.bulkDelete.useMutation({
+    onSuccess: async (_data, variables) => {
+      await Promise.all([
+        utils.orders.list.invalidate(),
+        utils.dashboard.stats.invalidate(),
+        utils.ironing.todayStats.invalidate(),
+        utils.ironing.reports.invalidate(),
+        utils.expenses.list.invalidate(),
+        utils.recycleBin.counts.invalidate(),
+        utils.recycleBin.list.invalidate(),
+        utils.customers.list.invalidate(),
+      ]);
+      toast.success(`Moved ${variables.ids.length} ${variables.ids.length === 1 ? "bill" : "bills"} to Recycle Bin`, {
+        description: "You can restore or permanently delete them from the Recycle Bin.",
+      });
+      setSelectedIds([]);
+    },
+    onError: (err: Error) => toast.error("Failed to move bills to Recycle Bin", { description: err.message }),
+  });
+
+  const handleDeleteSingleOrder = (order: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!canDelete) {
+      toast.error("Permission Denied", {
+        description: "Staff role is restricted from deleting bills. Contact an Admin or Manager.",
+      });
+      return;
+    }
+    if (confirm(`Move Bill ${order.id} to Recycle Bin?\n\nThis item will be moved to the Recycle Bin and can be restored later.`)) {
+      deleteOrderMutation.mutate({ id: order.id });
+    }
+  };
+
+  const handleBulkDeleteOrders = () => {
+    if (!canDelete) {
+      toast.error("Permission Denied", {
+        description: "Staff role is restricted from deleting bills. Contact an Admin or Manager.",
+      });
+      return;
+    }
+    if (selectedIds.length === 0) return;
+    if (
+      confirm(
+        `Move ${selectedIds.length} selected ${
+          selectedIds.length === 1 ? "bill" : "bills"
+        } to Recycle Bin?\n\nThese items will be moved to the Recycle Bin and can be restored later.`
+      )
+    ) {
+      bulkDeleteOrdersMutation.mutate({ ids: selectedIds });
+    }
+  };
+
   // Date filtering logic (IST based)
   const filteredOrders = useMemo(() => {
     const todayYMD = getTodayIST();
@@ -614,7 +666,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
 
       {/* FEATURE 1: Sticky Bulk Action Bar */}
       {selectedIds.length > 0 && (
-        <div className="sticky top-2 z-30 bg-[#0F4C5C] text-white p-2.5 sm:p-3.5 rounded-2xl shadow-xl flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-2 duration-200 border border-white/10 w-full max-w-full overflow-x-hidden">
+        <div className="sticky top-2 z-30 bg-[#0F4C5C] text-white p-2.5 sm:p-3.5 rounded-2xl shadow-xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 animate-in fade-in slide-in-from-top-2 duration-200 border border-white/10 w-full max-w-full overflow-x-hidden">
           <div className="flex items-center gap-2 shrink-0">
             <span className="size-6 sm:size-7 rounded-full bg-white/20 grid place-items-center font-bold text-[11px] sm:text-xs">
               {selectedIds.length}
@@ -624,9 +676,10 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap">
             {/* Mark as Paid Button */}
             <button
+              type="button"
               onClick={() => setBulkConfirmPaidIds(selectedIds)}
               className="px-2.5 sm:px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs active:scale-95 whitespace-nowrap"
             >
@@ -636,6 +689,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
 
             {/* Bulk SMS Queue Button */}
             <button
+              type="button"
               onClick={handleTriggerBulkSms}
               className="px-2.5 sm:px-3 py-1.5 bg-white text-[#0F4C5C] hover:bg-slate-100 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs active:scale-95 whitespace-nowrap"
             >
@@ -643,12 +697,32 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
               <span>SMS Queue</span>
             </button>
 
-            {/* Clear Selection */}
+            {/* Delete Selected (Move to Recycle Bin) */}
+            {canDelete && (
+              <button
+                type="button"
+                onClick={handleBulkDeleteOrders}
+                disabled={bulkDeleteOrdersMutation.isPending}
+                className="px-2.5 sm:px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs active:scale-95 whitespace-nowrap disabled:opacity-50"
+              >
+                <Trash2 className="size-3.5 shrink-0" />
+                <span>Delete</span>
+              </button>
+            )}
+
+            {/* Clear Selection / Deselect */}
             <button
-              onClick={() => setSelectedIds([])}
-              className="px-2 sm:px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white/90 rounded-xl text-xs font-medium transition whitespace-nowrap"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setSelectedIds([]);
+              }}
+              className="px-2.5 sm:px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1 active:scale-95 whitespace-nowrap cursor-pointer"
+              title="Deselect all selected bills"
             >
-              Clear
+              <X className="size-3.5" />
+              <span>Clear</span>
             </button>
           </div>
         </div>
@@ -836,6 +910,16 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                             >
                               <Share2 className="size-3.5 text-[#0F4C5C]" />
                             </button>
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteSingleOrder(order, e)}
+                                className="p-1.5 sm:p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-xl text-xs active:scale-95 transition shrink-0"
+                                title="Move Bill to Recycle Bin"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={(e) => {
@@ -954,6 +1038,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
 
                             {/* Share Button */}
                             <button
+                              type="button"
                               onClick={(e) => handleShareOrder(order, e)}
                               className="p-1.5 bg-slate-100 hover:bg-slate-200 text-[#0F4C5C] font-semibold rounded-lg transition text-[11px]"
                               title="Share Bill (WhatsApp / WebShare)"
@@ -961,8 +1046,21 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
                               <Share2 className="size-3.5" />
                             </button>
 
+                            {/* Move to Recycle Bin Button */}
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteSingleOrder(order, e)}
+                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold rounded-lg transition text-[11px]"
+                                title="Move Bill to Recycle Bin"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            )}
+
                             {/* View Button */}
                             <button
+                              type="button"
                               onClick={() => setSelectedOrder(order)}
                               className="px-2.5 py-1.5 bg-slate-100 text-[#0F4C5C] font-semibold rounded-lg hover:bg-slate-200 transition text-[11px] inline-flex items-center gap-1"
                             >
