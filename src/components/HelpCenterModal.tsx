@@ -16,7 +16,7 @@ export default function HelpCenterModal({ onClose }: HelpCenterModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-[#0F4C5C]/40 px-4 py-4 backdrop-blur-xs"
+      className="fixed inset-0 z-[70] grid place-items-center bg-[#0F4C5C]/40 px-4 py-4 backdrop-blur-xs"
       onClick={onClose}
     >
       <div

@@ -439,7 +439,7 @@ export default function ProductsView({ onNewOrder }: { onNewOrder?: () => void }
 
       {/* Delete / Archive Confirmation Dialog */}
       {deletingProduct && (
-        <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
             <div className="flex items-center gap-3">
               <div className="grid size-10 place-items-center rounded-xl bg-rose-50 text-rose-600 shrink-0">
@@ -586,7 +586,7 @@ function ProductFormModal({
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0F4C5C]/50 backdrop-blur-sm p-3 sm:p-4 flex justify-center items-center min-h-screen">
+    <div className="fixed inset-0 z-[70] overflow-y-auto bg-[#0F4C5C]/50 backdrop-blur-sm p-3 sm:p-4 flex justify-center items-center min-h-screen">
       <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden flex flex-col my-8">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#0F4C5C]/20 bg-[#0F4C5C] px-5 py-4 text-white">

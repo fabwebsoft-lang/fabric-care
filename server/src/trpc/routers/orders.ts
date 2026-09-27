@@ -68,13 +68,17 @@ async function nextOrderId(branchNameOrAddress?: string | null): Promise<string>
   const prefix = getBranchPrefix(branchNameOrAddress);
   const regex = new RegExp(`^${prefix}-(\\d+)$`);
 
-  const existingOrders = await Order.find(
+  // Query most recent orders with this prefix using limit for instant performance
+  const recentOrders = await Order.find(
     { _id: { $regex: new RegExp(`^${prefix}-\\d+$`) } },
     { _id: 1 }
-  ).lean();
+  )
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .lean();
 
   let maxNum = 0;
-  for (const o of existingOrders) {
+  for (const o of recentOrders) {
     const match = (o._id as string).match(regex);
     if (match) {
       const num = parseInt(match[1], 10);
@@ -89,7 +93,10 @@ async function nextOrderId(branchNameOrAddress?: string | null): Promise<string>
     const fcOrders = await Order.find(
       { _id: { $regex: /^FC-\d+$/ } },
       { _id: 1 }
-    ).lean();
+    )
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
     for (const o of fcOrders) {
       const match = (o._id as string).match(/^FC-(\d+)$/);
       if (match) {
@@ -114,7 +121,9 @@ async function nextOrderId(branchNameOrAddress?: string | null): Promise<string>
 
 export const ordersRouter = router({
   list: approvedProcedure.query(async () => {
-    const orders = await Order.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
+    const orders = await Order.find({ isDeleted: { $ne: true } })
+      .sort({ createdAt: -1 })
+      .lean();
     return orders.map(toApiOrder);
   }),
 

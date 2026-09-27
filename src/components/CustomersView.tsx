@@ -471,7 +471,7 @@ function CustomerFormModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen"
+      className="fixed inset-0 z-[70] bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -530,6 +530,8 @@ function CustomerFormModal({
             </label>
             <input
               type="tel"
+              inputMode="tel"
+              autoComplete="tel"
               value={phone}
               placeholder="10-digit mobile number"
               onChange={(e) => setPhone(e.target.value)}
@@ -573,6 +575,8 @@ function CustomerFormModal({
             </label>
             <input
               type="tel"
+              inputMode="tel"
+              autoComplete="tel"
               value={alternatePhone}
               placeholder="Secondary mobile number"
               onChange={(e) => setAlternatePhone(e.target.value)}
@@ -643,7 +647,7 @@ function CustomerHistoryModal({
   onSelectOrder: (order: any) => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+    <div className="fixed inset-0 z-[70] bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
       <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-start border-b border-slate-100 pb-3 sm:pb-4 shrink-0">
           <div>

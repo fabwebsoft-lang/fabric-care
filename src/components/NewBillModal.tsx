@@ -558,7 +558,7 @@ export default function NewBillModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-[#0F4C5C]/50 backdrop-blur-xs p-2 sm:p-4 md:p-6 flex justify-center items-center min-h-screen"
+      className="fixed inset-0 z-[70] overflow-y-auto bg-[#0F4C5C]/50 backdrop-blur-xs p-2 sm:p-4 md:p-6 flex justify-center items-center min-h-screen"
       onClick={onClose}
     >
       <div
@@ -915,6 +915,8 @@ export default function NewBillModal({
                 <label className="mb-1 block text-[11px] font-semibold text-[#0F4C5C]">Mobile Number *</label>
                 <input
                   type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
                   required
                   placeholder="10-digit mobile"
                   value={phone}
@@ -989,6 +991,8 @@ export default function NewBillModal({
                     <label className="mb-1 block text-[11px] font-semibold text-[#0F4C5C]">Alternate Phone</label>
                     <input
                       type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
                       placeholder="Optional second number"
                       value={alternatePhone}
                       onChange={(e: ChangeEvent<HTMLInputElement>) => setAlternatePhone(e.target.value)}
@@ -1186,6 +1190,7 @@ export default function NewBillModal({
               <span className="text-slate-600">Special Discount (₹):</span>
               <input
                 type="number"
+                inputMode="numeric"
                 min="0"
                 max={subtotal}
                 value={discount || ""}
@@ -1243,6 +1248,7 @@ export default function NewBillModal({
                 <span className="text-[11px] text-slate-500">Custom Advance Amount:</span>
                 <input
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   max={grandTotal}
                   value={advancePaid || ""}

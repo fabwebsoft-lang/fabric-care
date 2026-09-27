@@ -760,7 +760,7 @@ function ExpenseModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-3 sm:p-4 backdrop-blur-sm min-h-screen"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0F4C5C]/50 p-3 sm:p-4 backdrop-blur-sm min-h-screen"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -910,7 +910,7 @@ function DeleteConfirmModal({
   isDeleting?: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-3 sm:p-4 backdrop-blur-sm min-h-screen">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0F4C5C]/50 p-3 sm:p-4 backdrop-blur-sm min-h-screen">
       <div className="w-full max-w-sm rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center gap-3">
           <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-100">

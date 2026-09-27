@@ -1080,7 +1080,7 @@ export default function BillsView({ onNewOrder }: { onNewOrder: () => void }) {
 
       {/* Confirmation Modal for Bulk Actions */}
       {bulkConfirmPaidIds && bulkConfirmPaidIds.length > 0 && (
-        <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+        <div className="fixed inset-0 z-[70] bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4">
             <h3 className="text-base font-bold text-[#0F4C5C]">
               Mark {bulkConfirmPaidIds.length} {bulkConfirmPaidIds.length === 1 ? "Bill" : "Bills"} as Paid in Full?
@@ -1196,7 +1196,7 @@ function BulkSmsQueueModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+    <div className="fixed inset-0 z-[70] bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
       <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
@@ -1302,7 +1302,7 @@ function ShareBillModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+    <div className="fixed inset-0 z-[70] bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
       <div className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>

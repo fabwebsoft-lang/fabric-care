@@ -806,7 +806,7 @@ export default function SettingsView({
 
       {/* Confirmation Modal for Resetting Database */}
       {showResetModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
             <div className="flex items-center gap-3 text-rose-600">
               <div className="p-3 bg-rose-100 rounded-2xl">

@@ -816,7 +816,7 @@ function StartWashingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+    <div className="fixed inset-0 z-[70] bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
       <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-in fade-in zoom-in-95">
         <div className="flex justify-between items-start border-b border-slate-100 pb-3 sm:pb-4">
           <div>
@@ -1126,7 +1126,7 @@ function CompleteWashingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+    <div className="fixed inset-0 z-[70] bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
       <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
         <div className="flex justify-between items-start border-b border-slate-100 pb-3 sm:pb-4">
           <div>
@@ -1403,7 +1403,7 @@ function StartIroningModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+    <div className="fixed inset-0 z-[70] bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
       <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-in fade-in zoom-in-95">
         <div className="flex justify-between items-start border-b border-slate-100 pb-3 sm:pb-4">
           <div>
@@ -1716,7 +1716,7 @@ function CompleteIroningModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+    <div className="fixed inset-0 z-[70] bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
       <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
         <div className="flex justify-between items-start border-b border-slate-100 pb-3 sm:pb-4">
           <div>
@@ -1965,7 +1965,7 @@ function PickupModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+    <div className="fixed inset-0 z-[70] bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
       <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
         <div className="flex justify-between items-start border-b border-slate-100 pb-3 sm:pb-4">
           <div>

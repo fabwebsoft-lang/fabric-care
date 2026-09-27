@@ -845,6 +845,7 @@ function AddStaffModal({
               <label className="block font-bold text-slate-700 mb-1">4-Digit Security PIN *</label>
               <input
                 type="password"
+                inputMode="numeric"
                 maxLength={4}
                 required
                 placeholder="4 digits"

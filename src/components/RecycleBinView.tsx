@@ -698,7 +698,7 @@ export default function RecycleBinView() {
 
       {/* CUSTOMER / EXPENSE DETAIL PREVIEW MODAL */}
       {selectedDetailItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-4 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0F4C5C]/50 p-4 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="w-full max-w-md rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
@@ -812,7 +812,7 @@ export default function RecycleBinView() {
 
       {/* RESTORE CONFIRMATION MODAL */}
       {itemToRestore && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-4 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0F4C5C]/50 p-4 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center gap-3">
               <div className="size-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
@@ -855,7 +855,7 @@ export default function RecycleBinView() {
 
       {/* DELETE FOREVER CONFIRMATION MODAL */}
       {itemToDeleteForever && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-4 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0F4C5C]/50 p-4 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center gap-3">
               <div className="size-11 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
@@ -899,7 +899,7 @@ export default function RecycleBinView() {
 
       {/* EMPTY RECYCLE BIN CONFIRMATION MODAL */}
       {showEmptyBinModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F4C5C]/50 p-4 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0F4C5C]/50 p-4 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center gap-3">
               <div className="size-11 rounded-2xl bg-rose-100 text-rose-700 border border-rose-200 flex items-center justify-center shrink-0">

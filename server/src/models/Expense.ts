@@ -21,5 +21,10 @@ const expenseSchema = new Schema(
   { timestamps: true }
 );
 
+expenseSchema.index({ isDeleted: 1, expenseDate: -1 });
+expenseSchema.index({ isDeleted: 1, category: 1 });
+expenseSchema.index({ orderId: 1, isDeleted: 1 });
+expenseSchema.index({ isDeleted: 1, createdAt: -1 });
+
 export type ExpenseDoc = InferSchemaType<typeof expenseSchema>;
 export const Expense: Model<ExpenseDoc> = (mongoose.models.Expense as Model<ExpenseDoc>) || model<ExpenseDoc>("Expense", expenseSchema);

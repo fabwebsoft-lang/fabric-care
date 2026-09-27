@@ -624,7 +624,7 @@ export default function RolesAndAccessView() {
 
       {/* Add Member Modal */}
       {showAddWorker && (
-        <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+        <div className="fixed inset-0 z-[70] bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
           <form onSubmit={handleAddWorker} className="bg-white rounded-2xl sm:rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
             <h3 className="text-base font-bold text-[#0F4C5C]">Add Team Member</h3>
             <p className="text-[11px] sm:text-xs text-slate-500">Configure member name, contact, and system access role</p>
@@ -707,13 +707,14 @@ export default function RolesAndAccessView() {
 
       {/* Set PIN Modal */}
       {pinWorkerId && (
-        <div className="fixed inset-0 z-50 bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
+        <div className="fixed inset-0 z-[70] bg-[#0F4C5C]/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 min-h-screen">
           <form onSubmit={handleSetPin} className="bg-white rounded-2xl sm:rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
             <h3 className="text-base font-bold text-[#0F4C5C]">Set Worker Security PIN</h3>
             <p className="text-[11px] sm:text-xs text-slate-500">Enter a 4-digit security PIN for this team member</p>
 
             <input
               type="password"
+              inputMode="numeric"
               maxLength={4}
               required
               autoFocus
