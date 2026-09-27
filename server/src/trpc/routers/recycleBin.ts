@@ -57,7 +57,7 @@ export const recycleBinRouter = router({
 
     const [deletedOrders, deletedBillsArchive, deletedCustomers, deletedExpenses] = await Promise.all([
       Order.find({ isDeleted: true }).sort({ deletedAt: -1, updatedAt: -1 }).lean(),
-      DeletedBill.find({ action: { $ne: "restored" } }).sort({ deletedAt: -1 }).lean(),
+      DeletedBill.find({ action: "moved_to_recycle_bin" }).sort({ deletedAt: -1 }).lean(),
       Customer.find({ isDeleted: true }).sort({ deletedAt: -1, updatedAt: -1 }).lean(),
       Expense.find({ isDeleted: true }).sort({ deletedAt: -1, updatedAt: -1 }).lean(),
     ]);
@@ -203,7 +203,7 @@ export const recycleBinRouter = router({
   counts: approvedProcedure.query(async () => {
     const [deletedOrders, deletedBillsArchive, customersCount, expensesCount] = await Promise.all([
       Order.find({ isDeleted: true }, { _id: 1 }).lean(),
-      DeletedBill.find({ action: { $ne: "restored" } }, { orderId: 1 }).lean(),
+      DeletedBill.find({ action: "moved_to_recycle_bin" }, { orderId: 1 }).lean(),
       Customer.countDocuments({ isDeleted: true }),
       Expense.countDocuments({ isDeleted: true }),
     ]);
@@ -335,37 +335,58 @@ export const recycleBinRouter = router({
     )
     .mutation(async ({ input }) => {
       if (input.type === "order") {
-        await DeletedBill.deleteMany({ orderId: input.id });
-        await IroningTask.deleteMany({ orderId: input.id });
-        await Expense.deleteMany({ orderId: input.id, isSystemGenerated: true });
-        let deleted = await Order.findByIdAndDelete(input.id);
-        if (!deleted) {
-          deleted = await Order.findOneAndDelete({ _id: input.id.trim() });
-        }
-        if (!deleted && mongoose.isValidObjectId(input.id)) {
-          deleted = await Order.findByIdAndDelete(new (mongoose.Types.ObjectId as any)(input.id));
-        }
-        return { success: true, message: `Order ${input.id} permanently deleted` };
+        const cleanId = input.id.trim();
+        const idRegex = new RegExp(`^${cleanId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+
+        await Promise.all([
+          DeletedBill.deleteMany({
+            $or: [{ orderId: input.id }, { orderId: cleanId }, { orderId: idRegex }],
+          }),
+          IroningTask.deleteMany({
+            $or: [{ orderId: input.id }, { orderId: cleanId }, { orderId: idRegex }],
+          }),
+          Expense.deleteMany({
+            $or: [
+              { orderId: input.id },
+              { orderId: cleanId },
+              { orderId: idRegex },
+              { deletedBy: { $regex: `Order ${cleanId}`, $options: "i" } },
+              { notes: { $regex: cleanId, $options: "i" } },
+            ],
+          }),
+          Order.deleteMany({
+            $or: [{ _id: input.id }, { _id: cleanId }, { _id: idRegex }],
+          }),
+        ]);
+
+        return { success: true, message: `Bill ${input.id} permanently deleted` };
       }
 
       if (input.type === "customer") {
-        let deleted: any = null;
+        const cleanId = input.id.trim();
+        const idRegex = new RegExp(`^${cleanId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+        const queryOr: any[] = [
+          { customerId: input.id },
+          { customerId: cleanId },
+          { customerId: idRegex },
+          { phone: input.id },
+          { phone: cleanId },
+        ];
         if (mongoose.isValidObjectId(input.id)) {
-          deleted = await Customer.findByIdAndDelete(input.id);
+          queryOr.unshift({ _id: new mongoose.Types.ObjectId(input.id) });
         }
-        if (!deleted) {
-          deleted = await Customer.findOneAndDelete({
-            $or: [{ customerId: input.id }, { phone: input.id }],
-          });
-        }
-        if (!deleted) throw new TRPCError({ code: "NOT_FOUND", message: "Customer not found" });
-        return { success: true, message: `Customer ${deleted.name} permanently deleted` };
+        await Customer.deleteMany({ $or: queryOr });
+        return { success: true, message: `Customer permanently deleted` };
       }
 
       if (input.type === "expense") {
-        const deleted = await Expense.findByIdAndDelete(input.id);
-        if (!deleted) throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
-        return { success: true, message: `Expense ${deleted.title} permanently deleted` };
+        const cleanId = input.id.trim();
+        const queryOr: any[] = [{ _id: input.id }, { _id: cleanId }];
+        if (mongoose.isValidObjectId(input.id)) {
+          queryOr.unshift({ _id: new mongoose.Types.ObjectId(input.id) });
+        }
+        await Expense.deleteMany({ $or: queryOr });
+        return { success: true, message: `Expense permanently deleted` };
       }
 
       throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid record type" });
@@ -389,38 +410,16 @@ export const recycleBinRouter = router({
       if (type === "all" || type === "order") {
         const deletedOrders = await Order.find({ isDeleted: true });
         const deletedOrderIds = deletedOrders.map((o) => String(o._id));
-        for (const o of deletedOrders) {
-          try {
-            await DeletedBill.findOneAndUpdate(
-              { orderId: o._id },
-              {
-                orderId: o._id,
-                customerId: o.customerId,
-                customer: o.customer,
-                phone: o.phone,
-                customerType: o.customerType,
-                clothesCode: o.clothesCode,
-                serviceType: o.serviceType,
-                status: o.status,
-                deliveryType: o.deliveryType,
-                dueAt: o.dueAt,
-                totalAmount: o.totalAmount,
-                amountPaid: o.amountPaid,
-                discount: o.discount,
-                items: o.items,
-                originalCreatedAt: o.createdAt,
-                deletedAt: o.deletedAt || new Date(),
-                deletedBy: o.deletedBy || "Admin",
-                action: "permanently_deleted",
-              },
-              { upsert: true, new: true }
-            );
-          } catch (e) {
-            console.error("Failed to archive DeletedBill on emptyBin:", e);
-          }
-        }
-        await IroningTask.deleteMany({ orderId: { $in: deletedOrderIds } });
-        await Expense.deleteMany({ orderId: { $in: deletedOrderIds }, isSystemGenerated: true });
+        await Promise.all([
+          DeletedBill.deleteMany({}),
+          IroningTask.deleteMany({ orderId: { $in: deletedOrderIds } }),
+          Expense.deleteMany({
+            $or: [
+              { orderId: { $in: deletedOrderIds } },
+              { isDeleted: true, isSystemGenerated: true },
+            ],
+          }),
+        ]);
         const res = await Order.deleteMany({ isDeleted: true });
         ordersDeleted = res.deletedCount || 0;
       }

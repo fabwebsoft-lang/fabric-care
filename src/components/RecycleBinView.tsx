@@ -682,9 +682,14 @@ export default function RecycleBinView() {
               toast.error("Permission Denied");
               return;
             }
-            setItemToDeleteForever(
-              filteredItems.find((i) => i.id === selectedInvoiceOrder.id) || null
-            );
+            const matched = filteredItems.find((i) => i.id === selectedInvoiceOrder.id) || {
+              id: selectedInvoiceOrder.id,
+              recordType: "order" as const,
+              title: `Bill ${selectedInvoiceOrder.id}`,
+              deletedAt: new Date().toISOString(),
+              deletedBy: "Admin",
+            };
+            setItemToDeleteForever(matched);
             setSelectedInvoiceOrder(null);
           }}
           canDelete={canDelete}

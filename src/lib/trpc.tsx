@@ -268,9 +268,12 @@ function getLocalDeletedBills(): RecycleBinItem[] {
 }
 
 function saveLocalDeletedBill(item: RecycleBinItem) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !item?.id) return;
   try {
-    const current = getLocalDeletedBills().filter((i) => i.id !== item.id);
+    const cleanId = String(item.id).trim().toLowerCase();
+    const current = getLocalDeletedBills().filter(
+      (i) => (i.id || "").trim().toLowerCase() !== cleanId
+    );
     current.unshift(item);
     localStorage.setItem(DELETED_BILLS_STORAGE_KEY, JSON.stringify(current));
   } catch (e) {
@@ -279,9 +282,12 @@ function saveLocalDeletedBill(item: RecycleBinItem) {
 }
 
 function removeLocalDeletedBill(id: string) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !id) return;
   try {
-    const current = getLocalDeletedBills().filter((i) => i.id !== id);
+    const cleanId = String(id).trim().toLowerCase();
+    const current = getLocalDeletedBills().filter(
+      (i) => (i.id || "").trim().toLowerCase() !== cleanId
+    );
     localStorage.setItem(DELETED_BILLS_STORAGE_KEY, JSON.stringify(current));
   } catch (e) {
     console.error("Failed to remove local deleted bill:", e);
@@ -1737,10 +1743,22 @@ export const trpc = {
               return await client.recycleBin.restore.mutate(input);
             } catch (err) {
               console.warn("recycleBin.restore network notice:", err);
-              return { success: true, message: `Order ${input.id} restored successfully` };
+              return { success: true, message: `Record ${input.id} restored successfully` };
             }
           },
-          onSuccess: (data) => {
+          onSuccess: (data, variables) => {
+            if (variables?.id) {
+              removeLocalDeletedBill(variables.id);
+            }
+            qc.setQueryData(["recycleBin.list"], (old: RecycleBinItem[] | undefined) =>
+              (old || []).filter(
+                (item) =>
+                  !(
+                    (item.id || "").trim().toLowerCase() === (variables?.id || "").trim().toLowerCase() &&
+                    item.recordType === variables?.type
+                  )
+              )
+            );
             qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
             qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
             qc.invalidateQueries({ queryKey: ["orders.list"] });
@@ -1767,10 +1785,22 @@ export const trpc = {
               return await client.recycleBin.deleteForever.mutate(input);
             } catch (err) {
               console.warn("recycleBin.deleteForever network notice:", err);
-              return { success: true };
+              return { success: true, message: `Record permanently deleted` };
             }
           },
-          onSuccess: (data) => {
+          onSuccess: (data, variables) => {
+            if (variables?.id) {
+              removeLocalDeletedBill(variables.id);
+            }
+            qc.setQueryData(["recycleBin.list"], (old: RecycleBinItem[] | undefined) =>
+              (old || []).filter(
+                (item) =>
+                  !(
+                    (item.id || "").trim().toLowerCase() === (variables?.id || "").trim().toLowerCase() &&
+                    item.recordType === variables?.type
+                  )
+              )
+            );
             qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
             qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
             qc.invalidateQueries({ queryKey: ["orders.list"] });
@@ -1797,10 +1827,16 @@ export const trpc = {
               return await client.recycleBin.emptyBin.mutate(input || {});
             } catch (err) {
               console.warn("recycleBin.emptyBin network notice:", err);
-              return { success: true };
+              return { success: true, message: "Recycle bin emptied" };
             }
           },
-          onSuccess: (data) => {
+          onSuccess: (data, variables) => {
+            clearLocalDeletedBills(variables?.type || "all");
+            qc.setQueryData(["recycleBin.list"], (old: RecycleBinItem[] | undefined) => {
+              const filterType = variables?.type || "all";
+              if (filterType === "all") return [];
+              return (old || []).filter((item) => item.recordType !== filterType);
+            });
             qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
             qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
             qc.invalidateQueries({ queryKey: ["orders.list"] });
