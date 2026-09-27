@@ -793,6 +793,79 @@ export const trpc = {
         });
       },
     },
+    bulkDelete: {
+      useMutation: (options?: {
+        onSuccess?: (data: { success: boolean; count: number }, variables: { ids: string[]; reason?: string }) => void | Promise<any>;
+        onError?: (err: Error) => void;
+      }) => {
+        const qc = useQueryClient();
+        return useMutation({
+          mutationFn: async (input: { ids: string[]; reason?: string }) => {
+            const currentOrders = (qc.getQueryData(["orders.list"]) as Order[] | undefined) || [];
+
+            for (const id of input.ids) {
+              const targetOrder = currentOrders.find((o) => o.id === id);
+              if (targetOrder) {
+                const deletedItem: RecycleBinItem = {
+                  id: targetOrder.id,
+                  recordType: "order",
+                  title: `Bill ${targetOrder.id}`,
+                  subtitle: targetOrder.items,
+                  customerName: targetOrder.customer,
+                  customerId: targetOrder.customerId || null,
+                  phone: targetOrder.phone,
+                  customerType: targetOrder.customerType,
+                  clothesCode: targetOrder.clothesCode,
+                  status: targetOrder.status,
+                  deliveryType: targetOrder.deliveryType,
+                  dueAt: targetOrder.due,
+                  amount: targetOrder.totalAmount,
+                  amountPaid: targetOrder.amountPaid,
+                  discount: targetOrder.discount,
+                  outstandingAmount: Math.max(0, targetOrder.totalAmount - targetOrder.amountPaid),
+                  itemsSummary:
+                    (targetOrder.structuredItems || []).map((i) => `${i.quantity}x ${i.name}`).join(", ") ||
+                    targetOrder.items,
+                  itemsList: targetOrder.structuredItems || [],
+                  originalDate: targetOrder.createdAt,
+                  deletedAt: new Date().toISOString(),
+                  deletedBy: "Admin",
+                  reason: input.reason || "Bulk moved to Recycle Bin",
+                  action: "moved_to_recycle_bin",
+                };
+                saveLocalDeletedBill(deletedItem);
+              }
+            }
+
+            // Immediately remove from active orders in UI cache
+            qc.setQueryData(["orders.list"], (old: Order[] | undefined) =>
+              (old || []).filter((o) => !input.ids.includes(o.id))
+            );
+
+            try {
+              return await client.orders.bulkDelete.mutate(input);
+            } catch (err) {
+              console.warn("Backend bulk delete sync notice:", err);
+              return { success: true, count: input.ids.length, localOnly: true };
+            }
+          },
+          onSuccess: async (data, variables) => {
+            qc.invalidateQueries({ queryKey: ["orders.list"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveWashingTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.getActiveTask"] });
+            qc.invalidateQueries({ queryKey: ["ironing.todayStats"] });
+            qc.invalidateQueries({ queryKey: ["ironing.reports"] });
+            qc.invalidateQueries({ queryKey: ["expenses.list"] });
+            qc.invalidateQueries({ queryKey: ["recycleBin.list"] });
+            qc.invalidateQueries({ queryKey: ["recycleBin.counts"] });
+            qc.invalidateQueries({ queryKey: ["dashboard.stats"] });
+            qc.invalidateQueries({ queryKey: ["customers.list"] });
+            options?.onSuccess?.(data as any, variables);
+          },
+          onError: options?.onError,
+        });
+      },
+    },
     deleteAll: {
       useMutation: (options?: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
         const qc = useQueryClient();
