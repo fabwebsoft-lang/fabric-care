@@ -6,6 +6,7 @@ import { Order } from "../../models/Order.js";
 import { Customer } from "../../models/Customer.js";
 import { Expense } from "../../models/Expense.js";
 import { DeletedBill } from "../../models/DeletedBill.js";
+import { IroningTask } from "../../models/IroningTask.js";
 
 export type RecycleBinItemType = "order" | "customer" | "expense";
 
