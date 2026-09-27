@@ -18,7 +18,6 @@ import {
   IndianRupee,
   LayoutDashboard,
   LogOut,
-  Menu,
   MoreHorizontal,
   PackageCheck,
   Plus,
@@ -459,29 +458,19 @@ export default function AuthenticatedHome({
         </aside>
 
         <main className="min-w-0 flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0 w-full max-w-full overflow-x-hidden">
-          <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-3.5 sm:px-8 lg:px-10 backdrop-blur-xl w-full max-w-full">
-            <div className="flex items-center gap-3">
-              <button
-                className="grid size-11 min-h-[44px] min-w-[44px] place-items-center rounded-xl border border-slate-200 bg-white text-[#0F4C5C] transition hover:border-slate-300 hover:text-[#0F4C5C] focus-visible:ring-2 focus-visible:ring-[#0F4C5C] lg:hidden shrink-0 cursor-pointer"
-                onClick={() => setShowMobileNav((prev) => !prev)}
-                aria-label="Open navigation menu"
-                aria-expanded={showMobileNav}
-              >
-                <Menu className="size-[20px]" aria-hidden="true" />
-              </button>
-              <div className="min-w-0">
-                <p className="hidden text-[11px] font-semibold uppercase tracking-[.13em] text-[#0F4C5C] sm:block">
-                  {new Date().toLocaleDateString("en-US", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </p>
-                <h1 className="font-display text-[18px] font-semibold tracking-[-.02em] text-[#0F4C5C] sm:text-[20px] truncate">
-                  {sectionTitle}
-                </h1>
-              </div>
+          <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 sm:px-8 lg:px-10 backdrop-blur-xl w-full max-w-full">
+            <div className="min-w-0 pr-2">
+              <p className="hidden text-[11px] font-semibold uppercase tracking-[.13em] text-[#0F4C5C] sm:block">
+                {new Date().toLocaleDateString("en-US", {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </p>
+              <h1 className="font-display text-[18px] font-semibold tracking-[-.02em] text-[#0F4C5C] sm:text-[20px] truncate">
+                {sectionTitle}
+              </h1>
             </div>
             <div className="relative flex items-center gap-2 sm:gap-3 shrink-0">
               {canManageRoles ? (
