@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { trpc, type Customer } from "@/lib/trpc";
 import { normalizePhone } from "@/lib/phone";
 import InvoiceModal from "./InvoiceModal";
-import { Users, Search, Phone, History, X, FileText, Pencil, Plus, Check, Trash2 } from "lucide-react";
+import { Users, Search, Phone, History, X, FileText, Pencil, Plus, Check, Trash2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useAccessControl } from "@/contexts/AccessControlContext";
 
@@ -12,6 +12,7 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
   const { data: customers = [], isLoading } = trpc.customers.list.useQuery();
   const { data: orders = [] } = trpc.orders.list.useQuery();
   const [searchQuery, setSearchQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(40);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
@@ -57,26 +58,64 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
     return () => window.removeEventListener("open-add-customer", handleOpenAdd);
   }, []);
 
-  const customerStats = customers.map((c) => {
-    const customerOrders = orders.filter((o) => o.phone === c.phone || o.customer === c.name);
-    const totalBilled = customerOrders.reduce((sum, o) => sum + o.totalAmount, 0);
-    const totalPaid = customerOrders.reduce((sum, o) => sum + o.amountPaid, 0);
-    const runningBalance = Math.max(0, totalBilled - totalPaid);
+  // Pre-index orders in O(M) lookup map to avoid O(N * M) lag on mobile
+  const ordersLookup = useMemo(() => {
+    const map = new Map<string, { orders: typeof orders; totalBilled: number; totalPaid: number }>();
+    for (const o of orders) {
+      const keys = [
+        o.phone ? o.phone.trim() : null,
+        o.customer ? o.customer.toLowerCase().trim() : null,
+      ].filter(Boolean) as string[];
 
-    return {
-      ...c,
-      orderCount: customerOrders.length,
-      totalBilled,
-      runningBalance,
-      customerOrders,
-    };
-  });
+      for (const k of keys) {
+        let entry = map.get(k);
+        if (!entry) {
+          entry = { orders: [], totalBilled: 0, totalPaid: 0 };
+          map.set(k, entry);
+        }
+        entry.orders.push(o);
+        entry.totalBilled += o.totalAmount || 0;
+        entry.totalPaid += o.amountPaid || 0;
+      }
+    }
+    return map;
+  }, [orders]);
 
-  const filteredCustomers = customerStats.filter((c) =>
-    `${c.name} ${c.phone} ${c.customerId || ""}`
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
+  const customerStats = useMemo(() => {
+    return customers.map((c) => {
+      const byPhone = c.phone ? ordersLookup.get(c.phone.trim()) : null;
+      const byName = c.name ? ordersLookup.get(c.name.toLowerCase().trim()) : null;
+      const stats = byPhone || byName;
+      const customerOrders = stats?.orders || [];
+      const totalBilled = stats ? stats.totalBilled : (c.totalSpent ?? 0);
+      const runningBalance = stats
+        ? Math.max(0, stats.totalBilled - stats.totalPaid)
+        : (c.pendingBalance ?? 0);
+      const orderCount = stats ? stats.orders.length : (c.orderCount ?? 0);
+
+      return {
+        ...c,
+        orderCount,
+        totalBilled,
+        runningBalance,
+        customerOrders,
+      };
+    });
+  }, [customers, ordersLookup]);
+
+  const filteredCustomers = useMemo(() => {
+    if (!searchQuery.trim()) return customerStats;
+    const q = searchQuery.toLowerCase().trim();
+    return customerStats.filter((c) =>
+      `${c.name} ${c.phone} ${c.customerId || ""}`
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [customerStats, searchQuery]);
+
+  const displayedCustomers = useMemo(() => {
+    return filteredCustomers.slice(0, visibleCount);
+  }, [filteredCustomers, visibleCount]);
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
@@ -124,103 +163,118 @@ export default function CustomersView({ onNewOrder }: { onNewOrder?: (customer?:
           No customers found matching your search.
         </div>
       ) : (
-        <div className="grid gap-3.5 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-          {filteredCustomers.map((c) => (
-            <div
-              key={c.id}
-              className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs hover:shadow-md transition space-y-3.5 sm:space-y-4 flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
-                  <div>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <h3 className="font-bold text-slate-800 text-sm">{c.name}</h3>
-                      {c.customerId ? (
-                        <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-[#0F4C5C]/10 text-[#0F4C5C]">
-                          ID: {c.customerId}
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-amber-50 text-amber-700 border border-amber-200">
-                          No ID
-                        </span>
+        <div className="space-y-4">
+          <div className="grid gap-3.5 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+            {displayedCustomers.map((c) => (
+              <div
+                key={c.id}
+                className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs hover:shadow-md transition space-y-3.5 sm:space-y-4 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="font-bold text-slate-800 text-sm">{c.name}</h3>
+                        {c.customerId ? (
+                          <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-[#0F4C5C]/10 text-[#0F4C5C]">
+                            ID: {c.customerId}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                            No ID
+                          </span>
+                        )}
+                      </div>
+                      <a
+                        href={`tel:${c.phone}`}
+                        className="text-xs text-[#0F4C5C] hover:underline flex items-center gap-1 mt-1"
+                        title="Tap to call"
+                      >
+                        <Phone className="size-3" /> {c.phone}
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setEditingCustomer(c)}
+                        className="p-1.5 text-slate-400 hover:text-[#0F4C5C] hover:bg-slate-100 rounded-lg transition min-h-[36px] min-w-[36px] flex items-center justify-center"
+                        title="Edit Customer"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                      {canDelete && (
+                        <button
+                          onClick={() => {
+                            if (
+                              confirm(
+                                `Move customer "${c.name}" to Recycle Bin?\n\nThis customer account will be moved to the Recycle Bin and can be restored later.`
+                              )
+                            ) {
+                              deleteCustomerMutation.mutate({ id: c.id });
+                            }
+                          }}
+                          disabled={deleteCustomerMutation.isPending}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition min-h-[36px] min-w-[36px] flex items-center justify-center"
+                          title="Move to Recycle Bin"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
                       )}
                     </div>
-                    <a
-                      href={`tel:${c.phone}`}
-                      className="text-xs text-[#0F4C5C] hover:underline flex items-center gap-1 mt-1"
-                      title="Tap to call"
-                    >
-                      <Phone className="size-3" /> {c.phone}
-                    </a>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setEditingCustomer(c)}
-                      className="p-1.5 text-slate-400 hover:text-[#0F4C5C] hover:bg-slate-100 rounded-lg transition"
-                      title="Edit Customer"
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
-                    {canDelete && (
-                      <button
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `Move customer "${c.name}" to Recycle Bin?\n\nThis customer account will be moved to the Recycle Bin and can be restored later.`
-                            )
-                          ) {
-                            deleteCustomerMutation.mutate({ id: c.id });
-                          }
-                        }}
-                        disabled={deleteCustomerMutation.isPending}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                        title="Move to Recycle Bin"
+
+                  <div className="mt-3 space-y-2 text-xs">
+                    <div className="flex justify-between items-center text-slate-600">
+                      <span>Total Orders:</span>
+                      <span className="font-bold text-slate-800">
+                        {c.orderCount} {c.orderCount === 1 ? "order" : "orders"}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-slate-600">
+                      <span>Running Balance:</span>
+                      <span
+                        className={`font-bold ${
+                          c.runningBalance > 0 ? "text-rose-600" : "text-emerald-600"
+                        }`}
                       >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    )}
+                        {c.runningBalance > 0 ? `₹${c.runningBalance} Due` : "Clear"}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-3 space-y-2 text-xs">
-                  <div className="flex justify-between items-center text-slate-600">
-                    <span>Total Orders:</span>
-                    <span className="font-bold text-slate-800">
-                      {c.orderCount} {c.orderCount === 1 ? "order" : "orders"}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center text-slate-600">
-                    <span>Running Balance:</span>
-                    <span
-                      className={`font-bold ${
-                        c.runningBalance > 0 ? "text-rose-600" : "text-emerald-600"
-                      }`}
-                    >
-                      {c.runningBalance > 0 ? `₹${c.runningBalance} Due` : "Clear"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={() => setSelectedCustomer(c)}
-                  className="flex-1 py-2 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-1 active:scale-95"
-                >
-                  <History className="size-3.5" /> History
-                </button>
-                {onNewOrder && (
+                <div className="flex gap-2 pt-1">
                   <button
-                    onClick={() => onNewOrder(c)}
-                    className="flex-1 py-2 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition flex items-center justify-center gap-1 active:scale-95 shadow-xs"
+                    onClick={() => setSelectedCustomer(c)}
+                    className="flex-1 py-2 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-1 active:scale-95 min-h-[38px]"
                   >
-                    + New Bill
+                    <History className="size-3.5" /> History
                   </button>
-                )}
+                  {onNewOrder && (
+                    <button
+                      onClick={() => onNewOrder(c)}
+                      className="flex-1 py-2 bg-[#0F4C5C] text-white text-xs font-semibold rounded-xl hover:bg-[#0F4C5C]/90 transition flex items-center justify-center gap-1 active:scale-95 shadow-xs min-h-[38px]"
+                    >
+                      + New Bill
+                    </button>
+                  )}
+                </div>
               </div>
+            ))}
+          </div>
+
+          {filteredCustomers.length > visibleCount && (
+            <div className="flex justify-center pt-2 pb-4">
+              <button
+                type="button"
+                onClick={() => setVisibleCount((prev) => prev + 40)}
+                className="px-6 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-[#0F4C5C] text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-2 active:scale-95"
+              >
+                <ChevronDown className="size-4" />
+                Show More Customers ({filteredCustomers.length - visibleCount} remaining)
+              </button>
             </div>
-          ))}
+          )}
         </div>
       )}
 

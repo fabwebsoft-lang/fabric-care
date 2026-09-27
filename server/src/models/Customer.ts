@@ -23,6 +23,9 @@ customerSchema.index(
   { normalizedPhone: 1 },
   { unique: true, partialFilterExpression: { isDeleted: false } }
 );
+customerSchema.index({ isDeleted: 1, createdAt: -1 });
+customerSchema.index({ isDeleted: 1, name: 1 });
+customerSchema.index({ isDeleted: 1, customerId: 1 });
 
 customerSchema.pre("save", function (this: any) {
   if (this.phone && !this.normalizedPhone) {

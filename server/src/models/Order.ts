@@ -42,5 +42,9 @@ const orderSchema = new Schema(
   { timestamps: true, _id: false }
 );
 
+orderSchema.index({ isDeleted: 1, createdAt: -1 });
+orderSchema.index({ isDeleted: 1, phone: 1 });
+orderSchema.index({ isDeleted: 1, status: 1 });
+
 export type OrderDoc = InferSchemaType<typeof orderSchema>;
 export const Order: Model<OrderDoc> = (mongoose.models.Order as Model<OrderDoc>) || model<OrderDoc>("Order", orderSchema);

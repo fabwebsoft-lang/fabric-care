@@ -32,17 +32,21 @@ function toApiCustomer(c: any, statsByPhone?: Map<string, any>) {
 
 export const customersRouter = router({
   list: approvedProcedure.query(async () => {
-    const customers = await Customer.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
-    const stats = await Order.aggregate([
-      { $match: { isDeleted: { $ne: true } } },
-      {
-        $group: {
-          _id: "$phone",
-          orderCount: { $sum: 1 },
-          totalSpent: { $sum: "$totalAmount" },
-          totalPaid: { $sum: "$amountPaid" },
+    const [customers, stats] = await Promise.all([
+      Customer.find({ isDeleted: { $ne: true } })
+        .sort({ createdAt: -1 })
+        .lean(),
+      Order.aggregate([
+        { $match: { isDeleted: { $ne: true } } },
+        {
+          $group: {
+            _id: "$phone",
+            orderCount: { $sum: 1 },
+            totalSpent: { $sum: "$totalAmount" },
+            totalPaid: { $sum: "$amountPaid" },
+          },
         },
-      },
+      ]),
     ]);
     const statsByPhone = new Map<string, any>(stats.map((s: any) => [s._id, s]));
 
@@ -79,7 +83,8 @@ export const customersRouter = router({
 
       const customers = await Customer.find(filter)
         .sort({ updatedAt: -1, createdAt: -1 })
-        .limit(input.limit);
+        .limit(input.limit)
+        .lean();
 
       return customers.map((c: any) => toApiCustomer(c));
     }),
