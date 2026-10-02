@@ -117,6 +117,44 @@ export default function ActiveProcessView({
 }) {
   const utils = trpc.useUtils();
   const { data: orders = [], isLoading } = trpc.orders.list.useQuery();
+  const { data: customers = [] } = trpc.customers.list.useQuery();
+
+  const customerIdMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of customers) {
+      if (c.customerId && c.customerId.trim()) {
+        const id = c.customerId.trim();
+        if (c.phone) {
+          map.set(c.phone.trim(), id);
+          map.set(c.phone.replace(/\D/g, ""), id);
+        }
+        if (c.normalizedPhone) {
+          map.set(c.normalizedPhone.trim(), id);
+        }
+        if (c.name) {
+          map.set(c.name.trim().toLowerCase(), id);
+        }
+      }
+    }
+    return map;
+  }, [customers]);
+
+  const getOrderCustomerId = (order: Order) => {
+    if (order.customerId && order.customerId.trim()) {
+      return order.customerId.trim();
+    }
+    const cleanPhone = (order.phone || "").replace(/\D/g, "");
+    if (cleanPhone && customerIdMap.has(cleanPhone)) {
+      return customerIdMap.get(cleanPhone)!;
+    }
+    if (order.phone && customerIdMap.has(order.phone.trim())) {
+      return customerIdMap.get(order.phone.trim())!;
+    }
+    if (order.customer && customerIdMap.has(order.customer.trim().toLowerCase())) {
+      return customerIdMap.get(order.customer.trim().toLowerCase())!;
+    }
+    return null;
+  };
 
   const [activeTab, setActiveTab] = useState<TabType>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -248,7 +286,7 @@ export default function ActiveProcessView({
       order.id.toLowerCase().includes(q) ||
       order.customer.toLowerCase().includes(q) ||
       order.phone.toLowerCase().includes(q) ||
-      (order.customerId && order.customerId.toLowerCase().includes(q))
+      Boolean(getOrderCustomerId(order)?.toLowerCase().includes(q))
     );
   });
 
@@ -526,6 +564,13 @@ export default function ActiveProcessView({
                       <p className="text-xs font-semibold text-slate-800 mt-0.5">
                         {order.customer}
                       </p>
+                      {getOrderCustomerId(order) && (
+                        <div className="mt-0.5 flex items-center">
+                          <span className="text-[10px] font-mono font-bold text-[#0F4C5C] bg-[#0F4C5C]/10 border border-[#0F4C5C]/20 px-1.5 py-0.5 rounded inline-flex items-center gap-1">
+                            ID: {getOrderCustomerId(order)}
+                          </span>
+                        </div>
+                      )}
                       <a
                         href={`tel:${order.phone}`}
                         className="text-[11px] text-[#0F4C5C] hover:underline flex items-center gap-1 mt-0.5"
@@ -850,7 +895,7 @@ function StartWashingModal({
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500">Customer:</span>
-            <span className="font-bold text-slate-800">{order.customer} ({order.phone})</span>
+            <span className="font-bold text-slate-800">{order.customer} {order.customerId ? `(ID: ${order.customerId}) ` : ""}({order.phone})</span>
           </div>
           <div className="pt-1 border-t border-slate-200/70">
             <span className="text-slate-500 block mb-0.5 font-medium">Garments to Wash:</span>
@@ -1437,7 +1482,7 @@ function StartIroningModal({
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500">Customer:</span>
-            <span className="font-bold text-slate-800">{order.customer} ({order.phone})</span>
+            <span className="font-bold text-slate-800">{order.customer} {order.customerId ? `(ID: ${order.customerId}) ` : ""}({order.phone})</span>
           </div>
           <div className="pt-1 border-t border-slate-200/70">
             <span className="text-slate-500 block mb-0.5 font-medium">Garments to Iron:</span>
@@ -1997,7 +2042,7 @@ function PickupModal({
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500">Customer:</span>
-            <span className="font-bold text-slate-800">{order.customer} ({order.phone})</span>
+            <span className="font-bold text-slate-800">{order.customer} {order.customerId ? `(ID: ${order.customerId}) ` : ""}({order.phone})</span>
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500">Total Bill Amount:</span>
